@@ -1,10 +1,14 @@
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Loader2, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import { useAuth } from '@/hooks/useAuth';
+import { config } from '@/lib/config';
+import { validateData, signUpSchema } from '@/utils/validation';
+import { ClearCauseError, UserRole } from '@/lib/types';
 
 const Signup: React.FC = () => {
   const [accountType, setAccountType] = useState<'donor' | 'charity'>('donor');
@@ -16,21 +20,27 @@ const Signup: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [newsletterOpt, setNewsletterOpt] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const { user, signUp, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user && !loading) {
+      navigate('/');
+    }
+  }, [user, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess(false);
 
     // Basic validation
     if (password !== confirmPassword) {
       setError('Passwords do not match');
-      return;
-    }
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
       return;
     }
 
@@ -39,14 +49,47 @@ const Signup: React.FC = () => {
       return;
     }
 
-    setIsLoading(true);
+    try {
+      const fullName = `${firstName.trim()} ${lastName.trim()}`;
+      
+      // Validate form data
+      const validatedData = validateData(signUpSchema, {
+        email,
+        password,
+        fullName,
+        role: accountType as UserRole,
+      });
 
-    // Simulate API call
-    setTimeout(() => {
-      // Just for demo purposes
-      window.location.href = '/';
-      setIsLoading(false);
-    }, 1500);
+      // Attempt signup
+      const result = await signUp(validatedData);
+
+      if (result.success) {
+        setSuccess(true);
+        
+        // If email verification is enabled, show success message
+        // Otherwise redirect based on account type
+        if (config.features.emailVerification) {
+          // Success message will be shown, user needs to verify email
+        } else {
+          // Redirect based on account type
+          setTimeout(() => {
+            if (accountType === 'charity') {
+              navigate(config.routes.charity.application);
+            } else {
+              navigate(config.routes.home);
+            }
+          }, 2000);
+        }
+      } else {
+        setError(result.error || 'Signup failed. Please try again.');
+      }
+    } catch (error) {
+      if (error instanceof ClearCauseError) {
+        setError(error.message);
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
+    }
   };
 
   return (
@@ -64,6 +107,22 @@ const Signup: React.FC = () => {
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
                 {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6">
+                <div className="flex items-center">
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  <div>
+                    <div className="font-medium">Account created successfully!</div>
+                    {config.features.emailVerification && (
+                      <div className="text-sm mt-1">
+                        Please check your email and click the verification link to activate your account.
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -237,9 +296,21 @@ const Signup: React.FC = () => {
                 <Button
                   type="submit"
                   className="w-full bg-clearcause-accent hover:bg-clearcause-accent/90 py-2 px-4"
-                  disabled={isLoading}
+                  disabled={loading || success}
                 >
-                  {isLoading ? 'Creating Account...' : 'Create Account'}
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating Account...
+                    </>
+                  ) : success ? (
+                    <>
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Account Created
+                    </>
+                  ) : (
+                    'Create Account'
+                  )}
                 </Button>
               </div>
             </form>

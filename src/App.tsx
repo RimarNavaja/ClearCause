@@ -4,9 +4,25 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
+import DemoBanner from "@/components/DemoBanner";
+import { 
+  ProtectedRoute, 
+  AdminRoute, 
+  CharityRoute, 
+  DonorRoute, 
+  GuestRoute 
+} from "./middleware/auth";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Campaigns from "./pages/Campaigns";
+import HowItWorks from "./pages/HowItWorks";
+import About from "./pages/About";
+import ForCharities from "./pages/ForCharities";
+import Contact from "./pages/Contact";
+import FAQ from "./pages/FAQ";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 import CampaignDetail from "./pages/CampaignDetail";
 import CharityProfile from "./pages/CharityProfile";
 import Donate from "./pages/Donate";
@@ -41,59 +57,211 @@ import CampaignManagement from "./pages/admin/CampaignManagement";
 import ScorecardManagement from "./pages/admin/ScorecardManagement";
 import PlatformSettings from "./pages/admin/PlatformSettings";
 import AuditLogs from "./pages/admin/AuditLogs";
-import PaymentMethods from "./pages/PaymentMethods";
+// import PaymentMethods from "./pages/PaymentMethods";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+        <div className="min-h-screen">
+          <Routes>
+          {/* Public routes */}
           <Route path="/" element={<Index />} />
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/campaigns/:campaignId" element={<CampaignDetail />} />
           <Route path="/charities/:charityId" element={<CharityProfile />} />
-          <Route path="/donate/:campaignId" element={<Donate />} />
-          <Route path="/donate/success" element={<DonateSuccess />} />
-          <Route path="/donate/error" element={<DonateError />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/for-charities" element={<ForCharities />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/faq" element={<FAQ />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          
+          {/* Guest only routes (redirect if authenticated) */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/signup/charity-application" element={<CharityApplicationForm />} />
-          <Route path="/donor/dashboard" element={<DonorDashboard />} />
-          <Route path="/donor/donations" element={<DonorDonations />} />
-          <Route path="/donor/profile" element={<DonorProfile />} />
-          <Route path="/donor/settings" element={<DonorSettings />} />
-          <Route path="/charity/dashboard" element={<CharityDashboard />} />
-          <Route path="/charity/campaigns" element={<ManageCampaigns />} />
-          <Route path="/charity/campaigns/new" element={<CampaignForm />} />
-          <Route path="/charity/campaigns/edit/:campaignId" element={<CampaignForm />} />
-          <Route path="/charity/campaigns/:campaignId/milestones" element={<ManageMilestones />} />
-          <Route path="/charity/campaigns/:campaignId/milestones/:milestoneId/submit" element={<SubmitProofForm />} />
-          <Route path="/charity/campaigns/:campaignId/updates" element={<PostImpactUpdate />} />
-          <Route path="/charity/verifications" element={<VerificationStatus />} />
-          <Route path="/charity/funds" element={<FundsManagement />} />
-          <Route path="/charity/profile" element={<OrganizationProfile />} />
-          <Route path="/charity/settings" element={<CharitySettings />} />
           <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/verifications" element={<VerificationQueue />} />
-          <Route path="/admin/verifications/:submissionId" element={<VerificationDetail />} />
-          <Route path="/admin/payouts" element={<FundReleaseManagement />} />
-          <Route path="/admin/charities" element={<CharityManagement />} />
-          <Route path="/admin/applications" element={<CharityApplicationReview />} />
-          <Route path="/admin/donors" element={<DonorManagement />} />
-          <Route path="/admin/campaigns" element={<CampaignManagement />} />
-          <Route path="/admin/scorecards" element={<ScorecardManagement />} />
-          <Route path="/admin/settings" element={<PlatformSettings />} />
-          <Route path="/admin/logs" element={<AuditLogs />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+          {/* Protected donation routes */}
+          <Route path="/donate/:campaignId" element={
+            <ProtectedRoute>
+              <Donate />
+            </ProtectedRoute>
+          } />
+          <Route path="/donate/success" element={
+            <ProtectedRoute>
+              <DonateSuccess />
+            </ProtectedRoute>
+          } />
+          <Route path="/donate/error" element={
+            <ProtectedRoute>
+              <DonateError />
+            </ProtectedRoute>
+          } />
+
+          {/* Charity application (open to authenticated users) */}
+          <Route path="/signup/charity-application" element={
+            <ProtectedRoute>
+              <CharityApplicationForm />
+            </ProtectedRoute>
+          } />
+
+          {/* Donor routes */}
+          <Route path="/donor/dashboard" element={
+            <DonorRoute>
+              <DonorDashboard />
+            </DonorRoute>
+          } />
+          <Route path="/donor/donations" element={
+            <DonorRoute>
+              <DonorDonations />
+            </DonorRoute>
+          } />
+          <Route path="/donor/profile" element={
+            <DonorRoute>
+              <DonorProfile />
+            </DonorRoute>
+          } />
+          <Route path="/donor/settings" element={
+            <DonorRoute>
+              <DonorSettings />
+            </DonorRoute>
+          } />
+
+          {/* Charity routes */}
+          <Route path="/charity/dashboard" element={
+            <CharityRoute>
+              <CharityDashboard />
+            </CharityRoute>
+          } />
+          <Route path="/charity/campaigns" element={
+            <CharityRoute>
+              <ManageCampaigns />
+            </CharityRoute>
+          } />
+          <Route path="/charity/campaigns/new" element={
+            <CharityRoute>
+              <CampaignForm />
+            </CharityRoute>
+          } />
+          <Route path="/charity/campaigns/edit/:campaignId" element={
+            <CharityRoute>
+              <CampaignForm />
+            </CharityRoute>
+          } />
+          <Route path="/charity/campaigns/:campaignId/milestones" element={
+            <CharityRoute>
+              <ManageMilestones />
+            </CharityRoute>
+          } />
+          <Route path="/charity/campaigns/:campaignId/milestones/:milestoneId/submit" element={
+            <CharityRoute>
+              <SubmitProofForm />
+            </CharityRoute>
+          } />
+          <Route path="/charity/campaigns/:campaignId/updates" element={
+            <CharityRoute>
+              <PostImpactUpdate />
+            </CharityRoute>
+          } />
+          <Route path="/charity/verifications" element={
+            <CharityRoute>
+              <VerificationStatus />
+            </CharityRoute>
+          } />
+          <Route path="/charity/funds" element={
+            <CharityRoute>
+              <FundsManagement />
+            </CharityRoute>
+          } />
+          <Route path="/charity/profile" element={
+            <CharityRoute>
+              <OrganizationProfile />
+            </CharityRoute>
+          } />
+          <Route path="/charity/settings" element={
+            <CharityRoute>
+              <CharitySettings />
+            </CharityRoute>
+          } />
+
+          {/* Admin routes */}
+          <Route path="/admin/dashboard" element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          } />
+          <Route path="/admin/verifications" element={
+            <AdminRoute>
+              <VerificationQueue />
+            </AdminRoute>
+          } />
+          <Route path="/admin/verifications/:submissionId" element={
+            <AdminRoute>
+              <VerificationDetail />
+            </AdminRoute>
+          } />
+          <Route path="/admin/payouts" element={
+            <AdminRoute>
+              <FundReleaseManagement />
+            </AdminRoute>
+          } />
+          <Route path="/admin/charities" element={
+            <AdminRoute>
+              <CharityManagement />
+            </AdminRoute>
+          } />
+          <Route path="/admin/applications" element={
+            <AdminRoute>
+              <CharityApplicationReview />
+            </AdminRoute>
+          } />
+          <Route path="/admin/donors" element={
+            <AdminRoute>
+              <DonorManagement />
+            </AdminRoute>
+          } />
+          <Route path="/admin/campaigns" element={
+            <AdminRoute>
+              <CampaignManagement />
+            </AdminRoute>
+          } />
+          <Route path="/admin/scorecards" element={
+            <AdminRoute>
+              <ScorecardManagement />
+            </AdminRoute>
+          } />
+          <Route path="/admin/settings" element={
+            <AdminRoute>
+              <PlatformSettings />
+            </AdminRoute>
+          } />
+          <Route path="/admin/logs" element={
+            <AdminRoute>
+              <AuditLogs />
+            </AdminRoute>
+          } />
+
+          {/* Payment methods - protected route */}
+          {/* <Route path="/payment-methods" element={
+            <ProtectedRoute>
+              <PaymentMethods />
+            </ProtectedRoute>
+          } /> */}
+
+          {/* Catch-all route */}
           <Route path="*" element={<NotFound />} />
-        </Routes>
+          </Routes>
+        </div>
       </BrowserRouter>
-    </TooltipProvider>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

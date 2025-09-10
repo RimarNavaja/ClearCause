@@ -1,205 +1,439 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, Search, ChevronDown, CheckCircle, Clock } from 'lucide-react';
+import { CalendarDays, Search, Download, Filter, ExternalLink, AlertCircle, Receipt, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DonorLayout from '@/components/layout/DonorLayout';
+import { useAuth } from '@/hooks/useAuth';
+import { useRealtime } from '@/hooks/useRealtime';
+import * as donationService from '@/services/donationService';
+import { formatCurrency, getRelativeTime, debounce } from '@/utils/helpers';
 
-// Sample data - in a real app, this would come from an API
-const donations = [
-  { 
-    id: "d1", 
-    date: "2023-04-01", 
-    campaignId: "101", 
-    campaignName: "Clean Water for Village X",
-    amount: 5000, 
-    status: "Milestone Completed", 
-    statusType: "success" 
-  },
-  { 
-    id: "d2", 
-    date: "2023-03-15", 
-    campaignId: "102", 
-    campaignName: "School Rebuilding Project",
-    amount: 3500, 
-    status: "In Progress", 
-    statusType: "pending" 
-  },
-  { 
-    id: "d3", 
-    date: "2023-03-10", 
-    campaignId: "103", 
-    campaignName: "Medical Supplies for Rural Clinic",
-    amount: 2000, 
-    status: "Milestone Completed", 
-    statusType: "success" 
-  },
-  { 
-    id: "d4", 
-    date: "2023-02-22", 
-    campaignId: "104", 
-    campaignName: "Food Distribution Program",
-    amount: 1500, 
-    status: "In Progress", 
-    statusType: "pending" 
-  },
-  { 
-    id: "d5", 
-    date: "2023-02-15", 
-    campaignId: "105", 
-    campaignName: "Reforestation Initiative",
-    amount: 8500, 
-    status: "Milestone Completed", 
-    statusType: "success" 
-  },
-  { 
-    id: "d6", 
-    date: "2023-02-01", 
-    campaignId: "106", 
-    campaignName: "Women's Entrepreneurship Fund",
-    amount: 5000, 
-    status: "In Progress", 
-    statusType: "pending" 
-  },
+const STATUS_FILTERS = [
+  { value: 'all', label: 'All Donations' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'processing', label: 'Processing' },
+  { value: 'failed', label: 'Failed' },
+  { value: 'refunded', label: 'Refunded' },
+];
+
+const SORT_OPTIONS = [
+  { value: 'newest', label: 'Newest First' },
+  { value: 'oldest', label: 'Oldest First' },
+  { value: 'amount_high', label: 'Highest Amount' },
+  { value: 'amount_low', label: 'Lowest Amount' },
 ];
 
 const DonorDonations: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  const filteredDonations = donations.filter(donation => 
-    donation.campaignName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  // Status indicator component
-  const StatusIndicator = ({ status, type }: { status: string, type: string }) => {
-    return (
-      <div className="flex items-center">
-        {type === 'success' ? (
-          <CheckCircle className="h-4 w-4 text-green-500 mr-1.5" />
-        ) : (
-          <Clock className="h-4 w-4 text-amber-500 mr-1.5" />
-        )}
-        <span className={type === 'success' ? 'text-green-700' : 'text-amber-700'}>
-          {status}
-        </span>
-      </div>
-    );
+  const [donations, setDonations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalAmount, setTotalAmount] = useState(0);
+  const [stats, setStats] = useState<any>(null);
+
+  const { user } = useAuth();
+  const { subscribe } = useRealtime();
+
+  // Debounced search
+  const debouncedSearch = debounce((query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+  }, 500);
+
+  // Load donations
+  const loadDonations = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const filters = {
+        search: searchQuery || undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        sortBy,
+        page: currentPage,
+        limit: 10,
+      };
+
+      const result = await donationService.getDonationsByDonor(user.id, filters);
+
+      if (result.success && result.data) {
+        setDonations(result.data);
+        // Mock pagination and stats for now
+        setTotalPages(Math.ceil(result.data.length / 10));
+        setTotalAmount(result.data.reduce((sum: number, d: any) => sum + d.amount, 0));
+        setStats({
+          totalAmount: result.data.reduce((sum: number, d: any) => sum + d.amount, 0),
+          totalCount: result.data.length,
+          uniqueCampaigns: new Set(result.data.map((d: any) => d.campaign?.id)).size,
+          averageAmount: result.data.length > 0 ? result.data.reduce((sum: number, d: any) => sum + d.amount, 0) / result.data.length : 0,
+        });
+      } else {
+        setError(result.error || 'Failed to load donations');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred');
+      console.error('Donations loading error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return (
-    <DonorLayout title="My Donation History">
-      {/* Search and filter controls */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-grow">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-          <Input
-            type="search"
-            placeholder="Search campaigns..."
-            className="pl-8 w-full"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+  // Real-time subscriptions
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribeFn = subscribe('donations', (payload) => {
+      if (payload.new && payload.new.donor_id === user.id) {
+        // Update donation in list
+        setDonations(prev => {
+          const existingIndex = prev.findIndex(d => d.id === payload.new.id);
+          if (existingIndex >= 0) {
+            const updated = [...prev];
+            updated[existingIndex] = { ...updated[existingIndex], ...payload.new };
+            return updated;
+          }
+          return prev;
+        });
+      }
+    });
+
+    return unsubscribeFn;
+  }, [user, subscribe]);
+
+  // Load donations when filters change
+  useEffect(() => {
+    loadDonations();
+  }, [user, searchQuery, statusFilter, sortBy, currentPage]);
+
+  // Handle search input
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchInput(value);
+    debouncedSearch(value);
+  };
+
+  // Download receipt
+  const handleDownloadReceipt = async (donationId: string) => {
+    try {
+      // Mock receipt download for now
+      alert('Receipt download feature will be implemented with payment integration');
+    } catch (err) {
+      alert('An error occurred while downloading the receipt');
+    }
+  };
+
+  // Get status badge
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge variant="secondary" className="bg-green-100 text-green-800">Completed</Badge>;
+      case 'processing':
+        return <Badge variant="outline" className="text-blue-600">Processing</Badge>;
+      case 'failed':
+        return <Badge variant="destructive">Failed</Badge>;
+      case 'refunded':
+        return <Badge variant="outline" className="text-orange-600">Refunded</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  // Get impact status
+  const getImpactStatus = (donation: any) => {
+    if (donation.campaign?.status === 'completed') {
+      return <Badge variant="secondary" className="bg-green-100 text-green-800">Goal Reached</Badge>;
+    }
+    if (donation.milestones?.some((m: any) => m.status === 'verified')) {
+      return <Badge variant="outline" className="text-blue-600">Milestone Completed</Badge>;
+    }
+    if (donation.campaign?.status === 'active') {
+      return <Badge variant="outline">In Progress</Badge>;
+    }
+    return <Badge variant="outline" className="text-gray-600">Pending</Badge>;
+  };
+
+  if (loading && donations.length === 0) {
+    return (
+      <DonorLayout title="My Donations">
+        <div className="space-y-6">
+          <div className="h-8 bg-gray-200 rounded animate-pulse" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-6">
+                  <div className="animate-pulse space-y-2">
+                    <div className="h-4 bg-gray-200 rounded" />
+                    <div className="h-8 bg-gray-200 rounded" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
-        <Button variant="outline" className="flex items-center sm:w-auto w-full justify-center">
-          <CalendarDays className="h-4 w-4 mr-1.5" />
-          Filter by date
-          <ChevronDown className="h-4 w-4 ml-1.5" />
-        </Button>
-      </div>
-      
-      {/* Donations table */}
-      <div className="bg-white rounded-md shadow overflow-hidden mb-6">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Campaign</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredDonations.length > 0 ? (
-              filteredDonations.map((donation) => (
-                <TableRow key={donation.id}>
-                  <TableCell className="font-medium">
-                    {new Date(donation.date).toLocaleDateString('en-US', { 
-                      year: 'numeric', 
-                      month: 'short', 
-                      day: 'numeric' 
-                    })}
-                  </TableCell>
-                  <TableCell>
-                    <Link 
-                      to={`/campaigns/${donation.campaignId}`} 
-                      className="text-clearcause-primary hover:underline"
-                    >
-                      {donation.campaignName}
-                    </Link>
-                  </TableCell>
-                  <TableCell>₱{donation.amount.toLocaleString()}</TableCell>
-                  <TableCell>
-                    <StatusIndicator status={donation.status} type={donation.statusType} />
-                  </TableCell>
-                </TableRow>
-              ))
+      </DonorLayout>
+    );
+  }
+
+  return (
+    <DonorLayout title="My Donations">
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">My Donations</h1>
+          <p className="text-gray-600">Track your donations and their impact</p>
+        </div>
+
+        {/* Summary Stats */}
+        {stats && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Total Donated</p>
+                    <p className="text-2xl font-bold">{formatCurrency(stats.totalAmount)}</p>
+                  </div>
+                  <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-blue-600 text-sm font-bold">₱</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Total Donations</p>
+                    <p className="text-2xl font-bold">{stats.totalCount}</p>
+                  </div>
+                  <Receipt className="h-8 w-8 text-green-600" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Campaigns Supported</p>
+                    <p className="text-2xl font-bold">{stats.uniqueCampaigns}</p>
+                  </div>
+                  <CalendarDays className="h-8 w-8 text-purple-600" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Avg. Donation</p>
+                    <p className="text-2xl font-bold">
+                      {formatCurrency(stats.averageAmount)}
+                    </p>
+                  </div>
+                  <div className="h-8 w-8 bg-orange-100 rounded-full flex items-center justify-center">
+                    <span className="text-orange-600 text-sm">~</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Filters and Search */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search donations or campaigns..."
+              value={searchInput}
+              onChange={handleSearchChange}
+              className="pl-10"
+            />
+          </div>
+          
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_FILTERS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Error State */}
+        {error && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <div>
+                  <h3 className="font-medium text-red-800">Error loading donations</h3>
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={loadDonations}>
+                  Retry
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Donations List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Donation History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {donations.length === 0 ? (
+              <div className="text-center py-12">
+                <Receipt className="mx-auto h-12 w-12 text-gray-300" />
+                <h3 className="mt-4 text-lg font-medium text-gray-900">
+                  {searchQuery || statusFilter !== 'all' 
+                    ? 'No donations found' 
+                    : 'No donations yet'
+                  }
+                </h3>
+                <p className="mt-2 text-gray-500">
+                  {searchQuery || statusFilter !== 'all'
+                    ? 'Try adjusting your search or filter criteria.'
+                    : 'Start making a difference by supporting campaigns you care about.'
+                  }
+                </p>
+                {(!searchQuery && statusFilter === 'all') && (
+                  <Button className="mt-4" asChild>
+                    <Link to="/campaigns">Browse Campaigns</Link>
+                  </Button>
+                )}
+              </div>
             ) : (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                  No donations found matching your search.
-                </TableCell>
-              </TableRow>
+              <div className="space-y-4">
+                {donations.map((donation) => (
+                  <div key={donation.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-medium text-gray-900">
+                            {donation.campaign?.title}
+                          </h3>
+                          <Link 
+                            to={`/campaigns/${donation.campaign?.id}`}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Link>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                          <span>{getRelativeTime(donation.createdAt)}</span>
+                          <span>•</span>
+                          <span className="font-semibold">
+                            {formatCurrency(donation.amount)}
+                          </span>
+                          {donation.isAnonymous && (
+                            <>
+                              <span>•</span>
+                              <Badge variant="outline" className="text-xs">Anonymous</Badge>
+                            </>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          {getStatusBadge(donation.status)}
+                          {getImpactStatus(donation)}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {donation.status === 'completed' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownloadReceipt(donation.id)}
+                          >
+                            <Download className="h-4 w-4 mr-2" />
+                            Receipt
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link to={`/donor/donations/${donation.id}`}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
-          </TableBody>
-        </Table>
-      </div>
-      
-      {/* Pagination */}
-      <Pagination>
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious href="#" />
-          </PaginationItem>
-          <PaginationItem>
-            <PaginationLink href="#" isActive>1</PaginationLink>
-          </PaginationItem>
-          <PaginationItem>
-            <PaginationLink href="#">2</PaginationLink>
-          </PaginationItem>
-          <PaginationItem>
-            <PaginationLink href="#">3</PaginationLink>
-          </PaginationItem>
-          <PaginationItem>
-            <PaginationNext href="#" />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
-      
-      <div className="mt-8 p-6 bg-white rounded-md shadow text-center">
-        <h3 className="font-semibold text-lg mb-2">Want to make a bigger impact?</h3>
-        <p className="text-gray-600 mb-4">
-          Discover more campaigns that align with your interests and values.
-        </p>
-        <Button className="bg-clearcause-primary hover:bg-clearcause-secondary" asChild>
-          <Link to="/campaigns">Browse More Campaigns</Link>
-        </Button>
+          </CardContent>
+        </Card>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center space-x-2">
+            <Button
+              variant="outline"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage(prev => prev - 1)}
+            >
+              Previous
+            </Button>
+            
+            <div className="flex space-x-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const page = i + 1;
+                return (
+                  <Button
+                    key={page}
+                    variant={page === currentPage ? "default" : "outline"}
+                    onClick={() => setCurrentPage(page)}
+                    className="w-10 h-10 p-0"
+                  >
+                    {page}
+                  </Button>
+                );
+              })}
+            </div>
+            
+            <Button
+              variant="outline"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage(prev => prev + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        )}
       </div>
     </DonorLayout>
   );

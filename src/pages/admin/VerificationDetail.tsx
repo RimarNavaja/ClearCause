@@ -36,12 +36,12 @@ const VerificationDetail = () => {
   };
 
   const handleApprove = () => {
-    console.log('Approving submission:', submissionId, 'Feedback:', feedback);
+    // TODO: Implement API call to approve submission
     // Implementation for approval
   };
 
   const handleReject = () => {
-    console.log('Rejecting submission:', submissionId, 'Feedback:', feedback);
+    // TODO: Implement API call to reject submission
     // Implementation for rejection
   };
 

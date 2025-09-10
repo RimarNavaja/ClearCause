@@ -121,7 +121,7 @@ const OrganizationProfile: React.FC = () => {
   const handleSaveChanges = (e: React.FormEvent) => {
     e.preventDefault();
     // Here you would submit the changes to the backend
-    console.log('Saving organization profile', { orgInfo, contactPerson });
+    // TODO: Implement API call to save organization profile
     // Show success message
     alert('Profile changes saved successfully');
   };

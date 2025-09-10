@@ -111,12 +111,13 @@ const CampaignForm: React.FC = () => {
     setLoading(true);
     
     // In a real app, this would be an API call to create/update the campaign
-    console.log({
+    // TODO: Implement API call to create/update campaign
+    const campaignData = {
       ...campaignDetails,
       milestones,
       isDraft,
       campaignImage
-    });
+    };
     
     // Simulate API call
     setTimeout(() => {

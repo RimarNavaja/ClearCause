@@ -82,7 +82,7 @@ const CharitySettings: React.FC = () => {
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     // Here you would submit the changes to the backend
-    console.log('Saving notification settings', notificationSettings);
+    // TODO: Implement API call to save notification settings
     // Show success message
     alert('Notification settings saved successfully');
   };

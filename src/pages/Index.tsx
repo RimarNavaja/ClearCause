@@ -7,42 +7,74 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import CampaignGrid from '@/components/ui/campaign/CampaignGrid';
 
-const SAMPLE_CAMPAIGNS = [
+import { Campaign, CampaignStatus } from '@/lib/types';
+
+const SAMPLE_CAMPAIGNS: Campaign[] = [
   {
     id: "1",
+    charityId: "charity-1",
     title: "Build Clean Water Wells in Rural Villages",
-    imageUrl: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    charity: "Water For All Foundation",
     description: "Help us build 10 clean water wells that will provide safe drinking water to over 5,000 people in rural communities.",
-    raised: 850000,
-    goal: 1000000,
-    daysLeft: 15,
-    verified: true,
+    goalAmount: 1000000,
+    currentAmount: 850000,
+    imageUrl: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+    status: 'active' as CampaignStatus,
+    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
     category: "Clean Water",
+    location: "Rural Villages",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    progress: 85,
+    charity: {
+      id: "charity-1",
+      organizationName: "Water For All Foundation",
+      isVerified: true,
+    }
   },
   {
     id: "2",
+    charityId: "charity-2",
     title: "Rebuild School After Typhoon Damage",
-    imageUrl: "https://images.unsplash.com/photo-1509062522246-3755977927d7?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    charity: "EducateNow",
     description: "Help rebuild the elementary school that was severely damaged during the recent typhoon, affecting 500 students.",
-    raised: 320000,
-    goal: 750000,
-    daysLeft: 24,
-    verified: true,
+    goalAmount: 750000,
+    currentAmount: 320000,
+    imageUrl: "https://images.unsplash.com/photo-1509062522246-3755977927d7?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+    status: 'active' as CampaignStatus,
+    startDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+    endDate: new Date(Date.now() + 24 * 24 * 60 * 60 * 1000).toISOString(),
     category: "Education",
+    location: "Philippines",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    progress: 43,
+    charity: {
+      id: "charity-2",
+      organizationName: "EducateNow",
+      isVerified: true,
+    }
   },
   {
     id: "3",
+    charityId: "charity-3",
     title: "Community Food Bank Expansion",
-    imageUrl: "https://images.unsplash.com/photo-1593113646773-028c64a8f1b8?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    charity: "Food For Everyone",
     description: "Help us expand our food bank to serve an additional 200 families per week in the local community.",
-    raised: 175000,
-    goal: 350000,
-    daysLeft: 30,
-    verified: false,
+    goalAmount: 350000,
+    currentAmount: 175000,
+    imageUrl: "https://images.unsplash.com/photo-1593113646773-028c64a8f1b8?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+    status: 'active' as CampaignStatus,
+    startDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     category: "Food Security",
+    location: "Local Community",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    progress: 50,
+    charity: {
+      id: "charity-3",
+      organizationName: "Food For Everyone",
+      isVerified: false,
+    }
   }
 ];
 

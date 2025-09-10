@@ -110,12 +110,12 @@ const MilestoneVerification = () => {
   };
 
   const handleApprove = (proofId: number) => {
-    console.log('Approving proof:', proofId, 'Notes:', verificationNotes);
+    // TODO: Implement API call to approve proof
     // Implementation for approval
   };
 
   const handleReject = (proofId: number) => {
-    console.log('Rejecting proof:', proofId, 'Notes:', verificationNotes);
+    // TODO: Implement API call to reject proof
     // Implementation for rejection
   };
 

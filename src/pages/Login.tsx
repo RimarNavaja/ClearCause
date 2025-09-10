@@ -1,35 +1,92 @@
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import { useAuth } from '@/hooks/useAuth';
+import { config } from '@/lib/config';
+import { validateData, signInSchema } from '@/utils/validation';
+import { ClearCauseError } from '@/lib/types';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const { user, signIn, loading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user && !loading) {
+      const from = (location.state as any)?.from?.pathname || getDefaultRedirect(user.role);
+      navigate(from, { replace: true });
+    }
+  }, [user, loading, navigate, location]);
+
+  // Get default redirect based on user role
+  const getDefaultRedirect = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return config.routes.admin.dashboard;
+      case 'charity':
+        return config.routes.charity.dashboard;
+      case 'donor':
+        return config.routes.donor.dashboard;
+      default:
+        return config.routes.home;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      // This is just a placeholder for the actual authentication logic
-      if (email === 'user@example.com' && password === 'password') {
-        // Successful login
-        window.location.href = '/';
+    try {
+      // Validate form data
+      const validatedData = validateData(signInSchema, {
+        email: email.trim(),
+        password,
+        rememberMe,
+      });
+
+      // Attempt login
+      const result = await signIn(validatedData);
+
+      if (result.success && result.data) {
+        // Navigation will be handled by the useEffect above
+        // The user state will update automatically
       } else {
-        setError('Invalid email or password. Please try again.');
-        setIsLoading(false);
+        setError(result.error || 'Login failed. Please try again.');
       }
-    }, 1000);
+    } catch (error) {
+      if (error instanceof ClearCauseError) {
+        setError(error.message);
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setError('');
+      // Import the auth service function
+      const { signInWithGoogle } = await import('@/lib/auth');
+      const result = await signInWithGoogle();
+      
+      if (!result.success) {
+        setError(result.error || 'Google login failed. Please try again.');
+      }
+      // If successful, the redirect will be handled by Google
+    } catch (error) {
+      setError('Google login failed. Please try again.');
+    }
   };
 
   return (
@@ -121,48 +178,50 @@ const Login: React.FC = () => {
                 <Button
                   type="submit"
                   className="w-full bg-clearcause-primary hover:bg-clearcause-secondary py-2 px-4"
-                  disabled={isLoading}
+                  disabled={loading}
                 >
-                  {isLoading ? 'Signing in...' : 'Sign in'}
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Signing in...
+                    </>
+                  ) : (
+                    'Sign in'
+                  )}
                 </Button>
               </div>
             </form>
 
-            <div className="mt-8 text-center">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
+            {config.features.socialLogin && (
+              <div className="mt-8 text-center">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                  </div>
                 </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Or continue with</span>
+
+                <div className="mt-6">
+                  <Button
+                    type="button"
+                    onClick={handleGoogleLogin}
+                    variant="outline"
+                    className="w-full"
+                    disabled={loading}
+                  >
+                    <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M22.56 12.25C22.56 11.47 22.49 10.72 22.36 10H12V14.26H17.92C17.66 15.63 16.88 16.78 15.71 17.55V20.25H19.28C21.36 18.31 22.56 15.57 22.56 12.25Z" fill="#4285F4"/>
+                      <path d="M12 23C14.97 23 17.46 22.01 19.28 20.25L15.71 17.55C14.73 18.19 13.48 18.58 12 18.58C9.09 18.58 6.63 16.65 5.72 14.04H2.05V16.82C3.87 20.42 7.62 23 12 23Z" fill="#34A853"/>
+                      <path d="M5.72 14.04C5.5 13.41 5.37 12.73 5.37 12.01C5.37 11.29 5.5 10.61 5.72 9.98002V7.20002H2.05C1.23 8.95002 0.77 10.92 0.77 12.01C0.77 13.1 1.23 15.07 2.05 16.82L5.72 14.04Z" fill="#FBBC05"/>
+                      <path d="M12 5.42C13.62 5.42 15.06 5.99 16.21 7.07L19.36 3.92C17.45 2.14 14.97 1 12 1C7.62 1 3.87 3.58 2.05 7.18L5.72 9.96C6.63 7.35 9.09 5.42 12 5.42Z" fill="#EA4335"/>
+                    </svg>
+                    Continue with Google
+                  </Button>
                 </div>
               </div>
-
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <a
-                  href="#"
-                  className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  <span className="sr-only">Sign in with Google</span>
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M22.56 12.25C22.56 11.47 22.49 10.72 22.36 10H12V14.26H17.92C17.66 15.63 16.88 16.78 15.71 17.55V20.25H19.28C21.36 18.31 22.56 15.57 22.56 12.25Z" fill="#4285F4"/>
-                    <path d="M12 23C14.97 23 17.46 22.01 19.28 20.25L15.71 17.55C14.73 18.19 13.48 18.58 12 18.58C9.09 18.58 6.63 16.65 5.72 14.04H2.05V16.82C3.87 20.42 7.62 23 12 23Z" fill="#34A853"/>
-                    <path d="M5.72 14.04C5.5 13.41 5.37 12.73 5.37 12.01C5.37 11.29 5.5 10.61 5.72 9.98002V7.20002H2.05C1.23 8.95002 0.77 10.92 0.77 12.01C0.77 13.1 1.23 15.07 2.05 16.82L5.72 14.04Z" fill="#FBBC05"/>
-                    <path d="M12 5.42C13.62 5.42 15.06 5.99 16.21 7.07L19.36 3.92C17.45 2.14 14.97 1 12 1C7.62 1 3.87 3.58 2.05 7.18L5.72 9.96C6.63 7.35 9.09 5.42 12 5.42Z" fill="#EA4335"/>
-                  </svg>
-                </a>
-
-                <a
-                  href="#"
-                  className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  <span className="sr-only">Sign in with Facebook</span>
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M24 12.073C24 5.40365 18.6274 0 12 0C5.37258 0 0 5.40365 0 12.073C0 18.0988 4.38823 23.0935 10.125 24V15.563H7.07812V12.073H10.125V9.41306C10.125 6.38751 11.9153 4.71627 14.6574 4.71627C15.9705 4.71627 17.3438 4.95189 17.3438 4.95189V7.92146H15.8306C14.3398 7.92146 13.875 8.85225 13.875 9.8069V12.073H17.2031L16.6711 15.563H13.875V24C19.6118 23.0935 24 18.0988 24 12.073Z" fill="#1877F2"/>
-                  </svg>
-                </a>
-              </div>
-            </div>
+            )}
 
             <div className="mt-6 text-center text-sm">
               <span className="text-gray-600">Don't have an account?</span>
