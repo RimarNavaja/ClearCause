@@ -91,7 +91,11 @@ const DonorDashboard: React.FC = () => {
     unsubscribeFns.push(milestoneSub);
 
     return () => {
-      unsubscribeFns.forEach(fn => fn());
+      unsubscribeFns.forEach(fn => {
+        if (typeof fn === 'function') {
+          fn();
+        }
+      });
     };
   }, [user, subscribe, recentDonations]);
 

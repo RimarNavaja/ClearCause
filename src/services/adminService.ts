@@ -88,7 +88,7 @@ export const getPlatformStatistics = withErrorHandling(async (
     supabase.from('profiles').select('id', { count: 'exact', head: true }),
     
     // Total charities
-    supabase.from('charity_organizations').select('id', { count: 'exact', head: true }),
+    supabase.from('charities').select('id', { count: 'exact', head: true }),
     
     // Total campaigns
     supabase.from('campaigns').select('id', { count: 'exact', head: true }),
@@ -105,7 +105,7 @@ export const getPlatformStatistics = withErrorHandling(async (
     supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('status', 'active'),
     
     // Pending verifications
-    supabase.from('charity_organizations').select('id', { count: 'exact', head: true }).eq('verification_status', 'pending'),
+    supabase.from('charities').select('id', { count: 'exact', head: true }).eq('verification_status', 'pending'),
   ]);
 
   // Process results
@@ -524,7 +524,7 @@ export const exportData = withErrorHandling(async (
         .from('campaigns')
         .select(`
           *,
-          charity_organizations:charity_id (
+          charities:charity_id (
             organization_name
           )
         `);

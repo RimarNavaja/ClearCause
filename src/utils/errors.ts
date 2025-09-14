@@ -29,6 +29,7 @@ export enum ErrorCode {
   DATABASE_ERROR = 'DATABASE_ERROR',
   FOREIGN_KEY_VIOLATION = 'FOREIGN_KEY_VIOLATION',
   UNIQUE_CONSTRAINT_VIOLATION = 'UNIQUE_CONSTRAINT_VIOLATION',
+  PROFILE_CREATION_FAILED = 'PROFILE_CREATION_FAILED',
   
   // File upload errors
   FILE_TOO_LARGE = 'FILE_TOO_LARGE',
@@ -69,6 +70,7 @@ export const ErrorMessages: Record<ErrorCode, string> = {
   [ErrorCode.DATABASE_ERROR]: 'A database error occurred',
   [ErrorCode.FOREIGN_KEY_VIOLATION]: 'Referenced resource does not exist',
   [ErrorCode.UNIQUE_CONSTRAINT_VIOLATION]: 'This value must be unique',
+  [ErrorCode.PROFILE_CREATION_FAILED]: 'Failed to create user profile',
   
   [ErrorCode.FILE_TOO_LARGE]: 'File size exceeds the maximum limit',
   [ErrorCode.INVALID_FILE_TYPE]: 'File type is not supported',
@@ -124,6 +126,15 @@ export const handleSupabaseError = (error: any): ClearCauseError => {
   if (error.code) {
     switch (error.code) {
       case '23505': // Unique constraint violation
+        // Check if it's an email constraint violation
+        if (error.message?.includes('profiles_email_key') || error.message?.includes('email')) {
+          return new ClearCauseError(
+            ErrorCode.UNIQUE_CONSTRAINT_VIOLATION,
+            'An account with this email address already exists',
+            409,
+            error
+          );
+        }
         return new ClearCauseError(
           ErrorCode.UNIQUE_CONSTRAINT_VIOLATION,
           'This value already exists',
@@ -139,6 +150,14 @@ export const handleSupabaseError = (error: any): ClearCauseError => {
           error
         );
       
+      case '42501': // Insufficient privilege (RLS violation)
+        return new ClearCauseError(
+          ErrorCode.FORBIDDEN,
+          'Database access denied. Please check your permissions.',
+          403,
+          error
+        );
+      
       case 'PGRST116': // Not found
         return new ClearCauseError(
           ErrorCode.NOT_FOUND,
@@ -147,10 +166,22 @@ export const handleSupabaseError = (error: any): ClearCauseError => {
           error
         );
       
+      case 'PGRST301': // Row Level Security violation
+        return new ClearCauseError(
+          ErrorCode.FORBIDDEN,
+          'Access denied due to security policy',
+          403,
+          error
+        );
+      
       default:
+        // Provide more context for unknown database errors
+        const message = error.message || 'Database error occurred';
+        const contextMessage = error.hint ? `${message}. Hint: ${error.hint}` : message;
+        
         return new ClearCauseError(
           ErrorCode.DATABASE_ERROR,
-          error.message || 'Database error occurred',
+          contextMessage,
           500,
           error
         );

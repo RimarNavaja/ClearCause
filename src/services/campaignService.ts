@@ -186,7 +186,7 @@ export const getCampaignById = withErrorHandling(async (
       .from('campaigns')
       .select(`
         *,
-        charity_organizations:charity_id (
+        charities:charity_id (
           *,
           profiles:user_id (
             id,
@@ -259,27 +259,25 @@ export const getCampaignById = withErrorHandling(async (
     progress: calculatePercentage(campaign.current_amount, campaign.goal_amount),
   };
 
-  if (includeRelations && campaign.charity_organizations) {
+  if (includeRelations && campaign.charities) {
     result.charity = {
-      id: campaign.charity_organizations.id,
-      userId: campaign.charity_organizations.user_id,
-      organizationName: campaign.charity_organizations.organization_name,
-      description: campaign.charity_organizations.description,
-      websiteUrl: campaign.charity_organizations.website_url,
-      phone: campaign.charity_organizations.phone,
-      address: campaign.charity_organizations.address,
-      registrationNumber: campaign.charity_organizations.registration_number,
-      verificationStatus: campaign.charity_organizations.verification_status,
-      verificationDocuments: campaign.charity_organizations.verification_documents,
-      createdAt: campaign.charity_organizations.created_at,
-      updatedAt: campaign.charity_organizations.updated_at,
-      user: campaign.charity_organizations.profiles ? {
-        id: campaign.charity_organizations.profiles.id,
-        email: campaign.charity_organizations.profiles.email,
-        fullName: campaign.charity_organizations.profiles.full_name,
-        avatarUrl: campaign.charity_organizations.profiles.avatar_url,
-        role: campaign.charity_organizations.profiles.role,
-        isVerified: campaign.charity_organizations.profiles.is_verified,
+      id: campaign.charities.id,
+      userId: campaign.charities.user_id,
+      organizationName: campaign.charities.organization_name,
+      description: campaign.charities.description,
+      websiteUrl: campaign.charities.website_url,
+      contactPhone: campaign.charities.contact_phone,
+      address: campaign.charities.address,
+      verificationStatus: campaign.charities.verification_status,
+      createdAt: campaign.charities.created_at,
+      updatedAt: campaign.charities.updated_at,
+      user: campaign.charities.profiles ? {
+        id: campaign.charities.profiles.id,
+        email: campaign.charities.profiles.email,
+        fullName: campaign.charities.profiles.full_name,
+        avatarUrl: campaign.charities.profiles.avatar_url,
+        role: campaign.charities.profiles.role,
+        isVerified: campaign.charities.profiles.is_verified,
         createdAt: '',
         updatedAt: '',
       } : undefined,

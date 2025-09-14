@@ -39,7 +39,24 @@ const UnauthorizedAccess = ({ message }: { message?: string }) => (
 
 // Email verification required component
 const EmailVerificationRequired = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Instead of full page reload, just refresh the auth state
+      console.log('Manually refreshing auth state...');
+      
+      // Sign out and redirect to login to force fresh auth
+      await signOut();
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Error during manual refresh:', error);
+      // Fallback to page reload only if needed
+      window.location.reload();
+    }
+  };
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -54,12 +71,21 @@ const EmailVerificationRequired = () => {
           <p className="text-sm text-gray-500 mb-4">
             Check your inbox and click the verification link to activate your account.
           </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-clearcause-primary text-white px-4 py-2 rounded-md hover:bg-clearcause-secondary transition-colors"
-          >
-            I've Verified My Email
-          </button>
+          <div className="space-y-3">
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="w-full bg-clearcause-primary text-white px-4 py-2 rounded-md hover:bg-clearcause-secondary transition-colors disabled:opacity-50"
+            >
+              {isRefreshing ? 'Checking...' : "I've Verified My Email"}
+            </button>
+            <button
+              onClick={() => signOut()}
+              className="w-full bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors text-sm"
+            >
+              Sign Out & Try Again
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -89,14 +115,34 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { user, loading, hasAnyRole, isVerified } = useAuth();
   const location = useLocation();
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
-  // Show loading spinner while checking authentication
-  if (loading) {
+  // Add timeout for loading state to prevent infinite loading
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (loading) {
+      timeoutId = setTimeout(() => {
+        console.warn('ProtectedRoute: Loading timeout exceeded, forcing render');
+        setLoadingTimeout(true);
+      }, 8000); // 8 second timeout - higher than logout timeout
+    } else {
+      setLoadingTimeout(false);
+    }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [loading]);
+
+  // Show loading spinner while checking authentication (with timeout protection)
+  if (loading && !loadingTimeout) {
     return fallback || <AuthLoadingSpinner />;
   }
 
   // Redirect to login if authentication is required but user is not logged in
   if (requireAuth && !user) {
+    console.debug('ProtectedRoute: No user found, redirecting to login from:', location.pathname);
     const loginPath = redirectTo || '/login';
     return <Navigate to={loginPath} state={{ from: location }} replace />;
   }

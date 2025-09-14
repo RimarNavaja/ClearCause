@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
-import DemoBanner from "@/components/DemoBanner";
 import { 
   ProtectedRoute, 
   AdminRoute, 
@@ -30,6 +29,7 @@ import DonateSuccess from "./pages/DonateSuccess";
 import DonateError from "./pages/DonateError";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import AuthCallback from "./pages/AuthCallback";
 import DonorDashboard from "./pages/donor/DonorDashboard";
 import DonorDonations from "./pages/donor/DonorDonations";
 import DonorProfile from "./pages/donor/DonorProfile";
@@ -57,7 +57,6 @@ import CampaignManagement from "./pages/admin/CampaignManagement";
 import ScorecardManagement from "./pages/admin/ScorecardManagement";
 import PlatformSettings from "./pages/admin/PlatformSettings";
 import AuditLogs from "./pages/admin/AuditLogs";
-// import PaymentMethods from "./pages/PaymentMethods";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +86,9 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/admin/login" element={<AdminLogin />} />
+          
+          {/* Auth callback route */}
+          <Route path="/auth/callback" element={<AuthCallback />} />
 
           {/* Protected donation routes */}
           <Route path="/donate/:campaignId" element={
@@ -248,18 +250,13 @@ const App = () => (
             </AdminRoute>
           } />
 
-          {/* Payment methods - protected route */}
-          {/* <Route path="/payment-methods" element={
-            <ProtectedRoute>
-              <PaymentMethods />
-            </ProtectedRoute>
-          } /> */}
-
           {/* Catch-all route */}
           <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
       </BrowserRouter>
+      <Toaster />
+      <Sonner />
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>

@@ -67,7 +67,7 @@ export const createDonation = withErrorHandling(async (
   const { data: donation, error: donationError } = await supabase
     .from('donations')
     .insert({
-      donor_id: userId,
+      user_id: userId,
       campaign_id: validatedData.campaignId,
       amount: validatedData.amount,
       status: 'pending', // Will be updated after payment processing
@@ -78,7 +78,7 @@ export const createDonation = withErrorHandling(async (
     })
     .select(`
       *,
-      profiles:donor_id (
+      profiles:user_id (
         id,
         full_name,
         email,
@@ -119,7 +119,7 @@ export const createDonation = withErrorHandling(async (
 
   return createSuccessResponse({
     id: donation.id,
-    donorId: donation.donor_id,
+    donorId: donation.user_id,
     campaignId: donation.campaign_id,
     amount: donation.amount,
     status: donation.status,
@@ -189,7 +189,7 @@ const processDonationPayment = async (
         updated_at: new Date().toISOString(),
       })
       .eq('id', donationId)
-      .select('campaign_id, amount, donor_id')
+      .select('campaign_id, amount, user_id')
       .single();
 
     if (updateError) {
@@ -213,7 +213,7 @@ const processDonationPayment = async (
 
       // Log successful donation
       await logAuditEvent(
-        updatedDonation.donor_id,
+        updatedDonation.user_id,
         'DONATION_COMPLETED',
         'donation',
         donationId,
@@ -236,7 +236,7 @@ export const getDonationById = withErrorHandling(async (
     .from('donations')
     .select(`
       *,
-      profiles:donor_id (
+      profiles:user_id (
         id,
         full_name,
         email,
@@ -266,7 +266,7 @@ export const getDonationById = withErrorHandling(async (
   // Check if user can view this donation
   const currentUser = await getUserProfile(currentUserId);
   const isAdmin = currentUser.success && currentUser.data?.role === 'admin';
-  const isDonor = donation.donor_id === currentUserId;
+  const isDonor = donation.user_id === currentUserId;
   const isCharityOwner = donation.campaigns?.charity_organizations?.user_id === currentUserId;
 
   if (!isAdmin && !isDonor && !isCharityOwner) {
@@ -275,7 +275,7 @@ export const getDonationById = withErrorHandling(async (
 
   return createSuccessResponse({
     id: donation.id,
-    donorId: donation.donor_id,
+    donorId: donation.user_id,
     campaignId: donation.campaign_id,
     amount: donation.amount,
     status: donation.status,
@@ -351,7 +351,7 @@ export const listDonations = withErrorHandling(async (
     .from('donations')
     .select(`
       *,
-      profiles:donor_id (
+      profiles:user_id (
         id,
         full_name,
         email,
@@ -371,7 +371,7 @@ export const listDonations = withErrorHandling(async (
   // Apply user-based filtering
   if (!isAdmin) {
     // Non-admin users can only see their own donations or donations to their campaigns
-    query = query.or(`donor_id.eq.${currentUserId},campaigns.charity_organizations.user_id.eq.${currentUserId}`);
+    query = query.or(`user_id.eq.${currentUserId},campaigns.charity_organizations.user_id.eq.${currentUserId}`);
   }
 
   // Apply filters
@@ -412,7 +412,7 @@ export const listDonations = withErrorHandling(async (
 
   const donations = data.map(donation => ({
     id: donation.id,
-    donorId: donation.donor_id,
+    donorId: donation.user_id,
     campaignId: donation.campaign_id,
     amount: donation.amount,
     status: donation.status,
@@ -540,7 +540,7 @@ export const getDonationsByDonor = withErrorHandling(async (
         )
       )
     `, { count: 'exact' })
-    .eq('donor_id', donorId)
+    .eq('user_id', donorId)
     .order(sortBy, { ascending: sortOrder === 'asc' })
     .range(offset, offset + limit - 1);
 
@@ -550,7 +550,7 @@ export const getDonationsByDonor = withErrorHandling(async (
 
   const donations = data.map(donation => ({
     id: donation.id,
-    donorId: donation.donor_id,
+    donorId: donation.user_id,
     campaignId: donation.campaign_id,
     amount: donation.amount,
     status: donation.status,
@@ -660,7 +660,7 @@ export const updateDonationStatus = withErrorHandling(async (
 
   return createSuccessResponse({
     id: donation.id,
-    donorId: donation.donor_id,
+    donorId: donation.user_id,
     campaignId: donation.campaign_id,
     amount: donation.amount,
     status: donation.status,
@@ -722,7 +722,7 @@ export const getDonationStatistics = withErrorHandling(async (
 
   // Apply user-based filtering for non-admins
   if (!isAdmin) {
-    query = query.or(`donor_id.eq.${currentUserId},campaigns.charity_organizations.user_id.eq.${currentUserId}`);
+    query = query.or(`user_id.eq.${currentUserId},campaigns.charity_organizations.user_id.eq.${currentUserId}`);
   }
 
   // Apply filters
@@ -880,7 +880,7 @@ export const getDonorStatistics = withErrorHandling(async (
         title
       )
     `)
-    .eq('donor_id', userId)
+    .eq('user_id', userId)
     .eq('status', 'completed')
     .order('created_at', { ascending: false });
 

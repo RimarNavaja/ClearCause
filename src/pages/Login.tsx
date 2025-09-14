@@ -16,6 +16,7 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { user, signIn, loading } = useAuth();
   const navigate = useNavigate();
@@ -46,6 +47,7 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsSubmitting(true);
 
     try {
       // Validate form data
@@ -60,16 +62,18 @@ const Login: React.FC = () => {
 
       if (result.success && result.data) {
         // Navigation will be handled by the useEffect above
-        // The user state will update automatically
       } else {
         setError(result.error || 'Login failed. Please try again.');
       }
     } catch (error) {
+      console.error('Login error:', error);
       if (error instanceof ClearCauseError) {
         setError(error.message);
       } else {
         setError('An unexpected error occurred. Please try again.');
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -178,9 +182,9 @@ const Login: React.FC = () => {
                 <Button
                   type="submit"
                   className="w-full bg-clearcause-primary hover:bg-clearcause-secondary py-2 px-4"
-                  disabled={loading}
+                  disabled={isSubmitting}
                 >
-                  {loading ? (
+                  {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Signing in...
@@ -191,6 +195,7 @@ const Login: React.FC = () => {
                 </Button>
               </div>
             </form>
+
 
             {config.features.socialLogin && (
               <div className="mt-8 text-center">
@@ -209,7 +214,7 @@ const Login: React.FC = () => {
                     onClick={handleGoogleLogin}
                     variant="outline"
                     className="w-full"
-                    disabled={loading}
+                    disabled={isSubmitting}
                   >
                     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M22.56 12.25C22.56 11.47 22.49 10.72 22.36 10H12V14.26H17.92C17.66 15.63 16.88 16.78 15.71 17.55V20.25H19.28C21.36 18.31 22.56 15.57 22.56 12.25Z" fill="#4285F4"/>

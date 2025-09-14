@@ -3,9 +3,42 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import AuthenticatedNavbar from './AuthenticatedNavbar';
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, loading } = useAuth();
+
+  // Show loading skeleton while auth is loading
+  if (loading) {
+    return (
+      <nav className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <Link to="/" className="flex items-center">
+                <span className="text-2xl font-display font-bold text-clearcause-primary">
+                  Clear<span className="text-clearcause-accent">Cause</span>
+                </span>
+              </Link>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="h-9 w-20 bg-gray-200 rounded animate-pulse" />
+              <div className="h-9 w-20 bg-gray-200 rounded animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
+  // If user is authenticated, use the authenticated navbar
+  if (user) {
+    return <AuthenticatedNavbar user={user} />;
+  }
+
+  // Otherwise, show the public navbar
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">

@@ -1,9 +1,10 @@
 
-import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, CreditCard, UserRound, Settings, LogOut } from 'lucide-react';
 import Navbar from './Navbar';
 import Footer from './Footer';
+import { useAuth } from '@/hooks/useAuth';
 
 interface DonorLayoutProps {
   children: React.ReactNode;
@@ -12,6 +13,38 @@ interface DonorLayoutProps {
 
 const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut, loading: authLoading } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (isLoggingOut) {
+      return;
+    }
+
+    try {
+      setIsLoggingOut(true);
+      
+      const logoutPromise = signOut();
+      const timeoutPromise = new Promise<{success: boolean, error?: string}>((_, reject) => 
+        setTimeout(() => reject(new Error('Network timeout')), 5000)
+      );
+      
+      try {
+        await Promise.race([logoutPromise, timeoutPromise]);
+      } catch (timeoutError) {
+        // Continue with navigation even if logout times out
+      }
+      
+      navigate('/', { replace: true });
+      
+    } catch (error) {
+      console.error('Logout error:', error);
+      navigate('/', { replace: true });
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
   
   const navItems = [
     { 
@@ -64,13 +97,27 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
                 </NavLink>
               ))}
               
-              <NavLink
-                to="/login"
-                className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-red-500 hover:bg-red-50 mt-8 md:mt-auto"
+              <button
+                onClick={handleLogout}
+                disabled={isLoggingOut || authLoading}
+                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium mt-8 md:mt-auto w-full text-left transition-colors ${
+                  isLoggingOut || authLoading 
+                    ? 'text-gray-400 cursor-not-allowed bg-gray-100' 
+                    : 'text-gray-600 hover:text-red-500 hover:bg-red-50'
+                }`}
               >
-                <LogOut className="w-5 h-5" />
-                <span className="ml-3">Logout</span>
-              </NavLink>
+                {isLoggingOut || authLoading ? (
+                  <>
+                    <div className="w-5 h-5 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
+                    <span className="ml-3">Signing out...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogOut className="w-5 h-5" />
+                    <span className="ml-3">Logout</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </aside>

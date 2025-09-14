@@ -17,35 +17,132 @@ const CharityDashboard: React.FC = () => {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadingAttempts, setLoadingAttempts] = useState(0);
+  const [lastLoadTime, setLastLoadTime] = useState<number>(0);
   
   const { user } = useAuth();
   const { subscribe } = useRealtime();
+  
+  // Circuit breaker: prevent repeated calls within 5 seconds
+  const MINIMUM_RETRY_INTERVAL = 5000;
 
   // Load dashboard data
   const loadDashboardData = async () => {
     if (!user) return;
+    
+    // Circuit breaker: prevent repeated calls too quickly
+    const now = Date.now();
+    if (lastLoadTime > 0 && (now - lastLoadTime) < MINIMUM_RETRY_INTERVAL) {
+      console.debug('Preventing rapid retry, waiting for cooldown period');
+      return;
+    }
+    
+    // Limit retry attempts
+    if (loadingAttempts >= 3) {
+      console.warn('Maximum loading attempts reached');
+      setError('Too many failed attempts. Please refresh the page.');
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
+      setLoadingAttempts(prev => prev + 1);
+      setLastLoadTime(now);
 
-      // Load charity statistics
-      const statsResult = await charityService.getCharityStatistics(user.id);
-      if (statsResult.success && statsResult.data) {
-        setStats(statsResult.data);
+      console.debug('Loading charity dashboard data for user:', user.id, 'Attempt:', loadingAttempts + 1);
+      
+      // First get the charity organization for this user
+      let charityId: string | null = null;
+      try {
+        console.debug('Getting charity organization for user...');
+        const charityResult = await charityService.getCharityByUserId(user.id);
+        if (charityResult.success && charityResult.data) {
+          charityId = charityResult.data.id;
+          console.debug('Found charity ID:', charityId);
+        } else {
+          console.warn('No charity organization found for user:', user.id);
+          setError('No charity organization found. Please register as a charity first.');
+          return;
+        }
+      } catch (charityError) {
+        console.error('Failed to get charity organization:', charityError);
+        setError('Failed to load charity information.');
+        return;
       }
 
-      // Load recent campaigns
-      const campaignsResult = await campaignService.getCharityCampaigns(user.id, { limit: 3 });
-      if (campaignsResult.success && campaignsResult.data) {
-        setCampaigns(campaignsResult.data.campaigns);
+      if (!charityId) {
+        console.warn('User does not have a charity organization');
+        // Instead of showing an error, show a helpful message
+        setError('charity_not_registered');
+        setLoading(false);
+        return;
       }
 
-      // Load recent activity
-      const activityResult = await charityService.getCharityActivity(user.id, { limit: 5 });
-      if (activityResult.success && activityResult.data) {
-        setRecentActivity(activityResult.data);
+      // Set default stats to prevent crashes
+      const defaultStats = {
+        totalCampaigns: 0,
+        activeCampaigns: 0,
+        totalRaised: 0,
+        totalDonations: 0,
+        averageDonation: 0,
+        totalFundsReleased: 0,
+        totalDonors: 0,
+        pendingVerifications: 0,
+        pendingMilestones: 0
+      };
+
+      // Load charity statistics with error handling
+      try {
+        console.debug('Loading charity statistics for charity:', charityId);
+        const statsResult = await charityService.getCharityStatistics(charityId, user.id);
+        if (statsResult.success && statsResult.data) {
+          setStats(statsResult.data);
+          console.debug('Stats loaded successfully:', statsResult.data);
+        } else {
+          console.warn('Failed to load stats:', statsResult.error);
+          setStats(defaultStats);
+        }
+      } catch (statsError) {
+        console.error('Stats loading error:', statsError);
+        setStats(defaultStats);
       }
+
+      // Load recent campaigns with error handling
+      try {
+        console.debug('Loading recent campaigns for charity:', charityId);
+        const campaignsResult = await campaignService.getCharityCampaigns(charityId, { limit: 3 }, user.id);
+        if (campaignsResult.success && campaignsResult.data) {
+          setCampaigns(campaignsResult.data.campaigns || []);
+          console.debug('Campaigns loaded successfully:', campaignsResult.data.campaigns?.length || 0);
+        } else {
+          console.warn('Failed to load campaigns:', campaignsResult.error);
+          setCampaigns([]);
+        }
+      } catch (campaignError) {
+        console.error('Campaigns loading error:', campaignError);
+        setCampaigns([]);
+      }
+
+      // Load recent activity with error handling
+      try {
+        console.debug('Loading recent activity for charity:', charityId);
+        const activityResult = await charityService.getCharityActivity(charityId, user.id, { limit: 5 });
+        if (activityResult.success && activityResult.data) {
+          setRecentActivity(activityResult.data);
+          console.debug('Activity loaded successfully:', activityResult.data.length);
+        } else {
+          console.warn('Failed to load activity:', activityResult.error);
+          setRecentActivity([]);
+        }
+      } catch (activityError) {
+        console.error('Activity loading error:', activityError);
+        setRecentActivity([]);
+      }
+
+      console.debug('Dashboard data loading completed');
+      // Reset attempts counter on successful load
+      setLoadingAttempts(0);
 
     } catch (err) {
       setError('Failed to load dashboard data');
@@ -64,8 +161,8 @@ const CharityDashboard: React.FC = () => {
     // Subscribe to donation updates
     const donationSub = subscribe('donations', (payload) => {
       if (payload.new.campaign?.charity_id === user.id) {
-        // Refresh stats when new donations come in
-        loadDashboardData();
+        // Refresh stats when new donations come in (with circuit breaker)
+        setTimeout(() => loadDashboardData(), 1000); // Slight delay to prevent rapid calls
       }
     });
     unsubscribeFns.push(donationSub);
@@ -82,14 +179,20 @@ const CharityDashboard: React.FC = () => {
     unsubscribeFns.push(campaignSub);
 
     return () => {
-      unsubscribeFns.forEach(fn => fn());
+      unsubscribeFns.forEach(fn => {
+        if (typeof fn === 'function') {
+          fn();
+        }
+      });
     };
   }, [user, subscribe]);
 
-  // Initial data load
+  // Initial data load - only when user changes and is available
   useEffect(() => {
-    loadDashboardData();
-  }, [user]);
+    if (user?.id && loadingAttempts === 0) {
+      loadDashboardData();
+    }
+  }, [user?.id]); // Only depend on user ID
 
   // Get activity icon
   const getActivityIcon = (type: string) => {
@@ -131,6 +234,40 @@ const CharityDashboard: React.FC = () => {
   }
 
   if (error) {
+    // Special case: user hasn't registered as a charity yet
+    if (error === 'charity_not_registered') {
+      return (
+        <CharityLayout title="Charity Dashboard">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center max-w-md">
+              <div className="bg-blue-100 p-4 rounded-full w-fit mx-auto mb-4">
+                <AlertCircle className="h-12 w-12 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Charity Registration Required</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                You need to register your charity organization before you can access the dashboard. 
+                Please complete the charity registration process to continue.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button asChild>
+                  <Link to="/charity/register">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Register Charity
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link to="/profile">
+                    View Profile
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CharityLayout>
+      );
+    }
+    
+    // General error case
     return (
       <CharityLayout title="Charity Dashboard">
         <div className="flex items-center justify-center py-12">

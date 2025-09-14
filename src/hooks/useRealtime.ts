@@ -238,7 +238,7 @@ export const useCharityVerificationRealtime = (
   enabled: boolean = true
 ) => {
   return useRealtime(
-    'charity_organizations',
+    'charities',
     (payload) => {
       if (payload.eventType === 'UPDATE' && payload.new) {
         onVerificationUpdate?.(payload.new);

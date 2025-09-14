@@ -18,15 +18,26 @@ export const supabase: SupabaseClient<Database> = createClient<Database>(
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
+      // Reduce token refresh frequency to avoid network issues
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     },
     realtime: {
+      // Disable realtime for auth operations to prevent WebSocket issues
       params: {
-        eventsPerSecond: 10,
+        eventsPerSecond: 1, // Reduce event frequency
       },
     },
     global: {
       headers: {
         'X-Client-Info': 'clearcause-web',
+      },
+      // Add timeout for requests to handle network issues
+      fetch: (url, options = {}) => {
+        return fetch(url, {
+          ...options,
+          // Add timeout to prevent hanging requests
+          signal: AbortSignal.timeout(10000), // 10 second timeout
+        });
       },
     },
   }

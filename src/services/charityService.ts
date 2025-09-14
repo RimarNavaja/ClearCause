@@ -149,7 +149,7 @@ export const getCharityById = withErrorHandling(async (
   charityId: string
 ): Promise<ApiResponse<CharityOrganization>> => {
   const { data, error } = await supabase
-    .from('charity_organizations')
+    .from('charities')
     .select(`
       *,
       profiles:user_id (
@@ -206,8 +206,9 @@ export const getCharityById = withErrorHandling(async (
 export const getCharityByUserId = withErrorHandling(async (
   userId: string
 ): Promise<ApiResponse<CharityOrganization | null>> => {
+  // Use maybeSingle() to avoid 406 errors when no rows are found
   const { data, error } = await supabase
-    .from('charity_organizations')
+    .from('charities')
     .select(`
       *,
       profiles:user_id (
@@ -222,13 +223,15 @@ export const getCharityByUserId = withErrorHandling(async (
       )
     `)
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') {
+  if (error) {
+    console.error('Error fetching charity by user ID:', error);
     throw handleSupabaseError(error);
   }
 
   if (!data) {
+    console.log('No charity organization found for user:', userId);
     return createSuccessResponse(null);
   }
 
@@ -318,15 +321,13 @@ export const updateCharity = withErrorHandling(async (
 
   // Update charity organization
   const { data, error } = await supabase
-    .from('charity_organizations')
+    .from('charities')
     .update({
       organization_name: validatedUpdates.organizationName,
       description: validatedUpdates.description,
       website_url: validatedUpdates.websiteUrl,
-      phone: validatedUpdates.phone,
+      contact_phone: validatedUpdates.phone,
       address: validatedUpdates.address,
-      registration_number: validatedUpdates.registrationNumber,
-      verification_documents: documentUrls.length > 0 ? documentUrls : null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', charityId)
@@ -403,7 +404,7 @@ export const verifyCharity = withErrorHandling(async (
 
   // Update verification status
   const { data, error } = await supabase
-    .from('charity_organizations')
+    .from('charities')
     .update({
       verification_status: validatedData.status,
       updated_at: new Date().toISOString(),
@@ -476,7 +477,7 @@ export const listCharities = withErrorHandling(async (
 
   // Build query
   let query = supabase
-    .from('charity_organizations')
+    .from('charities')
     .select(`
       *,
       profiles:user_id (
@@ -707,7 +708,7 @@ export const deleteCharity = withErrorHandling(async (
 
   // Delete charity organization
   const { error: deleteError } = await supabase
-    .from('charity_organizations')
+    .from('charities')
     .delete()
     .eq('id', charityId);
 
