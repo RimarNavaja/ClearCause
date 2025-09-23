@@ -22,3 +22,24 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Development files
+*.md.backup
+*_backup.*
+debug_*.sql
+fix_*.sql
+manual_*.sql
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+
+# Claude Code directory
+.claude/

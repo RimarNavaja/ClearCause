@@ -35,6 +35,7 @@ import DonorDonations from "./pages/donor/DonorDonations";
 import DonorProfile from "./pages/donor/DonorProfile";
 import DonorSettings from "./pages/donor/DonorSettings";
 import CharityApplicationForm from "./pages/CharityApplicationForm";
+import CharityApplicationStatus from "./pages/CharityApplicationStatus";
 import CharityDashboard from "./pages/charity/CharityDashboard";
 import ManageCampaigns from "./pages/charity/ManageCampaigns";
 import CampaignForm from "./pages/charity/CampaignForm";
@@ -49,6 +50,7 @@ import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import VerificationQueue from "./pages/admin/VerificationQueue";
 import VerificationDetail from "./pages/admin/VerificationDetail";
+import CharityVerificationDetail from "./pages/admin/CharityVerificationDetail";
 import FundReleaseManagement from "./pages/admin/FundReleaseManagement";
 import CharityManagement from "./pages/admin/CharityManagement";
 import CharityApplicationReview from "./pages/admin/CharityApplicationReview";
@@ -108,9 +110,14 @@ const App = () => (
           } />
 
           {/* Charity application (open to authenticated users) */}
-          <Route path="/signup/charity-application" element={
+<Route path="/signup/charity-application" element={
             <ProtectedRoute>
               <CharityApplicationForm />
+            </ProtectedRoute>
+          } />
+          <Route path="/signup/charity-application/status" element={
+            <ProtectedRoute>
+              <CharityApplicationStatus />
             </ProtectedRoute>
           } />
 
@@ -207,6 +214,11 @@ const App = () => (
           <Route path="/admin/verifications/:submissionId" element={
             <AdminRoute>
               <VerificationDetail />
+            </AdminRoute>
+          } />
+          <Route path="/admin/charity-verifications/:verificationId" element={
+            <AdminRoute>
+              <CharityVerificationDetail />
             </AdminRoute>
           } />
           <Route path="/admin/payouts" element={

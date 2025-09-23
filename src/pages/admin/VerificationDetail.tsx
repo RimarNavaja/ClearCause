@@ -13,10 +13,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/hooks/useAuth';
+import { approveSubmission, rejectSubmission } from '@/services/adminService';
+import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
 const VerificationDetail = () => {
   const { submissionId } = useParams();
+  const { user } = useAuth();
   const [feedback, setFeedback] = useState('');
 
   const submission = {
@@ -35,14 +39,41 @@ const VerificationDetail = () => {
     ]
   };
 
-  const handleApprove = () => {
-    // TODO: Implement API call to approve submission
-    // Implementation for approval
+  const handleApprove = async () => {
+    if (!user?.id) return;
+
+    try {
+      const result = await approveSubmission('sample-submission-id', 'verification', null, user.id);
+      if (result.success) {
+        toast.success('Submission approved successfully');
+        // Refresh the data or update state
+      } else {
+        toast.error(result.error || 'Failed to approve submission');
+      }
+    } catch (error) {
+      console.error('Error approving submission:', error);
+      toast.error('Failed to approve submission');
+    }
   };
 
-  const handleReject = () => {
-    // TODO: Implement API call to reject submission
-    // Implementation for rejection
+  const handleReject = async () => {
+    if (!user?.id) return;
+
+    const reason = prompt('Please provide a reason for rejection:');
+    if (!reason) return;
+
+    try {
+      const result = await rejectSubmission('sample-submission-id', 'verification', reason, null, user.id);
+      if (result.success) {
+        toast.success('Submission rejected');
+        // Refresh the data or update state
+      } else {
+        toast.error(result.error || 'Failed to reject submission');
+      }
+    } catch (error) {
+      console.error('Error rejecting submission:', error);
+      toast.error('Failed to reject submission');
+    }
   };
 
   return (

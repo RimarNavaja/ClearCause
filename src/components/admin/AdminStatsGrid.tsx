@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Clock, FileText, DollarSign, TrendingUp, Loader2 } from 'lucide-react';
+import { Clock, DollarSign, TrendingUp, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -41,14 +41,15 @@ const AdminStatsGrid = () => {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <Card key={index}>
+          <Card key={index} className="overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
-              <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
+              <div className="h-4 w-24 bg-clearcause-muted rounded animate-pulse" />
+              <div className="h-4 w-4 bg-clearcause-muted rounded animate-pulse" />
             </CardHeader>
             <CardContent>
-              <div className="h-8 w-16 bg-gray-200 rounded animate-pulse mb-2" />
-              <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+              <div className="h-8 w-16 bg-clearcause-muted rounded animate-pulse mb-2" />
+              <div className="h-4 w-20 bg-clearcause-muted rounded animate-pulse" />
+              <div className="mt-4 h-12 bg-clearcause-muted/50 rounded animate-pulse" />
             </CardContent>
           </Card>
         ))}
@@ -74,50 +75,70 @@ const AdminStatsGrid = () => {
   const statItems = [
     {
       title: "Pending Verifications",
-      value: stats?.pendingVerifications?.toString() || "0",
+      value: stats?.pendingVerifications || 0,
       change: "Awaiting review",
       icon: Clock,
-      color: "text-orange-600",
-      href: "/admin/verifications"
+      color: "text-clearcause-accent",
+      barColor: "#F59E0B",
+      href: "/admin/verifications",
     },
     {
       title: "Total Users",
-      value: stats?.totalUsers?.toString() || "0",
+      value: stats?.totalUsers || 0,
       change: `${stats?.activeUsers || 0} active`,
-      icon: FileText,
-      color: "text-blue-600",
-      href: "/admin/donors"
+      icon: Users,
+      color: "text-clearcause-primary",
+      barColor: "#0891B2",
+      href: "/admin/donors",
     },
     {
       title: "Total Raised",
-      value: formatCurrency(stats?.totalAmountRaised || 0),
+      value: stats?.totalAmountRaised || 0,
       change: `${stats?.totalDonations || 0} donations`,
       icon: DollarSign,
       color: "text-green-600",
-      href: "/admin/campaigns"
+      barColor: "#22C55E",
+      isCurrency: true,
+      href: "/admin/campaigns",
     },
     {
       title: "Active Campaigns",
-      value: stats?.activeCampaigns?.toString() || "0",
+      value: stats?.activeCampaigns || 0,
       change: `${stats?.totalCampaigns || 0} total`,
       icon: TrendingUp,
       color: "text-purple-600",
-      href: "/admin/campaigns"
-    }
+      barColor: "#7C3AED",
+      href: "/admin/campaigns",
+    },
   ];
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {statItems.map((stat, index) => (
         <Link key={index} to={stat.href}>
-          <Card className="hover:shadow-md transition-shadow cursor-pointer">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
               <stat.icon className={`h-4 w-4 ${stat.color}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">{stat.change}</p>
+              <div className="text-2xl font-bold">
+                {stat.isCurrency ? formatCurrency(stat.value) : stat.value.toString()}
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">{stat.change}</p>
+              {/* Mini progress bar based on relative value */}
+              <div className="mt-2">
+                <div className="h-2 w-full rounded bg-muted relative overflow-hidden">
+                  <div 
+                    className="h-2 rounded bg-[--bar-color] animate-progress-fill" 
+                    style={{ 
+                      width: `${Math.min(100, (Number(stat.value) || 0) / (Number(stats?.totalUsers) || 1) * 100)}%`, 
+                      // @ts-ignore custom prop for color
+                      ['--bar-color' as any]: stat.barColor 
+                    }}
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
         </Link>

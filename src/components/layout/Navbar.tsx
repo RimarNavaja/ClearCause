@@ -8,10 +8,25 @@ import AuthenticatedNavbar from './AuthenticatedNavbar';
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, loading } = useAuth();
+  const { user, loading, authError } = useAuth();
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
-  // Show loading skeleton while auth is loading
-  if (loading) {
+  // Add timeout protection for navbar loading
+  React.useEffect(() => {
+    if (loading) {
+      const timeout = setTimeout(() => {
+        console.warn('[Navbar] Loading timeout - forcing navbar to show');
+        setLoadingTimeout(true);
+      }, 3000); // 3 second timeout for navbar
+
+      return () => clearTimeout(timeout);
+    } else {
+      setLoadingTimeout(false);
+    }
+  }, [loading]);
+
+  // Show loading skeleton while auth is loading (with timeout protection)
+  if (loading && !authError && !loadingTimeout) {
     return (
       <nav className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

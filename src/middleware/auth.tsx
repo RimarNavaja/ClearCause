@@ -7,6 +7,8 @@ import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../lib/types';
+import { securityValidator, SecurityValidationResult } from '../utils/securityValidator';
+import { reportAuthError } from '../utils/authErrorHandler';
 
 // Loading component
 const AuthLoadingSpinner = () => (
@@ -116,6 +118,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { user, loading, hasAnyRole, isVerified } = useAuth();
   const location = useLocation();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const [securityValidation, setSecurityValidation] = useState<SecurityValidationResult | null>(null);
+  const [securityLoading, setSecurityLoading] = useState(false);
 
   // Add timeout for loading state to prevent infinite loading
   useEffect(() => {
@@ -135,8 +139,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     };
   }, [loading]);
 
-  // Show loading spinner while checking authentication (with timeout protection)
-  if (loading && !loadingTimeout) {
+  // Show loading spinner while checking authentication or security (with timeout protection)
+  if ((loading || securityLoading) && !loadingTimeout) {
     return fallback || <AuthLoadingSpinner />;
   }
 
@@ -156,12 +160,41 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
+  // Charity users must complete application until approved
+  if (requireRoles.includes('charity') && user && !isVerified) {
+    // Send them to application status page
+    return <Navigate to="/signup/charity-application/status" replace />;
+  }
+
   // Check email verification requirement
   if (requireVerification && !isVerified) {
     return <EmailVerificationRequired />;
   }
 
-  return <>{children}</>;
+  // Show security warning for 'warn' action
+  const showSecurityWarning = securityValidation?.action === 'warn';
+
+  return (
+    <>
+      {showSecurityWarning && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                Security Notice: {securityValidation?.issues.join(', ')}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      {children}
+    </>
+  );
 };
 
 /**

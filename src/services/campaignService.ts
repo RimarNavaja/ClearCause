@@ -115,7 +115,6 @@ export const createCampaign = withErrorHandling(async (
       title: milestone.title,
       description: milestone.description,
       target_amount: milestone.targetAmount,
-      evidence_description: milestone.evidenceDescription || null,
       status: 'pending' as const,
     }));
 
@@ -134,12 +133,8 @@ export const createCampaign = withErrorHandling(async (
       title: m.title,
       description: m.description,
       targetAmount: m.target_amount,
-      evidenceDescription: m.evidence_description,
       status: m.status,
-      proofDocuments: m.proof_documents,
-      verificationNotes: m.verification_notes,
-      verifiedAt: m.verified_at,
-      verifiedBy: m.verified_by,
+      dueDate: m.due_date,
       createdAt: m.created_at,
       updatedAt: m.updated_at,
     }));

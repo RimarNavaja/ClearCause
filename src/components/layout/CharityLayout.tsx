@@ -1,19 +1,32 @@
 
 import React, { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  ListChecks, 
-  BadgeCheck, 
-  DollarSign, 
-  Landmark, 
+import {
+  LayoutDashboard,
+  ListChecks,
+  BadgeCheck,
+  DollarSign,
+  Landmark,
   LogOut,
   Bell,
-  User
+  User,
+  Loader2
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/hooks/use-toast';
+import { performCompleteLogout } from '@/utils/sessionManager';
 
 interface CharityLayoutProps {
   children: React.ReactNode;
@@ -25,55 +38,48 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
   const navigate = useNavigate();
   const { signOut, loading: authLoading } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
-  const handleLogout = async () => {
+  const handleLogoutConfirm = async () => {
     if (isLoggingOut) {
-      console.debug('CharityLayout: Logout already in progress, ignoring duplicate click');
       return;
     }
 
     try {
       setIsLoggingOut(true);
-      console.debug('CharityLayout: Starting logout...');
-      
-      // Reduce timeout to 5 seconds and handle network issues gracefully
-      const logoutPromise = signOut();
-      const timeoutPromise = new Promise<{success: boolean, error?: string}>((_, reject) => 
-        setTimeout(() => reject(new Error('Network timeout - continuing logout locally')), 5000)
-      );
-      
-      let result;
-      try {
-        result = await Promise.race([logoutPromise, timeoutPromise]);
-      } catch (timeoutError) {
-        console.warn('CharityLayout: Server logout timed out, but local state should be cleared:', timeoutError.message);
-        result = { success: false, error: 'Network timeout - local logout completed' };
-      }
-      
+      setShowLogoutDialog(false);
+
+      const result = await signOut();
       if (result.success) {
-        console.debug('CharityLayout: Logout successful, preparing to redirect...');
+        toast({
+          title: "Logged out successfully",
+          description: "You have been signed out of your charity account.",
+        });
+        // Use enhanced complete logout for session isolation
+        await performCompleteLogout('/login');
       } else {
-        console.warn('CharityLayout: Logout had issues but continuing:', result.error);
+        toast({
+          title: "Logout failed",
+          description: result.error || "An error occurred during logout.",
+          variant: "destructive",
+        });
       }
-      
-      // Small delay to ensure auth state changes have propagated
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      console.debug('CharityLayout: Redirecting to home page...');
-      navigate('/', { replace: true });
-      
     } catch (error) {
-      console.error('CharityLayout: Logout error:', error);
-      
-      // Even on error, still try to navigate away
-      // The signOut function should have cleared local state regardless
-      await new Promise(resolve => setTimeout(resolve, 100));
-      navigate('/', { replace: true });
-      
+      console.error('[CharityLayout] Logout error:', error);
+      toast({
+        title: "Logout failed",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+      // Force cleanup even on error
+      await performCompleteLogout('/login');
     } finally {
-      // Reset local loading state
       setIsLoggingOut(false);
     }
+  };
+
+  const handleLogoutClick = () => {
+    setShowLogoutDialog(true);
   };
   
   const navItems = [
@@ -138,7 +144,7 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
               ))}
               
               <button
-                onClick={handleLogout}
+                onClick={handleLogoutClick}
                 disabled={isLoggingOut || authLoading}
                 className={`flex items-center px-3 py-2 rounded-md text-sm font-medium mt-8 md:mt-auto w-full text-left transition-colors ${
                   isLoggingOut || authLoading 
@@ -170,8 +176,44 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
           </div>
         </main>
       </div>
-      
       <Footer />
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <LogOut className="h-5 w-5 text-red-600" />
+              Confirm Sign Out
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to sign out of your charity account? You will need to log in again to access your dashboard.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoggingOut}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogoutConfirm}
+              disabled={isLoggingOut}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isLoggingOut ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing out...
+                </>
+              ) : (
+                <>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign out
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

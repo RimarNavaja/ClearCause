@@ -1,28 +1,77 @@
 
-import React, { useState } from 'react';
-import { Shield, Eye, EyeOff } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Shield, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { user, signIn, loading: authLoading } = useAuth();
+
+  // Redirect if already logged in as admin
+  useEffect(() => {
+    if (user && user.role === 'admin') {
+      navigate('/admin/dashboard');
+    } else if (user && user.role !== 'admin') {
+      // If logged in but not admin, redirect to appropriate dashboard
+      switch (user.role) {
+        case 'donor':
+          navigate('/donor/dashboard');
+          break;
+        case 'charity':
+          navigate('/charity/dashboard');
+          break;
+        default:
+          navigate('/');
+      }
+    }
+  }, [user, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
-    // Simulate login process
-    setTimeout(() => {
+    try {
+      const result = await signIn({
+        email: email.trim(),
+        password: password,
+        rememberMe: true
+      });
+      
+      if (!result.success) {
+        setError(result.error || 'Login failed. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Check if user is admin
+      if (result.data?.role !== 'admin') {
+        setError('Access denied. Admin credentials required.');
+        setIsLoading(false);
+        return;
+      }
+      
+      toast.success('Welcome back, admin!');
+      // Navigation will be handled by useEffect when user state updates
+      
+    } catch (err) {
+      console.error('Admin login error:', err);
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
       setIsLoading(false);
-      navigate('/admin/dashboard');
-    }, 1000);
+    }
   };
 
   return (
@@ -39,6 +88,13 @@ const AdminLogin = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -75,9 +131,9 @@ const AdminLogin = () => {
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={isLoading}
+              disabled={isLoading || authLoading}
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {(isLoading || authLoading) ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
         </CardContent>

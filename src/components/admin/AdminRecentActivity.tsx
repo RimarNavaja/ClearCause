@@ -71,18 +71,18 @@ const AdminRecentActivity = () => {
 
   if (loading) {
     return (
-      <Card>
+      <Card className="border-clearcause-light-blue/50">
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle className="text-clearcause-primary">Recent Activity</CardTitle>
           <CardDescription>Loading recent activity...</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {Array.from({ length: 4 }).map((_, index) => (
             <div key={index} className="flex items-start space-x-3 p-2">
-              <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
+              <div className="h-4 w-4 bg-clearcause-muted rounded animate-pulse" />
               <div className="flex-1 space-y-2">
-                <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
-                <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 w-full bg-clearcause-muted rounded animate-pulse" />
+                <div className="h-3 w-20 bg-clearcause-muted rounded animate-pulse" />
               </div>
             </div>
           ))}
@@ -93,9 +93,9 @@ const AdminRecentActivity = () => {
 
   if (error) {
     return (
-      <Card>
+      <Card className="border-destructive/50">
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle className="text-destructive">Recent Activity</CardTitle>
           <CardDescription>Failed to load recent activity</CardDescription>
         </CardHeader>
         <CardContent>
@@ -106,14 +106,14 @@ const AdminRecentActivity = () => {
   }
 
   return (
-    <Card>
+    <Card className="border-clearcause-light-blue/50">
       <CardHeader>
-        <CardTitle>Recent Activity</CardTitle>
+        <CardTitle className="text-clearcause-primary">Recent Activity</CardTitle>
         <CardDescription>
           Latest platform events requiring attention
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-2">
         {activities.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-muted-foreground">No recent activity</p>
@@ -121,18 +121,18 @@ const AdminRecentActivity = () => {
         ) : (
           activities.map((activity) => (
             <Link key={activity.id} to={getActivityHref(activity.type)}>
-              <div className="flex items-start space-x-3 p-2 rounded hover:bg-muted/50 transition-colors cursor-pointer">
-                <div className="flex-shrink-0 mt-1">
+              <div className="flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-all hover:shadow-sm cursor-pointer">
+                <div className="flex-shrink-0 mt-0.5">
                   {getActivityIcon(activity.type)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-foreground">
                     {activity.title}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {activity.description}
                   </p>
-                  <div className="flex items-center space-x-2 mt-2">
+                  <div className="flex items-center gap-2 mt-2">
                     <p className="text-xs text-muted-foreground">
                       {getRelativeTime(activity.timestamp)}
                     </p>
@@ -147,7 +147,7 @@ const AdminRecentActivity = () => {
             </Link>
           ))
         )}
-        <Button variant="outline" className="w-full mt-4" asChild>
+        <Button variant="outline" className="w-full mt-3" asChild>
           <Link to="/admin/logs">View All Activity</Link>
         </Button>
       </CardContent>

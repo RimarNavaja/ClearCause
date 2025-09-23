@@ -7,7 +7,7 @@
 export type UserRole = 'admin' | 'charity' | 'donor';
 export type CampaignStatus = 'draft' | 'active' | 'paused' | 'completed' | 'cancelled';
 export type DonationStatus = 'pending' | 'completed' | 'failed' | 'refunded';
-export type VerificationStatus = 'pending' | 'approved' | 'rejected';
+export type VerificationStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'resubmission_required';
 export type MilestoneStatus = 'pending' | 'in_progress' | 'completed' | 'verified';
 
 // ===== DATABASE TYPES =====
@@ -118,6 +118,7 @@ export interface Database {
           current_amount: number;
           donors_count: number;
           category: string | null;
+          location: string | null;
           image_url: string | null;
           status: CampaignStatus;
           start_date: string | null;
@@ -134,6 +135,7 @@ export interface Database {
           current_amount?: number;
           donors_count?: number;
           category?: string | null;
+          location?: string | null;
           image_url?: string | null;
           status?: CampaignStatus;
           start_date?: string | null;
@@ -150,6 +152,7 @@ export interface Database {
           current_amount?: number;
           donors_count?: number;
           category?: string | null;
+          location?: string | null;
           image_url?: string | null;
           status?: CampaignStatus;
           start_date?: string | null;
@@ -376,6 +379,7 @@ export interface Campaign {
   currentAmount: number;
   donorsCount: number;
   category: string | null;
+  location: string | null;
   imageUrl: string | null;
   status: CampaignStatus;
   startDate: string | null;

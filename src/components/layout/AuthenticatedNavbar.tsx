@@ -1,21 +1,34 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { 
-  Menu, 
-  X, 
-  Search, 
-  User, 
-  Settings, 
-  LayoutDashboard, 
-  LogOut, 
+import {
+  Menu,
+  X,
+  Search,
+  User,
+  Settings,
+  LayoutDashboard,
+  LogOut,
   ChevronDown,
   CreditCard,
   Building2,
-  ShieldCheck
+  ShieldCheck,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { User as UserType } from '@/lib/types';
+import { toast } from '@/hooks/use-toast';
+import { performCompleteLogout } from '@/utils/sessionManager';
 
 interface AuthenticatedNavbarProps {
   user: UserType;
@@ -25,6 +38,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { signOut } = useAuth();
   const navigate = useNavigate();
@@ -78,21 +92,55 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogoutConfirm = async () => {
     if (isLoggingOut) return;
-    
+
     try {
       setIsLoggingOut(true);
-      
-      await signOut();
-      navigate('/', { replace: true });
+      setShowLogoutDialog(false);
+      setIsUserMenuOpen(false);
+
+      const result = await signOut();
+      if (result.success) {
+        toast({
+          title: "Logged out successfully",
+          description: `You have been signed out of your ${user.role} account.`,
+        });
+
+        // Use enhanced complete logout for session isolation
+        if (user.role === 'admin') {
+          await performCompleteLogout('/admin/login');
+        } else {
+          await performCompleteLogout('/login');
+        }
+      } else {
+        toast({
+          title: "Logout failed",
+          description: result.error || "An error occurred during logout.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
-      console.error('Logout error:', error);
-      navigate('/', { replace: true });
+      console.error('[AuthenticatedNavbar] Logout error:', error);
+      toast({
+        title: "Logout failed",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+      // Force cleanup even on error
+      if (user.role === 'admin') {
+        await performCompleteLogout('/admin/login');
+      } else {
+        await performCompleteLogout('/login');
+      }
     } finally {
       setIsLoggingOut(false);
-      setIsUserMenuOpen(false);
     }
+  };
+
+  const handleLogoutClick = () => {
+    setIsUserMenuOpen(false);
+    setShowLogoutDialog(true);
   };
 
   const roleSpecificItems = getRoleSpecificNavItems(user.role);
@@ -224,7 +272,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
                   
                   {/* Logout */}
                   <button
-                    onClick={handleLogout}
+                    onClick={handleLogoutClick}
                     disabled={isLoggingOut}
                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -345,7 +393,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
               </Link>
               
               <button
-                onClick={handleLogout}
+                onClick={handleLogoutClick}
                 disabled={isLoggingOut}
                 className="flex items-center w-full px-3 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-md disabled:opacity-50"
               >
@@ -365,6 +413,43 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
           </div>
         </div>
       )}
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <LogOut className="h-5 w-5 text-red-600" />
+              Confirm Sign Out
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to sign out of your {user.role} account? You will need to log in again to access your dashboard.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoggingOut}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogoutConfirm}
+              disabled={isLoggingOut}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isLoggingOut ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing out...
+                </>
+              ) : (
+                <>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign out
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </nav>
   );
 };

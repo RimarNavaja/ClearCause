@@ -3,10 +3,10 @@
  * Centralizes environment variables and app settings
  */
 
-// Environment Variables with fallbacks for development
+// Environment Variables - NO FALLBACKS FOR PRODUCTION SAFETY
 const requiredEnvVars = {
-  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL || 'https://demo.supabase.co',
-  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY || 'demo-key',
+  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
 } as const;
 
 // Check for missing environment variables and warn (don't throw)
@@ -17,12 +17,18 @@ const missingEnvVars = Object.entries({
   .filter(([_, value]) => !value)
   .map(([key]) => key);
 
-if (missingEnvVars.length > 0) {
+if (missingEnvVars.length > 0 && !import.meta.env.VITE_ALLOW_DEMO_MODE) {
+  throw new Error(
+    `❌ Missing required environment variables: ${missingEnvVars.join(', ')}\n` +
+    '📝 Create a .env.local file with your Supabase credentials.\n' +
+    '🔒 For development testing, set VITE_ALLOW_DEMO_MODE=true'
+  );
+}
+
+if (missingEnvVars.length > 0 && import.meta.env.VITE_ALLOW_DEMO_MODE === 'true') {
   console.warn(
-    `⚠️  Missing environment variables: ${missingEnvVars.join(', ')}\n` +
-    '📝 Create a .env.local file with your Supabase credentials to enable backend features.\n' +
-    '📖 See BACKEND_SETUP.md for setup instructions.\n' +
-    '🚀 App will run in demo mode with limited functionality.'
+    `⚠️  Running in DEMO MODE - Missing: ${missingEnvVars.join(', ')}\n` +
+    '🚨 DO NOT USE IN PRODUCTION'
   );
 }
 
@@ -30,8 +36,8 @@ if (missingEnvVars.length > 0) {
 export const config = {
   // Supabase
   supabase: {
-    url: requiredEnvVars.VITE_SUPABASE_URL,
-    anonKey: requiredEnvVars.VITE_SUPABASE_ANON_KEY,
+    url: requiredEnvVars.VITE_SUPABASE_URL || (import.meta.env.VITE_ALLOW_DEMO_MODE === 'true' ? 'https://demo.supabase.co' : ''),
+    anonKey: requiredEnvVars.VITE_SUPABASE_ANON_KEY || (import.meta.env.VITE_ALLOW_DEMO_MODE === 'true' ? 'demo-key' : ''),
   },
 
   // App Settings
@@ -47,6 +53,7 @@ export const config = {
     emailVerification: import.meta.env.VITE_ENABLE_EMAIL_VERIFICATION !== 'false',
     realTime: import.meta.env.VITE_ENABLE_REAL_TIME !== 'false',
     debugMode: import.meta.env.VITE_DEBUG_MODE === 'true',
+    demoMode: import.meta.env.VITE_ALLOW_DEMO_MODE === 'true' && import.meta.env.DEV,
   },
 
   // File Upload Limits

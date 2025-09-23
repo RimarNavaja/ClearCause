@@ -12,6 +12,7 @@ import { useRealtime } from '@/hooks/useRealtime';
 import * as donationService from '@/services/donationService';
 import * as campaignService from '@/services/campaignService';
 import { formatCurrency, getRelativeTime } from '@/utils/helpers';
+import { validateUserForDashboard, isUserLoaded } from '@/utils/userUtils';
 
 const DonorDashboard: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
@@ -26,11 +27,16 @@ const DonorDashboard: React.FC = () => {
 
   // Load dashboard data
   const loadDashboardData = async () => {
-    if (!user) return;
+    if (!isUserLoaded(user)) {
+      console.log('[DonorDashboard] User not properly loaded, skipping data load');
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
+
+      console.log('[DonorDashboard] Loading data for user:', user.id);
 
       // Load donor statistics
       const statsResult = await donationService.getDonorStatistics(user.id);
@@ -99,9 +105,23 @@ const DonorDashboard: React.FC = () => {
     };
   }, [user, subscribe, recentDonations]);
 
-  // Initial data load
+  // Initial data load - only when user is fully loaded
   useEffect(() => {
-    loadDashboardData();
+    const userValidation = validateUserForDashboard(user);
+
+    if (userValidation.isValid) {
+      console.log('[DonorDashboard] User valid, loading dashboard data');
+      loadDashboardData();
+    } else {
+      if (userValidation.isLoading) {
+        console.log('[DonorDashboard] User still loading, waiting...');
+        setLoading(true);
+      } else {
+        console.log('[DonorDashboard] User validation failed:', userValidation.error);
+        setLoading(false);
+        setError(userValidation.error);
+      }
+    }
   }, [user]);
 
   // Get donation status badge

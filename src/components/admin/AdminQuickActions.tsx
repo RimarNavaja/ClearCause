@@ -12,7 +12,7 @@ const AdminQuickActions = () => {
       description: "Review milestone proofs",
       icon: CheckCircle,
       href: "/admin/verifications",
-      color: "bg-green-50 text-green-600",
+      color: "bg-clearcause-light-blue text-clearcause-dark-blue",
       count: "15 pending"
     },
     {
@@ -20,7 +20,7 @@ const AdminQuickActions = () => {
       description: "Authorize approved payouts",
       icon: DollarSign,
       href: "/admin/payouts",
-      color: "bg-blue-50 text-blue-600",
+      color: "bg-emerald-50 text-emerald-600",
       count: "₱450K pending"
     },
     {
@@ -42,17 +42,17 @@ const AdminQuickActions = () => {
   ];
 
   return (
-    <Card>
+    <Card className="border-clearcause-light-blue/50">
       <CardHeader>
-        <CardTitle>Quick Actions</CardTitle>
+        <CardTitle className="text-clearcause-primary">Quick Actions</CardTitle>
         <CardDescription>
           Access key administrative functions
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         {quickActions.map((action, index) => (
           <Link key={index} to={action.href}>
-            <div className="flex items-center space-x-4 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors">
+            <div className="flex items-center space-x-4 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-all hover:shadow-sm">
               <div className={`p-2 rounded-lg ${action.color}`}>
                 <action.icon className="h-5 w-5" />
               </div>

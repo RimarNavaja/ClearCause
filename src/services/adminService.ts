@@ -674,3 +674,541 @@ export const cleanupAuditLogs = withErrorHandling(async (
     `Cleaned up ${deleteCount || 0} old audit log entries`
   );
 });
+
+// =========================================
+// CHARITY VERIFICATION MANAGEMENT
+// =========================================
+
+/**
+ * Get pending charity verifications
+ */
+export const getPendingCharityVerifications = withErrorHandling(async (
+  params: PaginationParams,
+  currentUserId: string
+): Promise<PaginatedResponse<any>> => {
+  // Check if current user is admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can access charity verifications', 403);
+  }
+
+  const validatedParams = validateData(paginationSchema, params);
+  const { page, limit, sortBy = 'submitted_at', sortOrder = 'asc' } = validatedParams;
+  const offset = (page - 1) * limit;
+
+  const { data, count, error } = await supabase
+    .from('charity_verifications')
+    .select(`
+      *,
+      charity:profiles!charity_id (
+        id,
+        email,
+        full_name,
+        created_at
+      )
+    `, { count: 'exact' })
+    .eq('status', 'pending')
+    .order(sortBy, { ascending: sortOrder === 'asc' })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  return createPaginatedResponse(data || [], count || 0, validatedParams);
+});
+
+/**
+ * Get all charity verifications with filters
+ */
+export const getAllCharityVerifications = withErrorHandling(async (
+  filters: {
+    status?: string;
+    search?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  } = {},
+  params: PaginationParams,
+  currentUserId: string
+): Promise<PaginatedResponse<any>> => {
+  // Check if current user is admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can access charity verifications', 403);
+  }
+
+  const validatedParams = validateData(paginationSchema, params);
+  const { page, limit, sortBy = 'submitted_at', sortOrder = 'desc' } = validatedParams;
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from('charity_verifications')
+    .select(`
+      *,
+      charity:profiles!charity_id (
+        id,
+        email,
+        full_name,
+        created_at
+      ),
+      admin:profiles!admin_id (
+        id,
+        email,
+        full_name
+      )
+    `, { count: 'exact' });
+
+  // Apply filters
+  if (filters.status) {
+    query = query.eq('status', filters.status);
+  }
+
+  if (filters.search) {
+    query = query.or(`organization_name.ilike.%${filters.search}%,contact_email.ilike.%${filters.search}%`);
+  }
+
+  if (filters.dateFrom) {
+    query = query.gte('submitted_at', filters.dateFrom);
+  }
+
+  if (filters.dateTo) {
+    query = query.lte('submitted_at', filters.dateTo);
+  }
+
+  // Apply pagination and sorting
+  query = query
+    .order(sortBy, { ascending: sortOrder === 'asc' })
+    .range(offset, offset + limit - 1);
+
+  const { data, count, error } = await query;
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  return createPaginatedResponse(data || [], count || 0, validatedParams);
+});
+
+/**
+ * Get charity verification by ID
+ */
+export const getCharityVerificationById = withErrorHandling(async (
+  verificationId: string,
+  currentUserId: string
+): Promise<ApiResponse<any>> => {
+  // Check if current user is admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can access charity verifications', 403);
+  }
+
+  const { data, error } = await supabase
+    .from('charity_verifications')
+    .select(`
+      *,
+      charity:profiles!charity_id (
+        id,
+        email,
+        full_name,
+        phone,
+        created_at
+      ),
+      admin:profiles!admin_id (
+        id,
+        email,
+        full_name
+      ),
+      documents:verification_documents (
+        id,
+        document_type,
+        document_name,
+        file_url,
+        file_size,
+        mime_type,
+        uploaded_at,
+        is_verified,
+        admin_notes
+      ),
+      history:admin_verification_history (
+        id,
+        action,
+        previous_status,
+        new_status,
+        notes,
+        created_at,
+        admin:profiles!admin_id (
+          full_name,
+          email
+        )
+      )
+    `)
+    .eq('id', verificationId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      throw new ClearCauseError('NOT_FOUND', 'Charity verification not found', 404);
+    }
+    throw handleSupabaseError(error);
+  }
+
+  return createSuccessResponse(data, 'Charity verification retrieved successfully');
+});
+
+/**
+ * Approve charity verification
+ */
+export const approveCharityVerification = withErrorHandling(async (
+  verificationId: string,
+  adminNotes: string | null,
+  currentUserId: string
+): Promise<ApiResponse<any>> => {
+  // Check if current user is admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can approve verifications', 403);
+  }
+
+  // Call the database function
+  const { data, error } = await supabase.rpc('approve_charity_verification', {
+    verification_id: verificationId,
+    admin_id: currentUserId,
+    admin_notes: adminNotes
+  });
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  return createSuccessResponse(data, 'Charity verification approved successfully');
+});
+
+/**
+ * Reject charity verification
+ */
+export const rejectCharityVerification = withErrorHandling(async (
+  verificationId: string,
+  rejectionReason: string,
+  adminNotes: string | null,
+  currentUserId: string
+): Promise<ApiResponse<any>> => {
+  // Check if current user is admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can reject verifications', 403);
+  }
+
+  if (!rejectionReason || rejectionReason.trim().length === 0) {
+    throw new ClearCauseError('INVALID_INPUT', 'Rejection reason is required', 400);
+  }
+
+  // Call the database function
+  const { data, error } = await supabase.rpc('reject_charity_verification', {
+    verification_id: verificationId,
+    admin_id: currentUserId,
+    rejection_reason: rejectionReason,
+    admin_notes: adminNotes
+  });
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  return createSuccessResponse(data, 'Charity verification rejected');
+});
+
+/**
+ * Request charity verification resubmission
+ */
+export const requestVerificationResubmission = withErrorHandling(async (
+  verificationId: string,
+  resubmissionReason: string,
+  adminNotes: string | null,
+  currentUserId: string
+): Promise<ApiResponse<any>> => {
+  // Check if current user is admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can request resubmission', 403);
+  }
+
+  if (!resubmissionReason || resubmissionReason.trim().length === 0) {
+    throw new ClearCauseError('INVALID_INPUT', 'Resubmission reason is required', 400);
+  }
+
+  // Call the database function
+  const { data, error } = await supabase.rpc('request_verification_resubmission', {
+    verification_id: verificationId,
+    admin_id: currentUserId,
+    resubmission_reason: resubmissionReason,
+    admin_notes: adminNotes
+  });
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  return createSuccessResponse(data, 'Resubmission requested successfully');
+});
+
+/**
+ * Get charity verification statistics
+ */
+export const getCharityVerificationStats = withErrorHandling(async (
+  currentUserId: string
+): Promise<ApiResponse<{
+  totalVerifications: number;
+  pendingVerifications: number;
+  approvedVerifications: number;
+  rejectedVerifications: number;
+  resubmissionRequired: number;
+  avgProcessingTime: number;
+}>> => {
+  // Check if current user is admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can access verification statistics', 403);
+  }
+
+  // Get statistics in parallel
+  const [
+    totalResult,
+    pendingResult,
+    approvedResult,
+    rejectedResult,
+    resubmissionResult,
+    processingTimeResult
+  ] = await Promise.allSettled([
+    supabase.from('charity_verifications').select('id', { count: 'exact', head: true }),
+    supabase.from('charity_verifications').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('charity_verifications').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+    supabase.from('charity_verifications').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
+    supabase.from('charity_verifications').select('id', { count: 'exact', head: true }).eq('status', 'resubmission_required'),
+    supabase.from('charity_verifications').select('submitted_at, reviewed_at').not('reviewed_at', 'is', null)
+  ]);
+
+  // Process results
+  const totalVerifications = totalResult.status === 'fulfilled' ? totalResult.value.count || 0 : 0;
+  const pendingVerifications = pendingResult.status === 'fulfilled' ? pendingResult.value.count || 0 : 0;
+  const approvedVerifications = approvedResult.status === 'fulfilled' ? approvedResult.value.count || 0 : 0;
+  const rejectedVerifications = rejectedResult.status === 'fulfilled' ? rejectedResult.value.count || 0 : 0;
+  const resubmissionRequired = resubmissionResult.status === 'fulfilled' ? resubmissionResult.value.count || 0 : 0;
+
+  // Calculate average processing time
+  let avgProcessingTime = 0;
+  if (processingTimeResult.status === 'fulfilled' && processingTimeResult.value.data) {
+    const processedVerifications = processingTimeResult.value.data.filter(v => v.submitted_at && v.reviewed_at);
+    if (processedVerifications.length > 0) {
+      const totalTime = processedVerifications.reduce((sum, v) => {
+        const submitted = new Date(v.submitted_at).getTime();
+        const reviewed = new Date(v.reviewed_at).getTime();
+        return sum + (reviewed - submitted);
+      }, 0);
+      avgProcessingTime = Math.round(totalTime / processedVerifications.length / (1000 * 60 * 60 * 24)); // Days
+    }
+  }
+
+  return createSuccessResponse({
+    totalVerifications,
+    pendingVerifications,
+    approvedVerifications,
+    rejectedVerifications,
+    resubmissionRequired,
+    avgProcessingTime
+  });
+});
+
+/**
+ * Approve milestone proof submission
+ */
+export const approveMilestoneProof = withErrorHandling(async (
+  proofId: string,
+  adminNotes: string | null,
+  currentUserId: string
+): Promise<ApiResponse<any>> => {
+  // Check if current user is admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can approve milestone proofs', 403);
+  }
+
+  // Update milestone proof status
+  const { data, error } = await supabase
+    .from('milestone_proofs')
+    .update({
+      verification_status: 'approved',
+      verified_by: currentUserId,
+      verification_notes: adminNotes,
+    })
+    .eq('id', proofId)
+    .select('*, milestones(*)')
+    .single();
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  // Log audit event
+  await logAuditEvent(
+    currentUserId,
+    'approve_milestone_proof',
+    'milestone_proof',
+    proofId,
+    { admin_notes: adminNotes }
+  );
+
+  return createSuccessResponse(data);
+});
+
+/**
+ * Reject milestone proof submission
+ */
+export const rejectMilestoneProof = withErrorHandling(async (
+  proofId: string,
+  rejectionReason: string,
+  adminNotes: string | null,
+  currentUserId: string
+): Promise<ApiResponse<any>> => {
+  // Check if current user is admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can reject milestone proofs', 403);
+  }
+
+  // Update milestone proof status
+  const { data, error } = await supabase
+    .from('milestone_proofs')
+    .update({
+      verification_status: 'rejected',
+      verified_by: currentUserId,
+      verification_notes: `REJECTED: ${rejectionReason}${adminNotes ? `\n\nAdmin Notes: ${adminNotes}` : ''}`,
+    })
+    .eq('id', proofId)
+    .select('*, milestones(*)')
+    .single();
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  // Log audit event
+  await logAuditEvent(
+    currentUserId,
+    'reject_milestone_proof',
+    'milestone_proof',
+    proofId,
+    { rejection_reason: rejectionReason, admin_notes: adminNotes }
+  );
+
+  return createSuccessResponse(data);
+});
+
+/**
+ * Approve general submission (for verification detail page)
+ */
+export const approveSubmission = withErrorHandling(async (
+  submissionId: string,
+  submissionType: string,
+  adminNotes: string | null,
+  currentUserId: string
+): Promise<ApiResponse<any>> => {
+  // Check if current user is admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can approve submissions', 403);
+  }
+
+  // Log audit event
+  await logAuditEvent(
+    currentUserId,
+    'approve_submission',
+    submissionType,
+    submissionId,
+    { admin_notes: adminNotes }
+  );
+
+  return createSuccessResponse({ approved: true, submission_id: submissionId });
+});
+
+/**
+ * Reject general submission (for verification detail page)
+ */
+export const rejectSubmission = withErrorHandling(async (
+  submissionId: string,
+  submissionType: string,
+  rejectionReason: string,
+  adminNotes: string | null,
+  currentUserId: string
+): Promise<ApiResponse<any>> => {
+  // Check if current user is admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can reject submissions', 403);
+  }
+
+  // Log audit event
+  await logAuditEvent(
+    currentUserId,
+    'reject_submission',
+    submissionType,
+    submissionId,
+    { rejection_reason: rejectionReason, admin_notes: adminNotes }
+  );
+
+  return createSuccessResponse({ rejected: true, submission_id: submissionId, reason: rejectionReason });
+});

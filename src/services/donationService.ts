@@ -88,7 +88,7 @@ export const createDonation = withErrorHandling(async (
         id,
         title,
         charity_id,
-        charity_organizations:charity_id (
+        charities:charity_id (
           organization_name
         )
       )
@@ -155,10 +155,10 @@ export const createDonation = withErrorHandling(async (
       createdAt: '',
       updatedAt: '',
       progress: 0,
-      charity: donation.campaigns.charity_organizations ? {
+      charity: donation.campaigns.charities ? {
         id: '',
         userId: '',
-        organizationName: donation.campaigns.charity_organizations.organization_name,
+        organizationName: donation.campaigns.charities.organization_name,
         description: '',
         websiteUrl: null,
         phone: null,
@@ -874,7 +874,7 @@ export const getDonorStatistics = withErrorHandling(async (
       id,
       amount,
       status,
-      created_at,
+      donated_at,
       campaigns:campaign_id (
         id,
         title
@@ -882,7 +882,7 @@ export const getDonorStatistics = withErrorHandling(async (
     `)
     .eq('user_id', userId)
     .eq('status', 'completed')
-    .order('created_at', { ascending: false });
+    .order('donated_at', { ascending: false });
 
   if (error) {
     throw handleSupabaseError(error);
@@ -897,7 +897,7 @@ export const getDonorStatistics = withErrorHandling(async (
     id: d.id,
     amount: d.amount,
     campaignTitle: d.campaigns?.title || 'Unknown Campaign',
-    createdAt: d.created_at,
+    createdAt: d.donated_at,
   }));
 
   return createSuccessResponse({

@@ -25,8 +25,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/hooks/useAuth';
+import { approveMilestoneProof, rejectMilestoneProof } from '@/services/adminService';
+import { toast } from 'sonner';
 
 const MilestoneVerification = () => {
+  const { user } = useAuth();
   const [selectedProof, setSelectedProof] = useState(null);
   const [verificationNotes, setVerificationNotes] = useState('');
 
@@ -109,14 +113,41 @@ const MilestoneVerification = () => {
     }
   };
 
-  const handleApprove = (proofId: number) => {
-    // TODO: Implement API call to approve proof
-    // Implementation for approval
+  const handleApprove = async (proofId: string) => {
+    if (!user?.id) return;
+
+    try {
+      const result = await approveMilestoneProof(proofId, null, user.id);
+      if (result.success) {
+        toast.success('Milestone proof approved successfully');
+        // Refresh the data or update state
+      } else {
+        toast.error(result.error || 'Failed to approve proof');
+      }
+    } catch (error) {
+      console.error('Error approving proof:', error);
+      toast.error('Failed to approve proof');
+    }
   };
 
-  const handleReject = (proofId: number) => {
-    // TODO: Implement API call to reject proof
-    // Implementation for rejection
+  const handleReject = async (proofId: string) => {
+    if (!user?.id) return;
+
+    const reason = prompt('Please provide a reason for rejection:');
+    if (!reason) return;
+
+    try {
+      const result = await rejectMilestoneProof(proofId, reason, null, user.id);
+      if (result.success) {
+        toast.success('Milestone proof rejected');
+        // Refresh the data or update state
+      } else {
+        toast.error(result.error || 'Failed to reject proof');
+      }
+    } catch (error) {
+      console.error('Error rejecting proof:', error);
+      toast.error('Failed to reject proof');
+    }
   };
 
   return (

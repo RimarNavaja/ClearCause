@@ -8,6 +8,7 @@ import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { logError, getErrorBoundaryFallback } from '../utils/errors';
+import { reportAuthError, getAuthErrorSeverity } from '../utils/authErrorHandler';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -48,6 +49,15 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       componentStack: errorInfo.componentStack,
       errorBoundary: true,
     });
+
+    // Also report authentication-related errors
+    const errorMessage = error.message.toLowerCase();
+    if (errorMessage.includes('auth') || errorMessage.includes('session') || errorMessage.includes('token')) {
+      reportAuthError(error, {
+        context: 'error_boundary',
+        componentStack: errorInfo.componentStack,
+      });
+    }
   }
 
   handleReset = () => {
@@ -160,9 +170,25 @@ export const useErrorHandler = () => {
   const handleError = React.useCallback((error: Error, errorInfo?: { componentStack?: string }) => {
     logError(error, errorInfo);
     
-    // In a real app, you might want to show a toast notification
-    // or redirect to an error page
-    console.error('Handled error:', error);
+    // Only log in development
+    if (import.meta.env.DEV) {
+      console.error('Handled error:', error);
+    }
+
+    // Report authentication errors
+    const errorMessage = error.message.toLowerCase();
+    if (errorMessage.includes('auth') || errorMessage.includes('session') || errorMessage.includes('token')) {
+      reportAuthError(error, errorInfo);
+
+      // For critical auth errors, consider redirecting to login
+      const severity = getAuthErrorSeverity(error);
+      if (severity === 'critical') {
+        // This could trigger a logout or redirect
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 3000);
+      }
+    }
   }, []);
 
   return handleError;

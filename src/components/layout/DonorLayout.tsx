@@ -1,10 +1,22 @@
 
 import React, { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CreditCard, UserRound, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, CreditCard, UserRound, Settings, LogOut, Loader2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from '@/hooks/use-toast';
+import { performCompleteLogout } from '@/utils/sessionManager';
 
 interface DonorLayoutProps {
   children: React.ReactNode;
@@ -16,34 +28,48 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
   const navigate = useNavigate();
   const { signOut, loading: authLoading } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
-  const handleLogout = async () => {
+  const handleLogoutConfirm = async () => {
     if (isLoggingOut) {
       return;
     }
 
     try {
       setIsLoggingOut(true);
-      
-      const logoutPromise = signOut();
-      const timeoutPromise = new Promise<{success: boolean, error?: string}>((_, reject) => 
-        setTimeout(() => reject(new Error('Network timeout')), 5000)
-      );
-      
-      try {
-        await Promise.race([logoutPromise, timeoutPromise]);
-      } catch (timeoutError) {
-        // Continue with navigation even if logout times out
+      setShowLogoutDialog(false);
+
+      const result = await signOut();
+      if (result.success) {
+        toast({
+          title: "Logged out successfully",
+          description: "You have been signed out of your donor account.",
+        });
+        // Use enhanced complete logout for session isolation
+        await performCompleteLogout('/login');
+      } else {
+        toast({
+          title: "Logout failed",
+          description: result.error || "An error occurred during logout.",
+          variant: "destructive",
+        });
       }
-      
-      navigate('/', { replace: true });
-      
     } catch (error) {
-      console.error('Logout error:', error);
-      navigate('/', { replace: true });
+      console.error('[DonorLayout] Logout error:', error);
+      toast({
+        title: "Logout failed",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+      // Force cleanup even on error
+      await performCompleteLogout('/login');
     } finally {
       setIsLoggingOut(false);
     }
+  };
+
+  const handleLogoutClick = () => {
+    setShowLogoutDialog(true);
   };
   
   const navItems = [
@@ -98,7 +124,7 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
               ))}
               
               <button
-                onClick={handleLogout}
+                onClick={handleLogoutClick}
                 disabled={isLoggingOut || authLoading}
                 className={`flex items-center px-3 py-2 rounded-md text-sm font-medium mt-8 md:mt-auto w-full text-left transition-colors ${
                   isLoggingOut || authLoading 
@@ -130,8 +156,45 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
           </div>
         </main>
       </div>
-      
+
       <Footer />
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <LogOut className="h-5 w-5 text-red-600" />
+              Confirm Sign Out
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to sign out of your donor account? You will need to log in again to access your dashboard.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoggingOut}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogoutConfirm}
+              disabled={isLoggingOut}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isLoggingOut ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing out...
+                </>
+              ) : (
+                <>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign out
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

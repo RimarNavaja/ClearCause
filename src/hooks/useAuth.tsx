@@ -7,12 +7,16 @@ import { useState, useEffect, useContext, createContext, ReactNode } from 'react
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { User, SignUpData, SignInData, UserRole, ApiResponse } from '../lib/types';
+import { config } from '../lib/config';
 import * as authService from '../lib/auth';
+import { handleAuthError, shouldLogoutOnError, reportAuthError } from '../utils/authErrorHandler';
+import { isSessionContaminated, forceCleanupIfContaminated, isFreshSession, debounceAuthCall } from '../utils/sessionManager';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  authError: string | null;
   signUp: (userData: SignUpData) => Promise<ApiResponse<User>>;
   signIn: (credentials: SignInData) => Promise<ApiResponse<User>>;
   signOut: () => Promise<ApiResponse<void>>;
@@ -35,14 +39,49 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [processingAuthChange, setProcessingAuthChange] = useState(false);
+  const [lastProcessedUserId, setLastProcessedUserId] = useState<string | null>(null);
+  const maxRetries = 3;
+
+  // Emergency timeout to prevent infinite loading
+  useEffect(() => {
+    if (!loading) return;
+
+    const emergencyTimeout = setTimeout(() => {
+      if (loading && !processingAuthChange) {
+        console.warn('[AUTH] Emergency timeout: forcing loading to false after 15 seconds');
+        setLoading(false);
+        setAuthError('Authentication timeout - please refresh the page');
+      }
+    }, 15000);
+
+    return () => clearTimeout(emergencyTimeout);
+  }, [loading, processingAuthChange]);
 
   useEffect(() => {
     // Get initial session with comprehensive validation
     const getInitialSession = async () => {
       try {
-        // Check if we're in demo mode
-        if (import.meta.env.DEV && (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_DEMO_MODE === 'true')) {
-          // Set a demo session for development
+        // Check for session contamination FIRST
+        if (isSessionContaminated()) {
+          console.warn('[AUTH] Session contamination detected during initialization');
+          forceCleanupIfContaminated();
+          return; // Exit early, cleanup will reload the page
+        }
+
+        // Circuit breaker - prevent infinite retries
+        if (retryCount >= maxRetries) {
+          console.warn('[AUTH] Max retries exceeded, stopping auth attempts');
+          setAuthError('Authentication failed after multiple attempts');
+          setLoading(false);
+          return;
+        }
+
+        // Demo mode check - only in development with explicit flag
+        if (config.features.demoMode) {
+          console.warn('[AUTH] Running in DEMO MODE - not for production');
           setSession(null);
           setUser({
             id: 'demo-user-id',
@@ -61,7 +100,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
 
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (error) {
           await clearInvalidSession('Error getting session');
           return;
@@ -73,29 +112,61 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             await clearInvalidSession('Session expired');
             return;
           }
-          
+
           setSession(session);
-          
-          // Try to load profile, if it fails, clear the session
+
+          // Try to load profile with timeout protection
           try {
-            const currentUser = await authService.getCurrentUserWithTimeout(8000);
+            const profilePromise = authService.getCurrentUser();
+            const timeoutPromise = new Promise<null>((_, reject) =>
+              setTimeout(() => reject(new Error('Profile loading timeout')), 8000)
+            );
+
+            const currentUser = await Promise.race([profilePromise, timeoutPromise]);
+
             if (currentUser) {
               setUser(currentUser);
+              setAuthError(null);
+              setRetryCount(0); // Reset retry count on success
             } else {
               await clearInvalidSession('No profile found');
             }
           } catch (profileError) {
-            await clearInvalidSession('Profile verification failed');
+            console.error('[AUTH] Profile loading failed:', profileError);
+            setRetryCount(prev => prev + 1);
+
+            if (retryCount < maxRetries - 1) {
+              // Retry after a delay
+              setTimeout(() => {
+                getInitialSession();
+              }, 2000 * (retryCount + 1)); // Exponential backoff
+              return;
+            } else {
+              await clearInvalidSession('Profile verification failed after retries');
+            }
           }
         } else {
-          // Ensure we clear any leftover storage
+          // No session - clear everything
           await clearAllAuthStorage();
           setSession(null);
           setUser(null);
+          setAuthError(null);
+          setRetryCount(0);
         }
       } catch (error) {
-        console.error('Failed to initialize authentication:', error);
-        await clearInvalidSession('Initialization error');
+        console.error('[AUTH] Initialization error:', error);
+        const errorInfo = handleAuthError(error);
+        reportAuthError(error, { context: 'getInitialSession' });
+        setRetryCount(prev => prev + 1);
+
+        if (retryCount < maxRetries - 1) {
+          setTimeout(() => {
+            getInitialSession();
+          }, 3000);
+          return;
+        } else {
+          await clearInvalidSession('Initialization error after retries');
+        }
       } finally {
         setLoading(false);
       }
@@ -103,113 +174,208 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // Helper to clear invalid sessions
     const clearInvalidSession = async (reason: string) => {
+      console.log('[AUTH] Clearing invalid session:', reason);
       try {
         await supabase.auth.signOut({ scope: 'global' });
         await clearAllAuthStorage();
       } catch (clearError) {
-        console.error('Error clearing session:', clearError);
+        reportAuthError(clearError, { context: 'clearInvalidSession' });
         // Force clear local storage anyway
         await clearAllAuthStorage();
       } finally {
         setSession(null);
         setUser(null);
+        setAuthError(null);
+        setRetryCount(0);
+        setLoading(false); // Ensure loading is always set to false
       }
     };
 
+    // Only run on component mount
     getInitialSession();
 
     // Listen for auth changes (skip in demo mode)
-    if (!import.meta.env.DEV || import.meta.env.VITE_SUPABASE_URL) {
+    if (!config.features.demoMode) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
-          // Handle sign out events immediately
-          if (event === 'SIGNED_OUT' || !session) {
-            // Only clear state if we're not already in a manual logout process
-            if (!loading || event === 'SIGNED_OUT') {
+          console.log('[AUTH] Auth state change:', event, session?.user?.id);
+
+          // Prevent processing the same user multiple times
+          if (processingAuthChange) {
+            console.log('[AUTH] Already processing auth change, skipping...');
+            return;
+          }
+
+          // Deduplicate SIGNED_IN events for the same user
+          if (event === 'SIGNED_IN' && session?.user?.id === lastProcessedUserId) {
+            console.log('[AUTH] Duplicate SIGNED_IN event for same user, skipping...');
+            return;
+          }
+
+          setProcessingAuthChange(true);
+
+          try {
+            // Handle sign out events immediately
+            if (event === 'SIGNED_OUT' || !session) {
+              console.log('[AUTH] Processing SIGNED_OUT - clearing all auth state');
               setSession(null);
               setUser(null);
-              
-              // Clear storage only if it wasn't already cleared by manual logout
+              setAuthError(null);
+              setRetryCount(0);
+              setLastProcessedUserId(null);
+              setProcessingAuthChange(false);
+              setLoading(false);
+
               try {
                 await clearAllAuthStorage();
               } catch (error) {
-                console.error('Error clearing storage during signout:', error);
+                reportAuthError(error, { context: 'storage_clear_during_signout' });
               }
-            }
-            
-            // Always ensure loading is false after signout
-            setLoading(false);
-            return;
-          }
-          
-          // Handle sign in events (including email verification)
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            // Validate session before processing
-            if (!session || !session.user) {
               return;
             }
-            
-            // Check if session is expired
-            if (session.expires_at && session.expires_at * 1000 < Date.now()) {
-              await supabase.auth.signOut();
-              return;
-            }
-            
-            setSession(session);
-            
-            try {
+
+            // Handle sign in events
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              if (!session?.user) return;
+
+              // Check for session contamination during sign in
+              if (isSessionContaminated()) {
+                console.warn('[AUTH] Session contamination detected during SIGNED_IN event');
+                forceCleanupIfContaminated();
+                return; // Exit early, cleanup will reload the page
+              }
+
+              // Check if session is expired
+              if (session.expires_at && session.expires_at * 1000 < Date.now()) {
+                await supabase.auth.signOut();
+                return;
+              }
+
+              console.log('[AUTH] Processing SIGNED_IN for user:', session.user.id);
+              setLastProcessedUserId(session.user.id);
+              setSession(session);
               setLoading(true);
-              
-              // Try to load profile with retries
-              await loadUserProfileWithRetry(session.user.id, 3);
-              
-            } catch (error) {
-              console.error('Profile loading failed:', error);
-              
-              // Try to create a basic user from session data as fallback
+
               try {
-                const basicUser = {
-                  id: session.user.id,
-                  email: session.user.email || 'unknown@email.com',
-                  fullName: session.user.user_metadata?.full_name || 'User',
-                  role: (session.user.user_metadata?.role || 'donor') as UserRole,
-                  isVerified: !!session.user.email_confirmed_at,
-                  createdAt: session.user.created_at || new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                };
-                
-                setUser(basicUser);
-              } catch (fallbackError) {
-                console.error('Failed to create fallback user:', fallbackError);
-                setUser(null);
-                setSession(null);
-                try {
-                  await supabase.auth.signOut();
-                } catch (signOutError) {
-                  console.error('Error signing out after profile failure:', signOutError);
+                console.log('[AUTH] Calling debounced getCurrentUser...');
+
+                // Use debounced auth call to prevent concurrent calls
+                const currentUser = await debounceAuthCall(
+                  async () => {
+                    const getCurrentUserPromise = authService.getCurrentUser();
+                    const timeoutPromise = new Promise<null>((_, reject) =>
+                      setTimeout(() => reject(new Error('getCurrentUser timeout after 5 seconds')), 5000)
+                    );
+                    return await Promise.race([getCurrentUserPromise, timeoutPromise]);
+                  },
+                  1000
+                );
+
+                if (currentUser) {
+                  console.log('[AUTH] Profile loaded successfully:', currentUser.email);
+                  setUser(currentUser);
+                  setAuthError(null);
+                  setRetryCount(0);
+                } else if (currentUser === null) {
+                  console.warn('[AUTH] getCurrentUser call was debounced, skipping this iteration');
+                  setLoading(false);
+                  return;
+                } else {
+                  console.warn('[AUTH] No profile found for authenticated user');
+
+                  // Try to create a fallback profile from session data
+                  if (session?.user) {
+                    console.log('[AUTH] Creating fallback profile from session data...');
+
+                    // Determine role from email pattern or metadata
+                    let userRole = session.user.user_metadata?.role || 'donor';
+
+                    // Special handling for admin emails
+                    if (session.user.email?.includes('admin@') ||
+                        session.user.email === 'admin@clearcause.com') {
+                      userRole = 'admin';
+                    }
+
+                    const fallbackUser = {
+                      id: session.user.id,
+                      email: session.user.email || '',
+                      fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+                      avatarUrl: session.user.user_metadata?.avatar_url || null,
+                      role: userRole as 'donor' | 'charity' | 'admin',
+                      isVerified: !!session.user.email_confirmed_at,
+                      createdAt: session.user.created_at || new Date().toISOString(),
+                      updatedAt: new Date().toISOString(),
+                    };
+
+                    console.log('[AUTH] Using fallback profile:', fallbackUser.email);
+                    setUser(fallbackUser);
+                    setAuthError(null);
+                    setRetryCount(0);
+                  } else {
+                    setUser(null);
+                    setAuthError('Profile not found');
+                  }
                 }
+              } catch (error) {
+                console.error('[AUTH] Profile loading failed:', error);
+
+                // If getCurrentUser fails completely, create fallback from session
+                if (session?.user) {
+                  console.log('[AUTH] getCurrentUser failed, using session data as fallback...');
+                  // Determine role from email pattern or metadata
+                  let userRole = session.user.user_metadata?.role || 'donor';
+
+                  // Special handling for admin emails
+                  if (session.user.email?.includes('admin@') ||
+                      session.user.email === 'admin@clearcause.com') {
+                    userRole = 'admin';
+                  }
+
+                  const fallbackUser = {
+                    id: session.user.id,
+                    email: session.user.email || '',
+                    fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+                    avatarUrl: session.user.user_metadata?.avatar_url || null,
+                    role: userRole as 'donor' | 'charity' | 'admin',
+                    isVerified: !!session.user.email_confirmed_at,
+                    createdAt: session.user.created_at || new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  };
+
+                  console.log('[AUTH] Using fallback profile after error:', fallbackUser.email);
+                  setUser(fallbackUser);
+                  setAuthError('Profile loaded from session (database unavailable)');
+                  setRetryCount(0);
+                } else {
+                  setUser(null);
+                  setAuthError('Failed to load user profile');
+                }
+              } finally {
+                setLoading(false);
+                console.log('[AUTH] SIGNED_IN processing completed');
               }
-            } finally {
-              setLoading(false);
+              return;
             }
-            return;
-          }
-          
-          // Handle other auth events
-          if (session?.user && event !== 'SIGNED_OUT') {
-            setSession(session);
-            try {
-              await loadUserProfile(session.user.id);
-            } catch (error) {
-              console.error('Profile loading failed:', error);
+
+            // Handle other auth events
+            if (session?.user) {
+              setSession(session);
+              try {
+                const currentUser = await authService.getCurrentUser();
+                setUser(currentUser);
+              } catch (error) {
+                console.error('[AUTH] Profile loading failed for other event:', error);
+                setUser(null);
+              }
+            } else {
               setUser(null);
+              setSession(null);
             }
-          } else if (!session) {
-            setUser(null);
-            setSession(null);
+
+            setLoading(false);
+          } finally {
+            setProcessingAuthChange(false);
           }
-          
-          setLoading(false);
         }
       );
 
@@ -217,16 +383,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         subscription.unsubscribe();
       };
     }
-  }, []);
+  }, []); // Empty dependency array to run only once
 
-  // Profile loading with retry logic
+  // Profile loading with retry logic (simplified)
   const loadUserProfileWithRetry = async (userId: string, maxRetries: number = 2): Promise<void> => {
     let lastError: Error | null = null;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const currentUser = await authService.getCurrentUserWithTimeout(2000);
-        
+        const currentUser = await authService.getCurrentUser();
+
         if (currentUser) {
           setUser(currentUser);
           return;
@@ -235,22 +401,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
       } catch (error) {
         lastError = error;
-        
+
         // If this isn't the last attempt, wait briefly before retrying
         if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
     }
-    
+
     throw new Error(`Profile loading failed after ${maxRetries} attempts: ${lastError?.message}`);
   };
 
   const loadUserProfile = async (userId: string) => {
     try {
-      const currentUser = await authService.getCurrentUserWithTimeout(4000);
+      const currentUser = await authService.getCurrentUser();
       setUser(currentUser);
-      
+
       // If we got null, it means the profile doesn't exist in the database
       if (!currentUser) {
         // Clear the invalid session
@@ -264,7 +430,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     } catch (error) {
       console.error('Failed to load user profile:', error);
-      
+
       // In demo mode, create a mock user
       if (import.meta.env.DEV && !import.meta.env.VITE_SUPABASE_URL) {
         setUser({
@@ -273,6 +439,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           fullName: 'Demo User',
           role: 'donor' as UserRole,
           isVerified: true,
+          isActive: true,
+          avatarUrl: null,
+          phone: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
@@ -343,18 +512,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
       
       // Demo mode
-      if (import.meta.env.DEV && (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_DEMO_MODE === 'true')) {
+      if (config.features.demoMode) {
         const mockUser = {
           id: 'demo-user',
           email: credentials.email,
           fullName: 'Demo User',
+          avatarUrl: null,
           role: 'donor' as UserRole,
+          phone: null,
           isVerified: true,
+          isActive: true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
         setUser(mockUser);
-        return { success: true, data: mockUser };
+        return { success: true, data: mockUser, message: 'Demo login successful' };
       }
 
       const result = await authService.signIn(credentials);
@@ -365,52 +537,118 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       return result;
     } catch (error) {
-      console.error('Sign in error:', error);
+      const errorInfo = handleAuthError(error);
+      reportAuthError(error, { context: 'signin', email: credentials.email });
       setLoading(false);
-      return { success: false, error: 'Sign in failed' };
+      return { success: false, error: errorInfo.userMessage };
     }
   };
 
   const signOut = async (): Promise<ApiResponse<void>> => {
-    setLoading(true);
+    console.log('[AUTH] Starting signOut process...');
+
     try {
-      // Always clear local state first to ensure UI updates immediately
+      // Immediately clear local state to ensure UI updates right away
+      console.log('[AUTH] Clearing local auth state...');
       setUser(null);
       setSession(null);
+      setAuthError(null);
+      setRetryCount(0);
+      setLastProcessedUserId(null);
+      setProcessingAuthChange(false);
+      setLoading(false); // Set to false immediately to prevent navbar loading
+
+      // Clear all auth storage first
       await clearAllAuthStorage();
-      
+
+      // Clear browser storage more aggressively
+      try {
+        // Clear all supabase storage keys
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.includes('supabase') || key.includes('auth') || key.includes('session'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+
+        // Clear sessionStorage as well
+        const sessionKeysToRemove = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i);
+          if (key && (key.includes('supabase') || key.includes('auth') || key.includes('session'))) {
+            sessionKeysToRemove.push(key);
+          }
+        }
+        sessionKeysToRemove.forEach(key => sessionStorage.removeItem(key));
+
+        // Clear any cached auth state
+        localStorage.removeItem('clearcause-auth-cache');
+        localStorage.removeItem('clearcause-user-cache');
+        sessionStorage.removeItem('clearcause-auth-cache');
+        sessionStorage.removeItem('clearcause-user-cache');
+
+        console.log('[AUTH] Cleared browser storage keys:', keysToRemove.concat(sessionKeysToRemove));
+      } catch (storageError) {
+        console.warn('[AUTH] Storage clearing failed:', storageError);
+      }
+
       // Attempt server-side signout with timeout protection
       try {
+        console.log('[AUTH] Attempting server logout...');
         const serverLogoutPromise = authService.signOut();
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Server logout timeout')), 3000)
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Server logout timeout')), 2000)
         );
-        
+
         const result = await Promise.race([serverLogoutPromise, timeoutPromise]);
+        console.log('[AUTH] Server logout completed');
         return result;
       } catch (serverError) {
+        console.warn('[AUTH] Server logout failed, trying direct Supabase logout:', serverError);
+
         // Try direct Supabase signout as fallback
         try {
           await supabase.auth.signOut({ scope: 'global' });
+          console.log('[AUTH] Direct Supabase logout completed');
         } catch (directError) {
-          console.error('Logout failed:', directError);
+          console.error('[AUTH] Direct logout also failed:', directError);
         }
-        
-        return { 
-          success: true, 
+
+        // Clear cookies as well
+        try {
+          document.cookie.split(";").forEach((cookie) => {
+            const eqPos = cookie.indexOf("=");
+            const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+            if (name.trim().includes('supabase') || name.trim().includes('auth')) {
+              document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+              document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
+            }
+          });
+          console.log('[AUTH] Cleared auth cookies');
+        } catch (cookieError) {
+          console.warn('[AUTH] Cookie clearing failed:', cookieError);
+        }
+
+        return {
+          success: true,
           message: 'Signed out successfully'
         };
       }
     } catch (error) {
       // Even if everything fails, ensure local state is cleared
-      console.error('Critical error during logout:', error);
+      console.error('[AUTH] Critical error during logout:', error);
       setUser(null);
       setSession(null);
+      setAuthError(null);
+      setRetryCount(0);
+      setLastProcessedUserId(null);
+      setProcessingAuthChange(false);
+      setLoading(false); // Ensure loading is false
       await clearAllAuthStorage();
-      
+
       return { success: false, error: 'Logout error occurred' };
-    } finally {
-      setLoading(false);
     }
   };
   // Storage clearing function
@@ -496,6 +734,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     user,
     session,
     loading,
+    authError,
     signUp,
     signIn,
     signOut,

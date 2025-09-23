@@ -14,6 +14,10 @@ import { logAuditEvent } from './adminService';
  * Get user profile by ID
  */
 export const getUserProfile = withErrorHandling(async (userId: string): Promise<ApiResponse<User>> => {
+  if (!userId || userId === 'undefined' || userId === 'null') {
+    throw new ClearCauseError('INVALID_USER_ID', 'Invalid user ID provided', 400);
+  }
+
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -174,7 +178,7 @@ export const getUserStatistics = withErrorHandling(async (
   const { data: donationStats, error: donationError } = await supabase
     .from('donations')
     .select('amount, status, campaign_id')
-    .eq('donor_id', userId);
+    .eq('user_id', userId);
 
   if (donationError) {
     throw handleSupabaseError(donationError);

@@ -6,6 +6,8 @@
 import { supabase } from './supabase';
 import { User, SignUpData, SignInData, UserRole, ClearCauseError, ApiResponse } from './types';
 import { logAuditEvent } from '../services/adminService';
+import { reportAuthError, handleAuthError } from '../utils/authErrorHandler';
+import { config } from './config';
 
 /**
  * Sign up a new user with role assignment
@@ -24,12 +26,12 @@ export const signUp = async (userData: SignUpData): Promise<ApiResponse<User>> =
           full_name: fullName,
           role: role,
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: import.meta.env.VITE_REDIRECT_URL || `${window.location.origin}/auth/callback`,
       },
     });
 
     if (authError) {
-      console.error('Auth signup error:', authError);
+      reportAuthError(authError, { context: 'auth_signup', email });
       
       // Provide more specific error message for database errors
       if (authError.message?.includes('Database error')) {
@@ -45,34 +47,26 @@ export const signUp = async (userData: SignUpData): Promise<ApiResponse<User>> =
     }
 
     if (!authData.user) {
-      console.error('No user data returned from signup');
+      reportAuthError(new Error('No user data returned from signup'), { context: 'auth_signup_no_user', email });
       throw new ClearCauseError('SIGNUP_FAILED', 'User creation failed', 400);
     }
 
     console.debug('Auth user created successfully');
 
-    // Wait a moment for the database trigger to create the profile
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Verify that the profile was created by the trigger
-    let profileCreated = false;
+    // Try to create profile using the database function first
     try {
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', authData.user.id)
-        .single();
-      
-      profileCreated = !profileError && !!profileData;
-      console.debug('Profile creation check:', profileCreated ? 'success' : 'failed');
-    } catch (error) {
-      console.warn('Could not verify profile creation:', error);
-    }
-    
-    // If trigger didn't create profile, create it manually
-    if (!profileCreated) {
-      console.debug('Profile not found, creating manually...');
-      try {
+      const { data: profileResult, error: profileFunctionError } = await supabase
+        .rpc('ensure_user_profile', {
+          p_user_id: authData.user.id,
+          p_email: email,
+          p_full_name: fullName,
+          p_role: role
+        });
+
+      if (profileFunctionError) {
+        console.debug('Profile function failed, trying manual creation...', profileFunctionError);
+
+        // Fallback to manual profile creation
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
           .insert({
@@ -87,35 +81,66 @@ export const signUp = async (userData: SignUpData): Promise<ApiResponse<User>> =
           .single();
 
         if (createError) {
-          console.error('Failed to create profile manually:', createError);
-          
-          // Try to delete the auth user since profile creation failed
+          reportAuthError(createError, { context: 'manual_profile_creation', userId: authData.user.id });
+
+          // Try to clean up auth user if profile creation fails
           try {
-            await supabase.auth.admin.deleteUser(authData.user.id);
+            await supabase.auth.signOut();
           } catch (cleanupError) {
-            console.error('Failed to cleanup auth user:', cleanupError);
+            reportAuthError(cleanupError, { context: 'auth_cleanup_after_profile_failure', userId: authData.user.id });
           }
-          
+
           throw new ClearCauseError(
-            'DATABASE_ERROR', 
-            'Database error saving user profile. Please try again or contact support if the issue persists.', 
+            'DATABASE_ERROR',
+            'Failed to create user profile. Please try again or contact support if the issue persists.',
             500,
             createError
           );
         }
-        
+
         console.debug('Profile created manually successfully');
-      } catch (error) {
-        if (error instanceof ClearCauseError) {
-          throw error;
+      } else {
+        console.debug('Profile created via function successfully:', profileResult);
+      }
+    } catch (error) {
+      if (error instanceof ClearCauseError) {
+        throw error;
+      }
+
+      reportAuthError(error, { context: 'profile_creation_error', userId: authData.user.id });
+
+      // Final fallback - try direct insert
+      try {
+        const { data: fallbackProfile, error: fallbackError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            email: email,
+            full_name: fullName,
+            role: role,
+            is_verified: false,
+            is_active: true
+          })
+          .select()
+          .single();
+
+        if (fallbackError) {
+          throw new ClearCauseError(
+            'DATABASE_ERROR',
+            'Unable to create user profile. Please contact support.',
+            500,
+            fallbackError
+          );
         }
-        
-        console.error('Unexpected error during manual profile creation:', error);
+
+        console.debug('Profile created via fallback successfully');
+      } catch (fallbackError) {
+        reportAuthError(fallbackError, { context: 'fallback_profile_creation_error', userId: authData.user.id });
         throw new ClearCauseError(
-          'DATABASE_ERROR', 
-          'Database error saving user. Please try again or contact support if the issue persists.', 
+          'DATABASE_ERROR',
+          'Critical error: Unable to create user profile. Please contact support immediately.',
           500,
-          error
+          fallbackError
         );
       }
     }
@@ -125,7 +150,7 @@ export const signUp = async (userData: SignUpData): Promise<ApiResponse<User>> =
       email,
       role,
     }).catch(auditError => {
-      console.warn('Failed to log audit event for signup:', auditError);
+      if (import.meta.env.DEV) console.warn('Failed to log audit event for signup:', auditError);
     });
 
     console.debug('Signup completed successfully for:', email);
@@ -146,7 +171,7 @@ export const signUp = async (userData: SignUpData): Promise<ApiResponse<User>> =
       message: 'User created successfully. Please check your email for verification.',
     };
   } catch (error) {
-    console.error('Sign up error:', error);
+    reportAuthError(error, { context: 'signup_general_error', email });
     
     if (error instanceof ClearCauseError) {
       return { success: false, error: error.message };
@@ -170,12 +195,12 @@ export const signIn = async (credentials: SignInData): Promise<ApiResponse<User>
     });
 
     if (authError) {
-      console.error('Auth error during sign in:', authError);
+      reportAuthError(authError, { context: 'auth_signin', email });
       throw new ClearCauseError('SIGNIN_FAILED', authError.message, 401);
     }
 
     if (!authData.user) {
-      console.error('No user data returned from auth');
+      reportAuthError(new Error('No user data returned from auth'), { context: 'signin_no_user', email });
       throw new ClearCauseError('SIGNIN_FAILED', 'Authentication failed', 401);
     }
 
@@ -189,12 +214,12 @@ export const signIn = async (credentials: SignInData): Promise<ApiResponse<User>
       .single();
 
     if (profileError) {
-      console.error('Profile error during sign in:', profileError);
+      reportAuthError(profileError, { context: 'profile_fetch_signin', userId: authData.user.id });
       throw new ClearCauseError('PROFILE_NOT_FOUND', `User profile not found: ${profileError.message}`, 404);
     }
 
     if (!profileData) {
-      console.error('No profile data found for user:', authData.user.id);
+      reportAuthError(new Error('No profile data found'), { context: 'profile_not_found_signin', userId: authData.user.id });
       throw new ClearCauseError('PROFILE_NOT_FOUND', 'User profile not found', 404);
     }
 
@@ -206,7 +231,7 @@ export const signIn = async (credentials: SignInData): Promise<ApiResponse<User>
           data: { session_timeout: 'session' }
         });
       } catch (updateError) {
-        console.warn('Failed to update session persistence:', updateError);
+        if (import.meta.env.DEV) console.warn('Failed to update session persistence:', updateError);
       }
     }
 
@@ -217,7 +242,7 @@ export const signIn = async (credentials: SignInData): Promise<ApiResponse<User>
         remember_me: rememberMe,
       });
     } catch (auditError) {
-      console.warn('Failed to log audit event:', auditError);
+      if (import.meta.env.DEV) console.warn('Failed to log audit event:', auditError);
     }
 
     console.debug('Sign in successful for user:', profileData.email);
@@ -237,7 +262,7 @@ export const signIn = async (credentials: SignInData): Promise<ApiResponse<User>
       message: 'Signed in successfully',
     };
   } catch (error) {
-    console.error('Sign in error:', error);
+    reportAuthError(error, { context: 'signin_general_error', email });
     
     if (error instanceof ClearCauseError) {
       return { success: false, error: error.message };
@@ -253,27 +278,13 @@ export const signIn = async (credentials: SignInData): Promise<ApiResponse<User>
 export const signOut = async (): Promise<ApiResponse<void>> => {
   try {
     console.debug('Starting signOut process...');
-    
-    // Try to log audit event, but don't let it block logout
-    try {
-      const currentUser = await getCurrentUser();
-      if (currentUser) {
-        // Don't await this - let it run in background
-        logAuditEvent(currentUser.id, 'USER_SIGNOUT', 'user', currentUser.id)
-          .catch(auditError => {
-            console.warn('Failed to log audit event for signout:', auditError);
-          });
-      }
-    } catch (getUserError) {
-      console.warn('Could not get current user for audit logging:', getUserError);
-    }
-    
-    // Always attempt to sign out regardless of audit logging
+
+    // Skip audit logging during logout to avoid getCurrentUser calls
     console.debug('Calling supabase.auth.signOut with global scope...');
     const { error } = await supabase.auth.signOut({ scope: 'global' });
     
     if (error) {
-      console.error('Supabase signOut error:', error);
+      reportAuthError(error, { context: 'supabase_signout' });
       // Don't throw error for common logout scenarios - still consider it successful
       if (error.message?.includes('session_not_found') || 
           error.message?.includes('invalid_session')) {
@@ -292,7 +303,7 @@ export const signOut = async (): Promise<ApiResponse<void>> => {
       message: 'Signed out successfully',
     };
   } catch (error) {
-    console.error('Sign out error:', error);
+    reportAuthError(error, { context: 'signout_general_error' });
     
     if (error instanceof ClearCauseError) {
       return { success: false, error: error.message };
@@ -300,7 +311,7 @@ export const signOut = async (): Promise<ApiResponse<void>> => {
     
     // For any other error, still consider logout successful from UX perspective
     // The auth state will be cleared by the calling code
-    console.warn('Treating logout as successful despite error');
+    if (import.meta.env.DEV) console.warn('Treating logout as successful despite error');
     return { 
       success: true, 
       message: 'Signed out successfully (with warnings)',
@@ -310,154 +321,252 @@ export const signOut = async (): Promise<ApiResponse<void>> => {
 };
 
 /**
- * Get current authenticated user with timeout
+ * Get current authenticated user with timeout and retries
  */
-export const getCurrentUserWithTimeout = async (timeoutMs: number = 3000): Promise<User | null> => {
-  const timeoutPromise = new Promise<null>((_, reject) => 
-    setTimeout(() => reject(new Error(`getCurrentUser timeout after ${timeoutMs}ms`)), timeoutMs)
-  );
-  
-  return Promise.race([getCurrentUser(), timeoutPromise]);
+export const getCurrentUserWithTimeout = async (timeoutMs: number = 10000): Promise<User | null> => {
+  const maxRetries = 3;
+  const retryDelay = 2000;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const timeoutPromise = new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error(`getCurrentUser timeout after ${timeoutMs}ms (attempt ${attempt})`)), timeoutMs)
+      );
+
+      const result = await Promise.race([getCurrentUser(), timeoutPromise]);
+      if (result) {
+        return result;
+      }
+    } catch (error) {
+      console.warn(`getCurrentUserWithTimeout attempt ${attempt} failed:`, error);
+
+      if (attempt === maxRetries) {
+        throw new Error(`Profile loading failed after ${maxRetries} attempts: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+    }
+  }
+
+  return null;
 };
 
 /**
- * Get current authenticated user
+ * Get current authenticated user (optimized version with profile creation fallback)
  */
 export const getCurrentUser = async (): Promise<User | null> => {
   try {
-    console.debug('getCurrentUser: Starting profile fetch...');
+    console.log('[getCurrentUser] Step 1: Getting auth user...');
+    // Get authenticated user from Supabase
     const { data: { user }, error } = await supabase.auth.getUser();
-    
+
     if (error || !user) {
-      console.debug('No authenticated user found');
+      console.log('[getCurrentUser] Step 1 failed: No auth user found');
       return null;
     }
 
-    console.debug('Found authenticated user, fetching profile:', user.id);
+    console.log('[getCurrentUser] Step 1 success: Auth user found:', user.id);
 
-    // Use maybeSingle to avoid 406 errors
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .maybeSingle();
+    // Special handling for RLS recursion issues
+    let profileData = null;
+    let profileError = null;
+
+    try {
+      console.log('[getCurrentUser] Step 2: Querying profile from database...');
+      // Query profile with a timeout
+      const profilePromise = supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Profile query timeout')), 3000)
+      );
+
+      console.log('[getCurrentUser] Step 2a: Starting profile query race...');
+      const result = await Promise.race([profilePromise, timeoutPromise]);
+      console.log('[getCurrentUser] Step 2b: Profile query completed');
+      profileData = result.data;
+      profileError = result.error;
+    } catch (raceError) {
+      // If we get recursion or timeout, try with service role
+      console.warn('[getCurrentUser] Step 2 failed - Profile query error:', raceError);
+
+      try {
+        // Use a simpler query that might bypass RLS issues
+        const { data: serviceData, error: serviceError } = await supabase
+          .rpc('get_user_profile_safe', { user_id: user.id });
+
+        if (!serviceError && serviceData) {
+          profileData = serviceData;
+        } else {
+          profileError = serviceError || raceError;
+        }
+      } catch (serviceRoleError) {
+        console.warn('[getCurrentUser] Service role query also failed:', serviceRoleError);
+        profileError = raceError;
+      }
+    }
 
     if (profileError) {
-      console.error('Profile query error:', profileError);
-      return null;
+      // If it's a recursion error, create a fallback profile from auth data
+      if (profileError.message?.includes('infinite recursion') ||
+          profileError.message?.includes('recursion detected')) {
+        console.warn('[getCurrentUser] RLS recursion detected, creating fallback profile');
+
+        // Return a profile based on auth user data
+        return {
+          id: user.id,
+          email: user.email || '',
+          fullName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          avatarUrl: user.user_metadata?.avatar_url || null,
+          role: (user.user_metadata?.role || 'donor') as 'donor' | 'charity' | 'admin',
+          isVerified: !!user.email_confirmed_at,
+          createdAt: user.created_at || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      throw new Error(`Profile query failed: ${profileError.message}`);
     }
 
-    // If no profile found, try to create it
-    if (!profileData) {
-      console.log('Profile not found, attempting to create one...');
-      
-      try {
-        const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .insert({
-              id: user.id,
-              email: user.email || '',
-              full_name: user.user_metadata?.full_name || 'Unknown User',
-              role: user.user_metadata?.role || 'donor',
-              is_verified: !!user.email_confirmed_at,
-              is_active: true,
-            })
-            .select()
-            .single();
+    // If profile exists, return it
+    if (profileData) {
+      return {
+        id: profileData.id,
+        email: profileData.email,
+        fullName: profileData.full_name,
+        avatarUrl: profileData.avatar_url,
+        role: profileData.role,
+        isVerified: profileData.is_verified,
+        createdAt: profileData.created_at,
+        updatedAt: profileData.updated_at,
+      };
+    }
 
-          if (createError) {
-            // If profile creation fails due to duplicate key, try to fetch existing profile
-            if (createError.code === '23505') { // duplicate key violation
-              console.log('Profile already exists, fetching existing profile...');
-              const { data: existingProfile, error: fetchError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', user.id)
-                .single();
-              
-              if (!fetchError && existingProfile) {
-                console.log('Found existing profile:', existingProfile.email);
-                return {
-                  id: existingProfile.id,
-                  email: existingProfile.email,
-                  fullName: existingProfile.full_name,
-                  avatarUrl: existingProfile.avatar_url,
-                  role: existingProfile.role,
-                  isVerified: existingProfile.is_verified,
-                  createdAt: existingProfile.created_at,
-                  updatedAt: existingProfile.updated_at,
-                };
-              }
+    // If no profile found, try to create one for the authenticated user
+    console.log('[getCurrentUser] No profile found, attempting to create one for user:', user.id);
+
+    try {
+      // Try using the database function first
+      const { data: functionResult, error: functionError } = await supabase
+        .rpc('ensure_user_profile', {
+          p_user_id: user.id,
+          p_email: user.email || '',
+          p_full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          p_role: (user.user_metadata?.role || 'donor')
+        });
+
+      if (functionError) {
+        console.warn('[getCurrentUser] Function failed, trying direct insert:', functionError);
+
+        // Fallback to direct insert
+        const { data: insertedProfile, error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email || '',
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+            role: user.user_metadata?.role || 'donor',
+            is_verified: !!user.email_confirmed_at,
+            is_active: true
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          // If it's a duplicate key error, try to fetch the existing profile
+          if (insertError.code === '23505') {
+            const { data: existingProfile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', user.id)
+              .single();
+
+            if (existingProfile) {
+              return {
+                id: existingProfile.id,
+                email: existingProfile.email,
+                fullName: existingProfile.full_name,
+                avatarUrl: existingProfile.avatar_url,
+                role: existingProfile.role,
+                isVerified: existingProfile.is_verified,
+                createdAt: existingProfile.created_at,
+                updatedAt: existingProfile.updated_at,
+              };
             }
-            console.error('Failed to create profile:', createError);
-            return null;
           }
-
-          console.log('Profile created successfully:', newProfile.email);
-          return {
-            id: newProfile.id,
-            email: newProfile.email,
-            fullName: newProfile.full_name,
-            avatarUrl: newProfile.avatar_url,
-            role: newProfile.role,
-            isVerified: newProfile.is_verified,
-            createdAt: newProfile.created_at,
-            updatedAt: newProfile.updated_at,
-          };
-        } catch (createError) {
-          console.error('Error creating profile:', createError);
-          return null;
+          throw insertError;
         }
+
+        return {
+          id: insertedProfile.id,
+          email: insertedProfile.email,
+          fullName: insertedProfile.full_name,
+          avatarUrl: insertedProfile.avatar_url,
+          role: insertedProfile.role,
+          isVerified: insertedProfile.is_verified,
+          createdAt: insertedProfile.created_at,
+          updatedAt: insertedProfile.updated_at,
+        };
       }
 
-    if (!profileData) {
-      console.error('No profile data returned');
+      // If function succeeded, fetch the created profile
+      const { data: createdProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (createdProfile) {
+        return {
+          id: createdProfile.id,
+          email: createdProfile.email,
+          fullName: createdProfile.full_name,
+          avatarUrl: createdProfile.avatar_url,
+          role: createdProfile.role,
+          isVerified: createdProfile.is_verified,
+          createdAt: createdProfile.created_at,
+          updatedAt: createdProfile.updated_at,
+        };
+      }
+    } catch (profileCreationError) {
+      console.error('[getCurrentUser] Failed to create profile:', profileCreationError);
+    }
+
+    // If all else fails, return null
+    return null;
+  } catch (error) {
+    console.error('getCurrentUser error:', error);
+    return null;
+  }
+};
+
+/**
+ * Get current user with simplified fallback (for emergency cases)
+ */
+export const getCurrentUserSimple = async (): Promise<User | null> => {
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+
+    if (error || !user) {
       return null;
     }
 
-    console.debug('Profile loaded successfully:', profileData.email);
-
+    // Return basic user info from auth data
     return {
-      id: profileData.id,
-      email: profileData.email,
-      fullName: profileData.full_name,
-      avatarUrl: profileData.avatar_url,
-      role: profileData.role,
-      isVerified: profileData.is_verified,
-      createdAt: profileData.created_at,
-      updatedAt: profileData.updated_at,
+      id: user.id,
+      email: user.email || '',
+      fullName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+      avatarUrl: user.user_metadata?.avatar_url || null,
+      role: (user.user_metadata?.role || 'donor') as 'donor' | 'charity' | 'admin',
+      isVerified: !!user.email_confirmed_at,
+      createdAt: user.created_at || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
   } catch (error) {
-    console.error('Get current user error:', error);
-    
-    // Emergency fallback: If we have a session but profile loading failed,
-    // try to get the user data from the session and create a basic profile
-    try {
-      console.warn('Profile loading failed, attempting emergency session-based profile creation...');
-      const { data: { user: sessionUser }, error: sessionError } = await supabase.auth.getUser();
-      
-      if (!sessionError && sessionUser) {
-        console.debug('Creating emergency profile from session data for user:', sessionUser.id);
-        
-        // Create a basic profile from session metadata
-        const emergencyProfile = {
-          id: sessionUser.id,
-          email: sessionUser.email || 'unknown@email.com',
-          fullName: sessionUser.user_metadata?.full_name || sessionUser.email?.split('@')[0] || 'User',
-          role: (sessionUser.user_metadata?.role || 'donor') as 'donor' | 'charity' | 'admin',
-          isVerified: !!sessionUser.email_confirmed_at,
-          createdAt: sessionUser.created_at || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          avatarUrl: sessionUser.user_metadata?.avatar_url || null,
-        };
-        
-        console.log('Emergency profile created from session:', emergencyProfile.email);
-        return emergencyProfile;
-      }
-    } catch (emergencyError) {
-      console.error('Emergency profile creation also failed:', emergencyError);
-    }
-    
+    console.error('getCurrentUserSimple error:', error);
     return null;
   }
 };
@@ -667,7 +776,7 @@ export const signInWithGoogle = async (): Promise<ApiResponse<void>> => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: import.meta.env.VITE_REDIRECT_URL || `${window.location.origin}/auth/callback`,
       },
     });
 

@@ -46,7 +46,7 @@ export const nonNegativeNumberSchema = z
 export const userRoleSchema = z.enum(['admin', 'charity', 'donor'] as const);
 export const campaignStatusSchema = z.enum(['draft', 'active', 'paused', 'completed', 'cancelled'] as const);
 export const donationStatusSchema = z.enum(['pending', 'completed', 'failed', 'refunded'] as const);
-export const verificationStatusSchema = z.enum(['pending', 'approved', 'rejected'] as const);
+export const verificationStatusSchema = z.enum(['pending', 'under_review', 'approved', 'rejected', 'resubmission_required'] as const);
 export const milestoneStatusSchema = z.enum(['pending', 'in_progress', 'completed', 'verified'] as const);
 
 // ===== AUTHENTICATION SCHEMAS =====

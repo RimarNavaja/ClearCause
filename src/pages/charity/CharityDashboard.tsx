@@ -249,8 +249,8 @@ const CharityDashboard: React.FC = () => {
                 Please complete the charity registration process to continue.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button asChild>
-                  <Link to="/charity/register">
+                  <Button asChild>
+                  <Link to="/signup/charity-application">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Register Charity
                   </Link>
