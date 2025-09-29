@@ -23,9 +23,9 @@ const ForCharities: React.FC = () => {
                 with our milestone-based funding platform.
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-4">
-                <Link to="/signup">
+                <Link to="/apply-to-cause">
                   <Button className="bg-clearcause-accent hover:bg-clearcause-accent/90 text-white font-medium px-8 py-6">
-                    Apply to Join
+                    Apply to Cause
                   </Button>
                 </Link>
                 <Link to="/how-it-works">
@@ -249,7 +249,7 @@ const ForCharities: React.FC = () => {
               <p className="text-gray-600 mb-6">
                 <strong>Total timeline:</strong> 7-12 business days from application to launch
               </p>
-              <Link to="/signup">
+              <Link to="/apply-to-cause">
                 <Button className="bg-clearcause-accent hover:bg-clearcause-accent/90 text-white font-medium px-8 py-6 flex items-center mx-auto">
                   Start Your Application
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -332,7 +332,7 @@ const ForCharities: React.FC = () => {
               reach more donors, and maximize their impact.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link to="/signup">
+              <Link to="/apply-to-cause">
                 <Button className="bg-clearcause-accent hover:bg-clearcause-accent/90 text-white font-medium px-8 py-6">
                   Apply Now
                 </Button>

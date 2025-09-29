@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtime } from '@/hooks/useRealtime';
 import { formatCurrency, getRelativeTime, calculateDaysLeft } from '@/utils/helpers';
-import { Campaign, CampaignStatus } from '@/lib/types';
+import { Campaign, CampaignStatus, RealtimePayload } from '@/lib/types';
 
 interface CampaignCardProps {
   campaign: Campaign;
@@ -30,10 +30,10 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   useEffect(() => {
     if (!showRealTimeUpdates) return;
 
-    const handleCampaignUpdate = (payload: any) => {
-      if (payload.new.id === campaign.id) {
-        const prevRaised = realtimeData.amountRaised;
-        const newRaised = payload.new.amount_raised;
+    const handleCampaignUpdate = (payload: RealtimePayload<Campaign>) => {
+      if (payload.new?.id === campaign.id) {
+        const prevRaised = realtimeData.currentAmount;
+        const newRaised = payload.new.currentAmount;
         
         // Animate if there's a donation
         if (newRaised > prevRaised) {
@@ -43,21 +43,21 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
 
         setRealtimeData(prev => ({
           ...prev,
-          amountRaised: newRaised,
-          donorCount: payload.new.donor_count,
-          updatedAt: payload.new.updated_at,
+          currentAmount: newRaised,
+          donorsCount: payload.new.donorsCount,
+          updatedAt: payload.new.updatedAt,
         }));
       }
     };
 
     const unsubscribeFn = subscribe('campaigns', handleCampaignUpdate);
     return unsubscribeFn;
-  }, [campaign.id, showRealTimeUpdates, subscribe, realtimeData.amountRaised]);
+  }, [campaign.id, showRealTimeUpdates, subscribe, realtimeData.currentAmount]);
 
-  const progressPercentage = Math.min((realtimeData.amountRaised / realtimeData.goalAmount) * 100, 100);
+  const progressPercentage = Math.min((realtimeData.currentAmount / realtimeData.goalAmount) * 100, 100);
   const daysLeft = calculateDaysLeft(realtimeData.endDate);
   const isExpired = daysLeft <= 0;
-  const isVerified = realtimeData.charity?.verificationStatus === 'verified';
+  const isVerified = realtimeData.charity?.verificationStatus === 'approved';
 
   const getStatusBadge = () => {
     switch (realtimeData.status) {
@@ -145,7 +145,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         
         <Link to={`/charities/${realtimeData.charity?.id}`} className="block">
           <p className="text-sm text-gray-600 mb-2 hover:text-gray-900 flex items-center">
-            <span>by {realtimeData.charity?.name}</span>
+            <span>by {realtimeData.charity?.organizationName}</span>
             {isVerified && <Check className="w-3 h-3 ml-1 text-green-600" />}
           </p>
         </Link>
@@ -170,18 +170,18 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           {/* Amount and Goal */}
           <div className="flex justify-between text-sm">
             <span className={`font-semibold ${isAnimating ? 'text-green-600' : ''}`}>
-              {formatCurrency(realtimeData.amountRaised)}
+              {formatCurrency(realtimeData.currentAmount)}
             </span>
             <span className="text-gray-500">
               of {formatCurrency(realtimeData.goalAmount)}
             </span>
           </div>
-          
+
           {/* Stats Row */}
           <div className="flex justify-between items-center border-t border-gray-100 pt-3">
             <div className="flex items-center text-sm text-gray-500">
               <Users size={14} className="mr-1" />
-              <span>{realtimeData.donorCount || 0} donors</span>
+              <span>{realtimeData.donorsCount || 0} donors</span>
             </div>
             
             {!isExpired ? (

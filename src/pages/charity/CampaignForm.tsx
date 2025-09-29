@@ -6,7 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import CharityLayout from '@/components/layout/CharityLayout';
+import * as campaignService from '@/services/campaignService';
+import { CampaignCreateData } from '@/lib/types';
 
 // TypeScript interfaces
 interface Milestone {
@@ -19,6 +23,8 @@ interface Milestone {
 const CampaignForm: React.FC = () => {
   const { campaignId } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user } = useAuth();
   const isEditMode = !!campaignId;
   const [currentStep, setCurrentStep] = useState(1);
   const [campaignImage, setCampaignImage] = useState<File | null>(null);
@@ -40,29 +46,51 @@ const CampaignForm: React.FC = () => {
 
   // For edit mode, fetch existing campaign data
   useEffect(() => {
-    if (isEditMode) {
-      // This would be an API call in a real application
-      // Simulating with timeout for demo purposes
-      setTimeout(() => {
-        setCampaignDetails({
-          title: 'Sample Existing Campaign',
-          description: 'This is a sample campaign description that would be loaded from an API in a real application.',
-          category: 'education',
-          goal: '200000',
-          endDate: '2025-12-31',
-        });
-        
-        setMilestones([
-          { id: '1', title: 'Initial Assessment', amount: 40000, evidenceDescription: 'Provide a detailed report with photographs' },
-          { id: '2', title: 'Purchase Materials', amount: 100000, evidenceDescription: 'Upload receipts and inventory list' },
-          { id: '3', title: 'Project Completion', amount: 60000, evidenceDescription: 'Final report with before/after photos' },
-        ]);
-        
-        // Mocking an image preview
-        setImagePreview('https://placehold.co/600x400/5B21B6/FFF?text=Sample+Campaign');
-      }, 500);
-    }
-  }, [isEditMode, campaignId]);
+    const loadCampaignData = async () => {
+      if (isEditMode && campaignId && user) {
+        try {
+          setLoading(true);
+          const result = await campaignService.getCampaignById(campaignId, true);
+
+          if (result.success && result.data) {
+            const campaign = result.data;
+
+            setCampaignDetails({
+              title: campaign.title,
+              description: campaign.description,
+              category: campaign.category || '',
+              goal: campaign.goalAmount.toString(),
+              endDate: campaign.endDate || '',
+            });
+
+            if (campaign.milestones) {
+              setMilestones(campaign.milestones.map((milestone, index) => ({
+                id: milestone.id || (index + 1).toString(),
+                title: milestone.title,
+                amount: milestone.targetAmount,
+                evidenceDescription: milestone.evidenceDescription || '',
+              })));
+            }
+
+            if (campaign.imageUrl) {
+              setImagePreview(campaign.imageUrl);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load campaign data:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load campaign data. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadCampaignData();
+  }, [isEditMode, campaignId, user, toast]);
 
   // Handle form field changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -107,24 +135,71 @@ const CampaignForm: React.FC = () => {
   };
 
   // Handle form submission
-  const handleSubmit = (isDraft: boolean = false) => {
+  const handleSubmit = async (isDraft: boolean = false) => {
     setLoading(true);
-    
-    // In a real app, this would be an API call to create/update the campaign
-    // TODO: Implement API call to create/update campaign
-    const campaignData = {
-      ...campaignDetails,
-      milestones,
-      isDraft,
-      campaignImage
-    };
-    
-    // Simulate API call
-    setTimeout(() => {
+
+    try {
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Map form data to API format
+      const campaignData: CampaignCreateData = {
+        title: campaignDetails.title,
+        description: campaignDetails.description,
+        goalAmount: Number(campaignDetails.goal),
+        imageFile: campaignImage || undefined,
+        endDate: campaignDetails.endDate || undefined,
+        category: campaignDetails.category || undefined,
+        milestones: milestones.map(milestone => ({
+          title: milestone.title,
+          description: milestone.evidenceDescription,
+          targetAmount: Number(milestone.amount),
+          evidenceDescription: milestone.evidenceDescription,
+        })),
+      };
+
+      if (isEditMode) {
+        // Update existing campaign
+        const result = await campaignService.updateCampaign(
+          campaignId!,
+          { ...campaignData, status: isDraft ? 'draft' : 'active' },
+          user.id
+        );
+
+        if (result.success) {
+          toast({
+            title: "Campaign Updated",
+            description: "Your campaign has been updated successfully.",
+          });
+          navigate('/charity/campaigns');
+        }
+      } else {
+        // Create new campaign
+        const result = await campaignService.createCampaign(campaignData, user.id);
+
+        if (result.success) {
+          toast({
+            title: isDraft ? "Draft Saved" : "Campaign Created",
+            description: isDraft
+              ? "Your campaign draft has been saved."
+              : "Your campaign has been submitted for review.",
+          });
+          navigate('/charity/campaigns');
+        }
+      }
+    } catch (error) {
+      console.error('Campaign submission error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error
+          ? error.message
+          : "Failed to save campaign. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setLoading(false);
-      navigate('/charity/campaigns');
-      // Show a success toast/notification here
-    }, 1500);
+    }
   };
 
   // Navigate between form steps

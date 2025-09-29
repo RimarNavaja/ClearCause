@@ -24,7 +24,7 @@ export const passwordSchema = z
 
 export const phoneSchema = z
   .string()
-  .regex(/^[\+]?[1-9][\d]{0,15}$/, 'Please enter a valid phone number')
+  .regex(/^[+]?[1-9][\d]{0,15}$/, 'Please enter a valid phone number')
   .optional();
 
 export const urlSchema = z
@@ -80,6 +80,34 @@ export const updatePasswordSchema = z.object({
 export const updateProfileSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100, 'Full name is too long').optional(),
   avatarUrl: urlSchema,
+});
+
+export const donorProfileSchema = z.object({
+  fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100, 'Full name is too long'),
+  email: emailSchema,
+  phone: phoneSchema,
+  isAnonymous: z.boolean().optional(),
+});
+
+export const charityProfileSchema = z.object({
+  organizationName: z.string().min(2, 'Organization name must be at least 2 characters').max(200, 'Organization name is too long'),
+  description: z.string().min(10, 'Description must be at least 10 characters').max(2000, 'Description is too long'),
+  websiteUrl: urlSchema,
+  contactEmail: emailSchema,
+  contactPhone: phoneSchema,
+  address: z.string().min(10, 'Address must be at least 10 characters').max(500, 'Address is too long'),
+  registrationNumber: z.string().min(1, 'Registration number is required').max(50, 'Registration number is too long'),
+  contactPersonName: z.string().min(2, 'Contact person name must be at least 2 characters').max(100, 'Contact person name is too long'),
+  contactPersonEmail: emailSchema,
+  contactPersonPhone: phoneSchema,
+});
+
+export const adminProfileSchema = z.object({
+  fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100, 'Full name is too long'),
+  email: emailSchema,
+  phone: phoneSchema,
+  department: z.string().min(2, 'Department must be at least 2 characters').max(100, 'Department is too long').optional(),
+  position: z.string().min(2, 'Position must be at least 2 characters').max(100, 'Position is too long').optional(),
 });
 
 // ===== CHARITY SCHEMAS =====

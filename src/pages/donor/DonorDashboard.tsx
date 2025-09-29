@@ -36,7 +36,6 @@ const DonorDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      console.log('[DonorDashboard] Loading data for user:', user.id);
 
       // Load donor statistics
       const statsResult = await donationService.getDonorStatistics(user.id);
@@ -45,9 +44,9 @@ const DonorDashboard: React.FC = () => {
       }
 
       // Load recent donations
-      const donationsResult = await donationService.getDonationsByDonor(user.id, { limit: 5 });
+      const donationsResult = await donationService.getDonationsByDonor(user.id, { limit: 5, page: 1 }, user.id);
       if (donationsResult.success && donationsResult.data) {
-        setRecentDonations(donationsResult.data.donations);
+        setRecentDonations(donationsResult.data);
       }
 
       // Load impact updates from supported campaigns
@@ -103,7 +102,7 @@ const DonorDashboard: React.FC = () => {
         }
       });
     };
-  }, [user, subscribe, recentDonations]);
+  }, [user?.id, subscribe, recentDonations]);
 
   // Initial data load - only when user is fully loaded
   useEffect(() => {
@@ -122,7 +121,7 @@ const DonorDashboard: React.FC = () => {
         setError(userValidation.error);
       }
     }
-  }, [user]);
+  }, [user?.id]);
 
   // Get donation status badge
   const getDonationStatusBadge = (status: string) => {

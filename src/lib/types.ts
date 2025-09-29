@@ -5,7 +5,7 @@
 
 // ===== ENUMS =====
 export type UserRole = 'admin' | 'charity' | 'donor';
-export type CampaignStatus = 'draft' | 'active' | 'paused' | 'completed' | 'cancelled';
+export type CampaignStatus = 'draft' | 'pending' | 'active' | 'paused' | 'completed' | 'cancelled';
 export type DonationStatus = 'pending' | 'completed' | 'failed' | 'refunded';
 export type VerificationStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'resubmission_required';
 export type MilestoneStatus = 'pending' | 'in_progress' | 'completed' | 'verified';
@@ -531,6 +531,28 @@ export class ClearCauseError extends Error {
     this.statusCode = statusCode;
     this.details = details;
   }
+}
+
+// ===== ADMIN TYPES =====
+export interface PlatformStatistics {
+  totalUsers: number;
+  totalCharities: number;
+  totalCampaigns: number;
+  totalDonations: number;
+  totalAmountRaised: number;
+  activeUsers: number;
+  activeCampaigns: number;
+  pendingVerifications: number;
+}
+
+export interface RecentActivity {
+  id: string;
+  type: 'user_signup' | 'donation' | 'campaign_created' | 'verification' | 'other';
+  title: string;
+  description: string;
+  timestamp: string;
+  userId?: string;
+  userName?: string;
 }
 
 // ===== UTILITY TYPES =====

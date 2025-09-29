@@ -206,24 +206,34 @@ export const getCharityById = withErrorHandling(async (
 export const getCharityByUserId = withErrorHandling(async (
   userId: string
 ): Promise<ApiResponse<CharityOrganization | null>> => {
-  // Use maybeSingle() to avoid 406 errors when no rows are found
-  const { data, error } = await supabase
-    .from('charities')
-    .select(`
-      *,
-      profiles:user_id (
-        id,
-        email,
-        full_name,
-        avatar_url,
-        role,
-        is_verified,
-        created_at,
-        updated_at
-      )
-    `)
-    .eq('user_id', userId)
-    .maybeSingle();
+  // Add timeout to prevent hanging during auth transitions
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('getCharityByUserId timeout - charity not found')), 1000);
+  });
+
+  const charityPromise = (async () => {
+    if (!userId || userId === 'undefined' || userId === 'null' || userId === undefined || userId === null || typeof userId !== 'string' || userId.trim() === '') {
+      throw new ClearCauseError('INVALID_USER_ID', 'Invalid user ID provided', 400);
+    }
+
+    // Use maybeSingle() to avoid 406 errors when no rows are found
+    const { data, error } = await supabase
+      .from('charities')
+      .select(`
+        *,
+        profiles:user_id (
+          id,
+          email,
+          full_name,
+          avatar_url,
+          role,
+          is_verified,
+          created_at,
+          updated_at
+        )
+      `)
+      .eq('user_id', userId)
+      .maybeSingle();
 
   if (error) {
     console.error('Error fetching charity by user ID:', error);
@@ -259,6 +269,10 @@ export const getCharityByUserId = withErrorHandling(async (
       updatedAt: data.profiles.updated_at,
     } : undefined,
   });
+  })();
+
+  // Race between the actual function and timeout
+  return await Promise.race([charityPromise, timeoutPromise]);
 });
 
 /**
@@ -717,4 +731,67 @@ export const deleteCharity = withErrorHandling(async (
   }
 
   return createSuccessResponse(undefined, 'Charity organization deleted successfully');
+});
+
+/**
+ * Upload charity organization logo
+ */
+export const uploadCharityLogo = withErrorHandling(async (
+  charityId: string,
+  logoFile: File,
+  currentUserId: string
+): Promise<ApiResponse<{ logoUrl: string }>> => {
+  // Get charity to check ownership
+  const charityResult = await getCharityById(charityId);
+  if (!charityResult.success || !charityResult.data) {
+    throw new ClearCauseError('NOT_FOUND', 'Charity organization not found', 404);
+  }
+
+  const charity = charityResult.data;
+
+  // Check if user can update this charity
+  if (charity.userId !== currentUserId) {
+    const currentUser = await getUserProfile(currentUserId);
+    if (!currentUser.success || currentUser.data?.role !== 'admin') {
+      throw new ClearCauseError('FORBIDDEN', 'You can only update your own charity logo', 403);
+    }
+  }
+
+  // Validate file
+  const maxSize = 2 * 1024 * 1024; // 2MB
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+  if (logoFile.size > maxSize) {
+    throw new ClearCauseError('FILE_TOO_LARGE', 'Logo file size cannot exceed 2MB', 413);
+  }
+
+  if (!allowedTypes.includes(logoFile.type)) {
+    throw new ClearCauseError('INVALID_FILE_TYPE', 'Logo must be a JPEG, PNG, or WebP image', 400);
+  }
+
+  // Upload file
+  const filePath = `charity-logos/${charityId}-${Date.now()}`;
+  const { url: logoUrl, error: uploadError } = await uploadFile('logos', filePath, logoFile);
+
+  if (uploadError || !logoUrl) {
+    throw new ClearCauseError('UPLOAD_FAILED', uploadError || 'Logo upload failed', 500);
+  }
+
+  // Update charity profile with new logo URL
+  const { error: updateError } = await supabase
+    .from('charities')
+    .update({
+      logo_url: logoUrl,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', charityId);
+
+  if (updateError) {
+    throw handleSupabaseError(updateError);
+  }
+
+  // Log audit event
+  await logAuditEvent(currentUserId, 'CHARITY_LOGO_UPDATE', 'charity', charityId, { logoUrl });
+
+  return createSuccessResponse({ logoUrl }, 'Logo updated successfully');
 });

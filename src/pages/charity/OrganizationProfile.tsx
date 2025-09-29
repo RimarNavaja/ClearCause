@@ -1,18 +1,21 @@
 
-import React, { useState } from 'react';
-import { 
-  Building, 
-  FileText, 
-  Globe, 
-  Mail, 
-  MapPin, 
-  Phone, 
-  PlusCircle, 
-  Save, 
-  Upload, 
+import React, { useState, useEffect } from 'react';
+import {
+  Building,
+  FileText,
+  Globe,
+  Mail,
+  MapPin,
+  Phone,
+  PlusCircle,
+  Save,
+  Upload,
   User
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import CharityLayout from '@/components/layout/CharityLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +23,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import ProfileImageUpload from '@/components/ui/ProfileImageUpload';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import * as charityService from '@/services/charityService';
+import { CharityRegistrationData } from '@/lib/types';
+import { charityProfileSchema } from '@/utils/validation';
+
+// Form schema
+const formSchema = charityProfileSchema;
+type FormData = z.infer<typeof formSchema>;
 
 interface DocumentFile {
   id: string;
@@ -66,64 +80,144 @@ const SAMPLE_DOCUMENTS: DocumentFile[] = [
 ];
 
 const OrganizationProfile: React.FC = () => {
-  const [orgInfo, setOrgInfo] = useState({
-    name: 'Water For All Foundation',
-    regNumber: 'SEC-123456789',
-    taxId: 'TIN-987654321',
-    mission: 'Water For All Foundation is committed to providing clean, safe drinking water to communities in need around the world. We believe that access to clean water is a fundamental human right that plays a critical role in public health, education, and economic development.',
-    address: {
-      street: '123 Clean Water St.',
-      city: 'Makati City',
-      province: 'Metro Manila',
-      postalCode: '1200'
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [charityId, setCharityId] = useState<string | null>(null);
+
+  const [charityData, setCharityData] = useState<any>(null);
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      organizationName: '',
+      description: '',
+      websiteUrl: '',
+      contactEmail: '',
+      contactPhone: '',
+      address: '',
+      registrationNumber: '',
+      contactPersonName: '',
+      contactPersonEmail: '',
+      contactPersonPhone: '',
     },
-    website: 'https://waterforall.org',
-    email: 'info@waterforall.org',
-    phone: '+63 2 8123 4567'
   });
 
-  const [contactPerson, setContactPerson] = useState({
-    name: 'Juan Dela Cruz',
-    email: 'juan@waterforall.org',
-    phone: '+63 917 123 4567'
-  });
-  
   const [documents, setDocuments] = useState<DocumentFile[]>(SAMPLE_DOCUMENTS);
-  
-  const handleOrgInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      setOrgInfo(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent as keyof typeof prev] as object,
-          [child]: value
+
+  // Load existing charity data
+  useEffect(() => {
+    const loadCharityData = async () => {
+      if (!user) return;
+
+      try {
+        setLoading(true);
+        const result = await charityService.getCharityByUserId(user.id);
+
+        if (result.success && result.data) {
+          const charity = result.data;
+          setCharityId(charity.id);
+          setCharityData(charity);
+
+          // Parse address components if needed
+          const addressParts = charity.address ? charity.address.split(', ') : ['', '', '', ''];
+
+          form.reset({
+            organizationName: charity.organizationName || '',
+            description: charity.description || '',
+            websiteUrl: charity.websiteUrl || '',
+            contactEmail: charity.user?.email || '',
+            contactPhone: charity.phone || '',
+            address: charity.address || '',
+            registrationNumber: charity.registrationNumber || '',
+            contactPersonName: charity.user?.fullName || '',
+            contactPersonEmail: charity.user?.email || '',
+            contactPersonPhone: charity.phone || '',
+          });
         }
-      }));
-    } else {
-      setOrgInfo(prev => ({
-        ...prev,
-        [name]: value
-      }));
+      } catch (error) {
+        console.error('Failed to load charity data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load organization data. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCharityData();
+  }, [user, toast, form]);
+
+  const handleSaveChanges = async (data: FormData) => {
+    if (!user || !charityId) {
+      toast({
+        title: "Error",
+        description: "You must be logged in with a charity organization to save changes.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Map form data to API format
+      const updateData: Partial<CharityRegistrationData> = {
+        organizationName: data.organizationName,
+        description: data.description,
+        websiteUrl: data.websiteUrl,
+        phone: data.contactPhone,
+        address: data.address,
+        registrationNumber: data.registrationNumber
+      };
+
+      const result = await charityService.updateCharity(charityId, updateData, user.id);
+
+      if (result.success) {
+        setCharityData(result.data);
+        toast({
+          title: "Success",
+          description: "Organization profile updated successfully.",
+        });
+      }
+    } catch (error) {
+      console.error('Failed to save organization profile:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error
+          ? error.message
+          : "Failed to save organization profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
-  
-  const handleContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setContactPerson(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-  
-  const handleSaveChanges = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Here you would submit the changes to the backend
-    // TODO: Implement API call to save organization profile
-    // Show success message
-    alert('Profile changes saved successfully');
+
+  const handleLogoUpload = async (file: File) => {
+    if (!user || !charityId) {
+      return { success: false, error: 'User not authenticated or charity not found' };
+    }
+
+    try {
+      const result = await charityService.uploadCharityLogo(charityId, file, user.id);
+
+      if (result.success && result.data) {
+        // Update local charity state
+        setCharityData((prev: any) => ({
+          ...prev,
+          logoUrl: result.data?.logoUrl,
+        }));
+        return { success: true, url: result.data.logoUrl };
+      } else {
+        return { success: false, error: result.error || 'Upload failed' };
+      }
+    } catch (error) {
+      console.error('Logo upload error:', error);
+      return { success: false, error: 'Upload failed' };
+    }
   };
   
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,193 +238,246 @@ const OrganizationProfile: React.FC = () => {
     }
   };
   
+  if (loading && !charityData) {
+    return (
+      <CharityLayout title="Organization Profile">
+        <div className="flex items-center justify-center min-h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-clearcause-primary mx-auto mb-4"></div>
+            <p className="text-gray-500">Loading organization profile...</p>
+          </div>
+        </div>
+      </CharityLayout>
+    );
+  }
+
   return (
     <CharityLayout title="Organization Profile">
-      <form onSubmit={handleSaveChanges} className="space-y-8">
-        {/* Organization Information Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building className="h-5 w-5" />
-              Organization Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Organization Name</Label>
-                <Input 
-                  id="name" 
-                  name="name" 
-                  value={orgInfo.name} 
-                  onChange={handleOrgInfoChange} 
-                  placeholder="Organization Name"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="regNumber">Registration Number</Label>
-                <Input 
-                  id="regNumber" 
-                  name="regNumber" 
-                  value={orgInfo.regNumber} 
-                  onChange={handleOrgInfoChange} 
-                  placeholder="e.g., SEC Registration Number"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="taxId">Tax Identification Number</Label>
-                <Input 
-                  id="taxId" 
-                  name="taxId" 
-                  value={orgInfo.taxId} 
-                  onChange={handleOrgInfoChange} 
-                  placeholder="e.g., BIR TIN"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="website">Organization Website</Label>
-                <Input 
-                  id="website" 
-                  name="website" 
-                  value={orgInfo.website} 
-                  onChange={handleOrgInfoChange} 
-                  placeholder="e.g., https://example.org"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="email">Organization Email</Label>
-                <Input 
-                  id="email" 
-                  name="email" 
-                  type="email" 
-                  value={orgInfo.email} 
-                  onChange={handleOrgInfoChange} 
-                  placeholder="e.g., info@example.org"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="phone">Organization Phone</Label>
-                <Input 
-                  id="phone" 
-                  name="phone" 
-                  value={orgInfo.phone} 
-                  onChange={handleOrgInfoChange} 
-                  placeholder="e.g., +63 2 8123 4567"
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="mission">Mission Statement / About Us</Label>
-              <Textarea 
-                id="mission" 
-                name="mission" 
-                value={orgInfo.mission} 
-                onChange={handleOrgInfoChange} 
-                placeholder="Describe your organization's mission and purpose"
-                rows={4}
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="address.street">Street Address</Label>
-                <Input 
-                  id="address.street" 
-                  name="address.street" 
-                  value={orgInfo.address.street} 
-                  onChange={handleOrgInfoChange} 
-                  placeholder="Street Address"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="address.city">City</Label>
-                <Input 
-                  id="address.city" 
-                  name="address.city" 
-                  value={orgInfo.address.city} 
-                  onChange={handleOrgInfoChange} 
-                  placeholder="City"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="address.province">Province/Region</Label>
-                <Input 
-                  id="address.province" 
-                  name="address.province" 
-                  value={orgInfo.address.province} 
-                  onChange={handleOrgInfoChange} 
-                  placeholder="Province or Region"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="address.postalCode">Postal Code</Label>
-                <Input 
-                  id="address.postalCode" 
-                  name="address.postalCode" 
-                  value={orgInfo.address.postalCode} 
-                  onChange={handleOrgInfoChange} 
-                  placeholder="Postal Code"
-                />
-              </div>
-            </div>
-          </CardContent>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* Logo Upload Section */}
+        <div className="lg:col-span-1">
+          <ProfileImageUpload
+            currentImageUrl={charityData?.logoUrl}
+            onImageUpload={handleLogoUpload}
+            fallbackText={charityData?.organizationName ? charityData.organizationName.split(' ').map((n: string) => n[0]).join('').toUpperCase() : 'ORG'}
+            imageType="logo"
+            size="lg"
+          />
+        </div>
+
+        {/* Form Section */}
+        <div className="lg:col-span-3">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSaveChanges)} className="space-y-8">
+              {/* Organization Information Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    Organization Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="organizationName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Organization Name</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="Organization Name"
+                              disabled={loading}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="registrationNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Registration Number</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="e.g., SEC Registration Number"
+                              disabled={loading}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="websiteUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Organization Website</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="e.g., https://example.org"
+                              disabled={loading}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="contactEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Organization Email</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="email"
+                              placeholder="e.g., info@example.org"
+                              disabled={loading}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="contactPhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Organization Phone</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="e.g., +63 2 8123 4567"
+                              disabled={loading}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mission Statement / About Us</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            placeholder="Describe your organization's mission and purpose"
+                            rows={4}
+                            disabled={loading}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Complete Address</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            placeholder="Complete organization address (Street, City, Province, Postal Code)"
+                            rows={3}
+                            disabled={loading}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
         </Card>
         
-        {/* Primary Contact Person Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Primary Contact Person
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="contactName">Full Name</Label>
-                <Input 
-                  id="contactName" 
-                  name="name" 
-                  value={contactPerson.name} 
-                  onChange={handleContactChange} 
-                  placeholder="Contact Person's Name"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="contactEmail">Email Address</Label>
-                <Input 
-                  id="contactEmail" 
-                  name="email" 
-                  type="email" 
-                  value={contactPerson.email} 
-                  onChange={handleContactChange} 
-                  placeholder="Contact Person's Email"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="contactPhone">Phone Number</Label>
-                <Input 
-                  id="contactPhone" 
-                  name="phone" 
-                  value={contactPerson.phone} 
-                  onChange={handleContactChange} 
-                  placeholder="Contact Person's Phone"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              {/* Primary Contact Person Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Primary Contact Person
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="contactPersonName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="Contact Person's Name"
+                              disabled={loading}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="contactPersonEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email Address</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="email"
+                              placeholder="Contact Person's Email"
+                              disabled={loading}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="contactPersonPhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone Number</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="Contact Person's Phone"
+                              disabled={loading}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
         
         {/* Verification Documents Card */}
         <Card>
@@ -396,14 +543,25 @@ const OrganizationProfile: React.FC = () => {
           </CardContent>
         </Card>
         
-        {/* Save Button */}
-        <div className="flex justify-end">
-          <Button type="submit" className="min-w-[120px]">
-            <Save className="h-4 w-4 mr-1" />
-            Save Changes
-          </Button>
+              {/* Save Button */}
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => form.reset()}
+                  disabled={loading}
+                >
+                  Reset Changes
+                </Button>
+                <Button type="submit" className="min-w-[120px]" disabled={loading}>
+                  <Save className="h-4 w-4 mr-1" />
+                  {loading ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </div>
-      </form>
+      </div>
     </CharityLayout>
   );
 };

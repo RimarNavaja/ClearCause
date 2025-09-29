@@ -4,6 +4,8 @@
  */
 
 import { supabase, uploadFile } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+import { config } from '../lib/config';
 import { User, ApiResponse, PaginatedResponse, PaginationParams, UserRole, ClearCauseError } from '../lib/types';
 import { validateData, updateProfileSchema, paginationSchema } from '../utils/validation';
 import { withErrorHandling, handleSupabaseError, createSuccessResponse } from '../utils/errors';
@@ -14,7 +16,13 @@ import { logAuditEvent } from './adminService';
  * Get user profile by ID
  */
 export const getUserProfile = withErrorHandling(async (userId: string): Promise<ApiResponse<User>> => {
-  if (!userId || userId === 'undefined' || userId === 'null') {
+  // Add timeout to prevent hanging - shorter timeout since fallback works
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('getUserProfile timeout - using fallback')), 1000);
+  });
+
+  const profilePromise = (async () => {
+  if (!userId || userId === 'undefined' || userId === 'null' || userId === undefined || userId === null || typeof userId !== 'string' || userId.trim() === '') {
     throw new ClearCauseError('INVALID_USER_ID', 'Invalid user ID provided', 400);
   }
 
@@ -44,6 +52,10 @@ export const getUserProfile = withErrorHandling(async (userId: string): Promise<
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   });
+  })();
+
+  // Race between the actual function and timeout
+  return await Promise.race([profilePromise, timeoutPromise]);
 });
 
 /**
@@ -225,7 +237,7 @@ export const getUserDonationHistory = withErrorHandling(async (
   const { count, error: countError } = await supabase
     .from('donations')
     .select('*', { count: 'exact', head: true })
-    .eq('donor_id', userId);
+    .eq('user_id', userId);
 
   if (countError) {
     throw handleSupabaseError(countError);

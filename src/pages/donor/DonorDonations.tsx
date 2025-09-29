@@ -52,7 +52,10 @@ const DonorDonations: React.FC = () => {
 
   // Load donations
   const loadDonations = async () => {
-    if (!user) return;
+    if (!user?.id || !user.email || typeof user.id !== 'string') {
+      console.log('[DonorDonations] User not fully available yet, skipping donations load');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -66,7 +69,7 @@ const DonorDonations: React.FC = () => {
         limit: 10,
       };
 
-      const result = await donationService.getDonationsByDonor(user.id, filters);
+      const result = await donationService.getDonationsByDonor(user.id, filters, user.id);
 
       if (result.success && result.data) {
         setDonations(result.data);
@@ -95,7 +98,7 @@ const DonorDonations: React.FC = () => {
     if (!user) return;
 
     const unsubscribeFn = subscribe('donations', (payload) => {
-      if (payload.new && payload.new.donor_id === user.id) {
+      if (payload.new && payload.new.user_id === user.id) {
         // Update donation in list
         setDonations(prev => {
           const existingIndex = prev.findIndex(d => d.id === payload.new.id);

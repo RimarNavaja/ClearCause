@@ -1,5 +1,6 @@
 -- ClearCause Database Schema for Supabase
 -- Run this script in your Supabase SQL Editor to set up the complete database schema
+-- Updated for GitHub release - Compatible with TypeScript types
 
 -- Enable necessary extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -12,13 +13,13 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TYPE user_role AS ENUM ('admin', 'charity', 'donor');
 
 -- Campaign status enum  
-CREATE TYPE campaign_status AS ENUM ('draft', 'active', 'paused', 'completed', 'cancelled');
+CREATE TYPE campaign_status AS ENUM ('draft', 'pending', 'active', 'paused', 'completed', 'cancelled');
 
 -- Donation status enum
 CREATE TYPE donation_status AS ENUM ('pending', 'completed', 'failed', 'refunded');
 
 -- Verification status enum
-CREATE TYPE verification_status AS ENUM ('pending', 'approved', 'rejected');
+CREATE TYPE verification_status AS ENUM ('pending', 'under_review', 'approved', 'rejected', 'resubmission_required');
 
 -- Milestone status enum
 CREATE TYPE milestone_status AS ENUM ('pending', 'in_progress', 'completed', 'verified');
@@ -48,20 +49,12 @@ CREATE TABLE public.charities (
   organization_name TEXT NOT NULL,
   organization_type TEXT,
   description TEXT,
-  website TEXT,
+  website_url TEXT,
   logo_url TEXT,
   contact_email TEXT,
   contact_phone TEXT,
-  address_line1 TEXT,
-  address_line2 TEXT,
-  city TEXT,
-  state TEXT,
-  country TEXT,
-  postal_code TEXT,
-  tax_id TEXT,
-  registration_number TEXT,
-  is_verified BOOLEAN NOT NULL DEFAULT false,
-  verification_date TIMESTAMP WITH TIME ZONE,
+  address TEXT,
+  verification_status verification_status NOT NULL DEFAULT 'pending',
   verification_notes TEXT,
   transparency_score INTEGER DEFAULT 0,
   total_raised DECIMAL(12,2) DEFAULT 0,
@@ -93,14 +86,10 @@ CREATE TABLE public.donations (
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
   campaign_id UUID REFERENCES public.campaigns(id) ON DELETE CASCADE NOT NULL,
   amount DECIMAL(12,2) NOT NULL,
+  payment_method TEXT NOT NULL,
+  transaction_id TEXT,
   status donation_status NOT NULL DEFAULT 'pending',
-  payment_method TEXT,
-  payment_provider TEXT,
-  payment_id TEXT,
-  is_anonymous BOOLEAN NOT NULL DEFAULT false,
-  donated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+  donated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- Milestones table
@@ -122,17 +111,42 @@ CREATE TABLE public.milestones (
 CREATE TABLE public.milestone_proofs (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   milestone_id UUID REFERENCES public.milestones(id) ON DELETE CASCADE NOT NULL,
-  title TEXT NOT NULL,
+  proof_url TEXT NOT NULL,
   description TEXT,
-  proof_type TEXT NOT NULL,
-  file_url TEXT,
-  status verification_status NOT NULL DEFAULT 'pending',
   submitted_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  reviewed_at TIMESTAMP WITH TIME ZONE,
-  reviewed_by UUID REFERENCES public.profiles(id),
-  verification_notes TEXT,
+  verified_by UUID REFERENCES public.profiles(id),
+  verification_status verification_status NOT NULL DEFAULT 'pending',
+  verification_notes TEXT
+);
+
+-- Campaign updates table (for impact posts and updates)
+CREATE TABLE public.campaign_updates (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  campaign_id UUID REFERENCES public.campaigns(id) ON DELETE CASCADE NOT NULL,
+  charity_id UUID REFERENCES public.charities(id) ON DELETE CASCADE NOT NULL,
+  created_by UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  update_type TEXT NOT NULL CHECK (update_type IN ('milestone', 'impact', 'general')),
+  milestone_id UUID REFERENCES public.milestones(id) ON DELETE SET NULL,
+  image_url TEXT,
+  status TEXT NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published', 'archived')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Campaign approvals table (for approval workflow tracking)
+CREATE TABLE public.campaign_approvals (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  campaign_id UUID REFERENCES public.campaigns(id) ON DELETE CASCADE NOT NULL,
+  admin_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  action TEXT NOT NULL CHECK (action IN ('approved', 'rejected', 'revision_requested')),
+  reason TEXT,
+  suggestions TEXT,
+  approved_at TIMESTAMP WITH TIME ZONE,
+  rejected_at TIMESTAMP WITH TIME ZONE,
+  requested_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- Audit logs table
@@ -159,7 +173,7 @@ CREATE INDEX idx_profiles_is_verified ON public.profiles(is_verified);
 
 -- Charities indexes
 CREATE INDEX idx_charities_user_id ON public.charities(user_id);
-CREATE INDEX idx_charities_is_verified ON public.charities(is_verified);
+CREATE INDEX idx_charities_verification_status ON public.charities(verification_status);
 CREATE INDEX idx_charities_organization_name ON public.charities(organization_name);
 
 -- Campaigns indexes
@@ -188,6 +202,20 @@ CREATE INDEX idx_audit_logs_user_id ON public.audit_logs(user_id);
 CREATE INDEX idx_audit_logs_action ON public.audit_logs(action);
 CREATE INDEX idx_audit_logs_entity_type ON public.audit_logs(entity_type);
 CREATE INDEX idx_audit_logs_created_at ON public.audit_logs(created_at);
+
+-- Campaign updates indexes
+CREATE INDEX idx_campaign_updates_campaign_id ON public.campaign_updates(campaign_id);
+CREATE INDEX idx_campaign_updates_charity_id ON public.campaign_updates(charity_id);
+CREATE INDEX idx_campaign_updates_created_by ON public.campaign_updates(created_by);
+CREATE INDEX idx_campaign_updates_status ON public.campaign_updates(status);
+CREATE INDEX idx_campaign_updates_update_type ON public.campaign_updates(update_type);
+CREATE INDEX idx_campaign_updates_created_at ON public.campaign_updates(created_at);
+
+-- Campaign approvals indexes
+CREATE INDEX idx_campaign_approvals_campaign_id ON public.campaign_approvals(campaign_id);
+CREATE INDEX idx_campaign_approvals_admin_id ON public.campaign_approvals(admin_id);
+CREATE INDEX idx_campaign_approvals_action ON public.campaign_approvals(action);
+CREATE INDEX idx_campaign_approvals_created_at ON public.campaign_approvals(created_at);
 
 -- =====================================================
 -- FUNCTIONS AND TRIGGERS
@@ -258,9 +286,8 @@ CREATE TRIGGER on_auth_user_confirmed
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
 CREATE TRIGGER update_charities_updated_at BEFORE UPDATE ON public.charities FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
 CREATE TRIGGER update_campaigns_updated_at BEFORE UPDATE ON public.campaigns FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
-CREATE TRIGGER update_donations_updated_at BEFORE UPDATE ON public.donations FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
 CREATE TRIGGER update_milestones_updated_at BEFORE UPDATE ON public.milestones FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
-CREATE TRIGGER update_milestone_proofs_updated_at BEFORE UPDATE ON public.milestone_proofs FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
+CREATE TRIGGER update_campaign_updates_updated_at BEFORE UPDATE ON public.campaign_updates FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
 
 -- =====================================================
 -- ROW LEVEL SECURITY (RLS)
@@ -273,6 +300,8 @@ ALTER TABLE public.campaigns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.donations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.milestones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.milestone_proofs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.campaign_updates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.campaign_approvals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
@@ -282,7 +311,7 @@ CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR 
 
 -- Charities policies
 CREATE POLICY "Charities can manage their own organization" ON public.charities FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "Public can view verified charities" ON public.charities FOR SELECT USING (is_verified = true);
+CREATE POLICY "Public can view verified charities" ON public.charities FOR SELECT USING (verification_status = 'approved');
 
 -- Campaigns policies
 CREATE POLICY "Public can view active campaigns" ON public.campaigns FOR SELECT USING (status = 'active');
@@ -334,18 +363,45 @@ CREATE POLICY "Charities can manage proofs for their milestones" ON public.miles
   )
 );
 
+-- Campaign updates policies
+CREATE POLICY "Public can view published campaign updates" ON public.campaign_updates FOR SELECT USING (status = 'published');
+CREATE POLICY "Charities can manage updates for their campaigns" ON public.campaign_updates FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.charities
+    WHERE charities.id = campaign_updates.charity_id
+    AND charities.user_id = auth.uid()
+  )
+);
+
+-- Campaign approvals policies
+CREATE POLICY "Admins can manage all campaign approvals" ON public.campaign_approvals FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE profiles.id = auth.uid()
+    AND profiles.role = 'admin'
+  )
+);
+CREATE POLICY "Charities can view approvals for their campaigns" ON public.campaign_approvals FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.campaigns
+    JOIN public.charities ON campaigns.charity_id = charities.id
+    WHERE campaigns.id = campaign_approvals.campaign_id
+    AND charities.user_id = auth.uid()
+  )
+);
+
 -- Audit logs policies
 CREATE POLICY "Users can view their own audit logs" ON public.audit_logs FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "System can insert audit logs" ON public.audit_logs FOR INSERT WITH CHECK (true);
 
 -- =====================================================
--- SAMPLE DATA (Optional - Remove in production)
+-- ADMIN SETUP INSTRUCTIONS
 -- =====================================================
 
--- Insert a sample admin user (you can remove this in production)
--- Note: You'll need to create this user through Supabase Auth first, then update their profile
--- INSERT INTO public.profiles (id, email, full_name, role, is_verified, is_active)
--- VALUES ('00000000-0000-0000-0000-000000000000', 'admin@clearcause.com', 'Admin User', 'admin', true, true);
+-- To create an admin user:
+-- 1. Sign up through your application with the desired admin email
+-- 2. Run the following SQL to update their role:
+-- UPDATE public.profiles SET role = 'admin', is_verified = true WHERE email = 'your-admin-email@domain.com';
 
 -- =====================================================
 -- COMPLETION MESSAGE

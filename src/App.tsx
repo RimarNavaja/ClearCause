@@ -59,6 +59,7 @@ import CampaignManagement from "./pages/admin/CampaignManagement";
 import ScorecardManagement from "./pages/admin/ScorecardManagement";
 import PlatformSettings from "./pages/admin/PlatformSettings";
 import AuditLogs from "./pages/admin/AuditLogs";
+import AdminProfile from "./pages/admin/AdminProfile";
 
 const queryClient = new QueryClient();
 
@@ -120,6 +121,7 @@ const App = () => (
               <CharityApplicationStatus />
             </ProtectedRoute>
           } />
+
 
           {/* Donor routes */}
           <Route path="/donor/dashboard" element={
@@ -259,6 +261,11 @@ const App = () => (
           <Route path="/admin/logs" element={
             <AdminRoute>
               <AuditLogs />
+            </AdminRoute>
+          } />
+          <Route path="/admin/profile" element={
+            <AdminRoute>
+              <AdminProfile />
             </AdminRoute>
           } />
 

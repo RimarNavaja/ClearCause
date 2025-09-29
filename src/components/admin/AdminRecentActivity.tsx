@@ -8,9 +8,10 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import * as adminService from '@/services/adminService';
 import { getRelativeTime } from '@/utils/helpers';
+import { RecentActivity } from '@/lib/types';
 
 const AdminRecentActivity = () => {
-  const [activities, setActivities] = useState<any[]>([]);
+  const [activities, setActivities] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();

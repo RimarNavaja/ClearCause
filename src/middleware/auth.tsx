@@ -129,7 +129,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       timeoutId = setTimeout(() => {
         console.warn('ProtectedRoute: Loading timeout exceeded, forcing render');
         setLoadingTimeout(true);
-      }, 8000); // 8 second timeout - higher than logout timeout
+      }, 12000); // 12 second timeout - higher than getCurrentUser timeout
     } else {
       setLoadingTimeout(false);
     }

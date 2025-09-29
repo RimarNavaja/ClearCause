@@ -12,7 +12,7 @@ interface UseRealtimeOptions extends SubscriptionOptions {
   enabled?: boolean;
   onConnect?: () => void;
   onDisconnect?: () => void;
-  onError?: (error: any) => void;
+  onError?: (error: Error) => void;
 }
 
 interface UseRealtimeReturn<T> {
@@ -26,7 +26,7 @@ interface UseRealtimeReturn<T> {
 /**
  * Hook for real-time database subscriptions
  */
-export const useRealtime = <T = any>(
+export const useRealtime = <T = unknown>(
   table: string,
   callback: (payload: RealtimePayload<T>) => void,
   options: UseRealtimeOptions = {}
@@ -63,8 +63,8 @@ export const useRealtime = <T = any>(
       const channel = supabase.channel(channelName);
 
       // Configure postgres changes subscription
-      let subscription = channel.on(
-        'postgres_changes' as any,
+      const subscription = channel.on(
+        'postgres_changes',
         {
           event,
           schema,

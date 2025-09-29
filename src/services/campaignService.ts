@@ -94,7 +94,7 @@ export const createCampaign = withErrorHandling(async (
       goal_amount: validatedData.goalAmount,
       current_amount: 0,
       image_url: imageUrl,
-      status: 'draft',
+      status: 'pending',
       start_date: validatedData.startDate || null,
       end_date: validatedData.endDate || null,
       category: validatedData.category || null,
@@ -567,7 +567,8 @@ export const updateCampaignStatus = withErrorHandling(async (
 
   // Validate status transition
   const validTransitions: Record<CampaignStatus, CampaignStatus[]> = {
-    draft: ['active', 'cancelled'],
+    draft: ['pending', 'cancelled'],
+    pending: ['active', 'cancelled', 'draft'],
     active: ['paused', 'completed', 'cancelled'],
     paused: ['active', 'cancelled'],
     completed: [], // Cannot change from completed
@@ -655,6 +656,278 @@ export const deleteCampaign = withErrorHandling(async (
   return createSuccessResponse(undefined, 'Campaign deleted successfully');
 });
 
+/**
+ * Campaign Approval Workflow Functions
+ */
+
+/**
+ * Get campaigns pending approval
+ */
+export const getCampaignsPendingApproval = withErrorHandling(async (
+  params: PaginationParams,
+  currentUserId: string
+): Promise<PaginatedResponse<Campaign>> => {
+  // Check if current user is admin
+  const currentUser = await getUserProfile(currentUserId);
+  if (!currentUser.success || currentUser.data?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can access pending campaigns', 403);
+  }
+
+  return listCampaigns(
+    { status: ['pending'] },
+    { ...params, sortBy: 'created_at', sortOrder: 'asc' }
+  );
+});
+
+/**
+ * Approve campaign with admin feedback
+ */
+export const approveCampaign = withErrorHandling(async (
+  campaignId: string,
+  adminId: string,
+  approvalData: {
+    reason?: string;
+    sendNotification?: boolean;
+    autoActivate?: boolean;
+  }
+): Promise<ApiResponse<Campaign>> => {
+  // Check if current user is admin
+  const currentUser = await getUserProfile(adminId);
+  if (!currentUser.success || currentUser.data?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can approve campaigns', 403);
+  }
+
+  // Get campaign
+  const campaignResult = await getCampaignById(campaignId, true);
+  if (!campaignResult.success || !campaignResult.data) {
+    throw new ClearCauseError('NOT_FOUND', 'Campaign not found', 404);
+  }
+
+  const campaign = campaignResult.data;
+
+  // Validate current status
+  if (campaign.status !== 'pending') {
+    throw new ClearCauseError('INVALID_STATUS', 'Only pending campaigns can be approved', 400);
+  }
+
+  // Update campaign status to active (or draft if not auto-activating)
+  const newStatus: CampaignStatus = approvalData.autoActivate !== false ? 'active' : 'draft';
+
+  const result = await updateCampaignStatus(campaignId, newStatus, adminId);
+
+  // Create approval record
+  const { error: approvalError } = await supabase
+    .from('campaign_approvals')
+    .insert({
+      campaign_id: campaignId,
+      admin_id: adminId,
+      action: 'approved',
+      reason: approvalData.reason || 'Campaign approved by administrator',
+      approved_at: new Date().toISOString(),
+    });
+
+  // Log detailed audit event
+  await logAuditEvent(adminId, 'CAMPAIGN_APPROVED', 'campaign', campaignId, {
+    reason: approvalData.reason,
+    newStatus,
+    charityId: campaign.charityId,
+    campaignTitle: campaign.title,
+  });
+
+  // TODO: Send email notification to charity if enabled
+  if (approvalData.sendNotification !== false && campaign.charity?.user?.email) {
+    // Email notification implementation would go here
+    console.log(`Would send approval notification to ${campaign.charity.user.email}`);
+  }
+
+  return result;
+});
+
+/**
+ * Reject campaign with admin feedback
+ */
+export const rejectCampaign = withErrorHandling(async (
+  campaignId: string,
+  adminId: string,
+  rejectionData: {
+    reason: string;
+    allowResubmission?: boolean;
+    sendNotification?: boolean;
+  }
+): Promise<ApiResponse<Campaign>> => {
+  // Check if current user is admin
+  const currentUser = await getUserProfile(adminId);
+  if (!currentUser.success || currentUser.data?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can reject campaigns', 403);
+  }
+
+  // Get campaign
+  const campaignResult = await getCampaignById(campaignId, true);
+  if (!campaignResult.success || !campaignResult.data) {
+    throw new ClearCauseError('NOT_FOUND', 'Campaign not found', 404);
+  }
+
+  const campaign = campaignResult.data;
+
+  // Validate current status
+  if (campaign.status !== 'pending') {
+    throw new ClearCauseError('INVALID_STATUS', 'Only pending campaigns can be rejected', 400);
+  }
+
+  // Update campaign status
+  const newStatus: CampaignStatus = rejectionData.allowResubmission !== false ? 'draft' : 'cancelled';
+
+  const result = await updateCampaignStatus(campaignId, newStatus, adminId);
+
+  // Create rejection record
+  const { error: rejectionError } = await supabase
+    .from('campaign_approvals')
+    .insert({
+      campaign_id: campaignId,
+      admin_id: adminId,
+      action: 'rejected',
+      reason: rejectionData.reason,
+      rejected_at: new Date().toISOString(),
+    });
+
+  // Log detailed audit event
+  await logAuditEvent(adminId, 'CAMPAIGN_REJECTED', 'campaign', campaignId, {
+    reason: rejectionData.reason,
+    newStatus,
+    allowResubmission: rejectionData.allowResubmission,
+    charityId: campaign.charityId,
+    campaignTitle: campaign.title,
+  });
+
+  // TODO: Send email notification to charity if enabled
+  if (rejectionData.sendNotification !== false && campaign.charity?.user?.email) {
+    // Email notification implementation would go here
+    console.log(`Would send rejection notification to ${campaign.charity.user.email}`);
+  }
+
+  return result;
+});
+
+/**
+ * Request campaign revision with admin feedback
+ */
+export const requestCampaignRevision = withErrorHandling(async (
+  campaignId: string,
+  adminId: string,
+  revisionData: {
+    reason: string;
+    suggestions?: string;
+    sendNotification?: boolean;
+  }
+): Promise<ApiResponse<Campaign>> => {
+  // Check if current user is admin
+  const currentUser = await getUserProfile(adminId);
+  if (!currentUser.success || currentUser.data?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can request revisions', 403);
+  }
+
+  // Get campaign
+  const campaignResult = await getCampaignById(campaignId, true);
+  if (!campaignResult.success || !campaignResult.data) {
+    throw new ClearCauseError('NOT_FOUND', 'Campaign not found', 404);
+  }
+
+  const campaign = campaignResult.data;
+
+  // Validate current status
+  if (campaign.status !== 'pending') {
+    throw new ClearCauseError('INVALID_STATUS', 'Only pending campaigns can be sent for revision', 400);
+  }
+
+  // Update campaign status back to draft
+  const result = await updateCampaignStatus(campaignId, 'draft', adminId);
+
+  // Create revision record
+  const { error: revisionError } = await supabase
+    .from('campaign_approvals')
+    .insert({
+      campaign_id: campaignId,
+      admin_id: adminId,
+      action: 'revision_requested',
+      reason: revisionData.reason,
+      suggestions: revisionData.suggestions,
+      requested_at: new Date().toISOString(),
+    });
+
+  // Log detailed audit event
+  await logAuditEvent(adminId, 'CAMPAIGN_REVISION_REQUESTED', 'campaign', campaignId, {
+    reason: revisionData.reason,
+    suggestions: revisionData.suggestions,
+    charityId: campaign.charityId,
+    campaignTitle: campaign.title,
+  });
+
+  // TODO: Send email notification to charity if enabled
+  if (revisionData.sendNotification !== false && campaign.charity?.user?.email) {
+    // Email notification implementation would go here
+    console.log(`Would send revision request notification to ${campaign.charity.user.email}`);
+  }
+
+  return result;
+});
+
+/**
+ * Get campaign approval history
+ */
+export const getCampaignApprovalHistory = withErrorHandling(async (
+  campaignId: string,
+  currentUserId: string
+): Promise<ApiResponse<any[]>> => {
+  // Get campaign to check ownership or admin access
+  const campaignResult = await getCampaignById(campaignId, true);
+  if (!campaignResult.success || !campaignResult.data) {
+    throw new ClearCauseError('NOT_FOUND', 'Campaign not found', 404);
+  }
+
+  const campaign = campaignResult.data;
+  const currentUser = await getUserProfile(currentUserId);
+
+  // Check access permissions
+  const isOwner = campaign.charity?.userId === currentUserId;
+  const isAdmin = currentUser.success && currentUser.data?.role === 'admin';
+
+  if (!isOwner && !isAdmin) {
+    throw new ClearCauseError('FORBIDDEN', 'You can only view approval history for your own campaigns', 403);
+  }
+
+  // Get approval history
+  const { data: approvals, error } = await supabase
+    .from('campaign_approvals')
+    .select(`
+      *,
+      admin:admin_id (
+        full_name,
+        email
+      )
+    `)
+    .eq('campaign_id', campaignId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  const history = (approvals || []).map(approval => ({
+    id: approval.id,
+    action: approval.action,
+    reason: approval.reason,
+    suggestions: approval.suggestions,
+    adminName: approval.admin?.full_name || 'Unknown Admin',
+    adminEmail: isAdmin ? approval.admin?.email : null, // Only show email to admins
+    createdAt: approval.created_at,
+    approvedAt: approval.approved_at,
+    rejectedAt: approval.rejected_at,
+    requestedAt: approval.requested_at,
+  }));
+
+  return createSuccessResponse(history);
+});
+
 // Convenience aliases for backward compatibility
 export const getAllCampaigns = listCampaigns;
 export const getCharityCampaigns = getCampaignsByCharity;
@@ -696,7 +969,7 @@ export const getCampaignStatistics = withErrorHandling(async (
       message,
       is_anonymous,
       created_at,
-      profiles:donor_id (
+      profiles:user_id (
         full_name
       )
     `)
@@ -726,4 +999,609 @@ export const getCampaignStatistics = withErrorHandling(async (
     averageDonation: Math.round(averageDonation * 100) / 100,
     recentDonations,
   });
+});
+
+/**
+ * Create campaign update/impact post
+ */
+export const createCampaignUpdate = withErrorHandling(async (
+  campaignId: string,
+  updateData: {
+    title: string;
+    content: string;
+    updateType: 'milestone' | 'impact' | 'general';
+    milestoneId?: string;
+    imageFile?: File;
+  },
+  userId: string
+): Promise<ApiResponse<any>> => {
+  // Validate campaign exists and user has permission
+  const campaignResult = await getCampaignById(campaignId);
+  if (!campaignResult.success || !campaignResult.data) {
+    throw new ClearCauseError('NOT_FOUND', 'Campaign not found', 404);
+  }
+
+  const campaign = campaignResult.data;
+
+  // Check if user is the campaign owner
+  const charityResult = await getCharityByUserId(userId);
+  if (!charityResult.success || !charityResult.data ||
+      charityResult.data.id !== campaign.charity.id) {
+    throw new ClearCauseError('FORBIDDEN', 'You can only create updates for your own campaigns', 403);
+  }
+
+  // Handle image upload if provided
+  let imageUrl = null;
+  if (updateData.imageFile) {
+    // Validate image file
+    validateFile(updateData.imageFile, {
+      maxSize: 5 * 1024 * 1024, // 5MB
+      allowedTypes: ['image/jpeg', 'image/png', 'image/webp']
+    });
+
+    const filePath = `campaign-updates/${campaignId}/${Date.now()}-${updateData.imageFile.name}`;
+    const { url, error: uploadError } = await uploadFile('campaigns', filePath, updateData.imageFile);
+    if (uploadError) {
+      throw new ClearCauseError('UPLOAD_FAILED', 'Failed to upload image', 500);
+    }
+    imageUrl = url;
+  }
+
+  // Create the update
+  const { data: update, error: insertError } = await supabase
+    .from('campaign_updates')
+    .insert({
+      campaign_id: campaignId,
+      charity_id: campaign.charity.id,
+      title: updateData.title,
+      content: updateData.content,
+      update_type: updateData.updateType,
+      milestone_id: updateData.milestoneId || null,
+      image_url: imageUrl,
+      created_by: userId,
+      status: 'published'
+    })
+    .select(`
+      *,
+      campaigns (
+        title,
+        charities (
+          organization_name
+        )
+      ),
+      milestones (
+        title
+      ),
+      profiles:created_by (
+        full_name
+      )
+    `)
+    .single();
+
+  if (insertError) {
+    throw handleSupabaseError(insertError);
+  }
+
+  // Log audit event
+  await logAuditEvent(
+    userId,
+    'create_campaign_update',
+    'campaign_update',
+    update.id,
+    {
+      campaign_id: campaignId,
+      update_type: updateData.updateType,
+      milestone_id: updateData.milestoneId
+    }
+  );
+
+  return createSuccessResponse({
+    id: update.id,
+    campaignId: update.campaign_id,
+    charityId: update.charity_id,
+    title: update.title,
+    content: update.content,
+    updateType: update.update_type,
+    milestoneId: update.milestone_id,
+    imageUrl: update.image_url,
+    status: update.status,
+    createdAt: update.created_at,
+    updatedAt: update.updated_at,
+    campaign: {
+      title: update.campaigns?.title,
+      organizationName: update.campaigns?.charities?.organization_name
+    },
+    milestone: update.milestones ? {
+      title: update.milestones.title
+    } : null,
+    author: {
+      name: update.profiles?.full_name
+    }
+  }, 'Campaign update created successfully');
+});
+
+/**
+ * Get campaign updates for a specific campaign
+ */
+export const getCampaignUpdates = withErrorHandling(async (
+  campaignId: string,
+  params: PaginationParams & { status?: string } = { page: 1, limit: 10 }
+): Promise<PaginatedResponse<any>> => {
+  const validatedParams = validateData(paginationSchema, params);
+  const { page, limit, sortBy = 'created_at', sortOrder = 'desc' } = validatedParams;
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from('campaign_updates')
+    .select(`
+      *,
+      campaigns (
+        title,
+        charities (
+          organization_name
+        )
+      ),
+      milestones (
+        title
+      ),
+      profiles:created_by (
+        full_name,
+        avatar_url
+      )
+    `, { count: 'exact' })
+    .eq('campaign_id', campaignId);
+
+  // Filter by status if provided
+  if (params.status) {
+    query = query.eq('status', params.status);
+  } else {
+    // Default to published updates only
+    query = query.eq('status', 'published');
+  }
+
+  // Apply pagination and sorting
+  query = query
+    .order(sortBy, { ascending: sortOrder === 'asc' })
+    .range(offset, offset + limit - 1);
+
+  const { data: updates, count, error } = await query;
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  // Transform data
+  const transformedUpdates = (updates || []).map(update => ({
+    id: update.id,
+    campaignId: update.campaign_id,
+    charityId: update.charity_id,
+    title: update.title,
+    content: update.content,
+    updateType: update.update_type,
+    milestoneId: update.milestone_id,
+    imageUrl: update.image_url,
+    status: update.status,
+    createdAt: update.created_at,
+    updatedAt: update.updated_at,
+    campaign: {
+      title: update.campaigns?.title,
+      organizationName: update.campaigns?.charities?.organization_name
+    },
+    milestone: update.milestones ? {
+      title: update.milestones.title
+    } : null,
+    author: {
+      name: update.profiles?.full_name,
+      avatarUrl: update.profiles?.avatar_url
+    }
+  }));
+
+  return createPaginatedResponse(transformedUpdates, count || 0, validatedParams);
+});
+
+/**
+ * Get all campaign updates (for admin moderation)
+ */
+export const getAllCampaignUpdates = withErrorHandling(async (
+  filters: {
+    status?: string;
+    updateType?: string;
+    search?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  } = {},
+  params: PaginationParams,
+  currentUserId: string
+): Promise<PaginatedResponse<any>> => {
+  // Check if current user is admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can access all campaign updates', 403);
+  }
+
+  const validatedParams = validateData(paginationSchema, params);
+  const { page, limit, sortBy = 'created_at', sortOrder = 'desc' } = validatedParams;
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from('campaign_updates')
+    .select(`
+      *,
+      campaigns (
+        title,
+        charities (
+          organization_name
+        )
+      ),
+      milestones (
+        title
+      ),
+      profiles:created_by (
+        full_name,
+        avatar_url
+      )
+    `, { count: 'exact' });
+
+  // Apply filters
+  if (filters.status) {
+    query = query.eq('status', filters.status);
+  }
+
+  if (filters.updateType) {
+    query = query.eq('update_type', filters.updateType);
+  }
+
+  if (filters.search) {
+    query = query.or(`title.ilike.%${filters.search}%,content.ilike.%${filters.search}%,campaigns.title.ilike.%${filters.search}%`);
+  }
+
+  if (filters.dateFrom) {
+    query = query.gte('created_at', filters.dateFrom);
+  }
+
+  if (filters.dateTo) {
+    query = query.lte('created_at', filters.dateTo);
+  }
+
+  // Apply pagination and sorting
+  query = query
+    .order(sortBy, { ascending: sortOrder === 'asc' })
+    .range(offset, offset + limit - 1);
+
+  const { data: updates, count, error } = await query;
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  // Transform data
+  const transformedUpdates = (updates || []).map(update => ({
+    id: update.id,
+    campaignId: update.campaign_id,
+    charityId: update.charity_id,
+    title: update.title,
+    content: update.content,
+    updateType: update.update_type,
+    milestoneId: update.milestone_id,
+    imageUrl: update.image_url,
+    status: update.status,
+    createdAt: update.created_at,
+    updatedAt: update.updated_at,
+    campaign: {
+      title: update.campaigns?.title,
+      organizationName: update.campaigns?.charities?.organization_name
+    },
+    milestone: update.milestones ? {
+      title: update.milestones.title
+    } : null,
+    author: {
+      name: update.profiles?.full_name,
+      avatarUrl: update.profiles?.avatar_url
+    }
+  }));
+
+  return createPaginatedResponse(transformedUpdates, count || 0, validatedParams);
+});
+
+/**
+ * Update campaign update/impact post
+ */
+export const updateCampaignUpdate = withErrorHandling(async (
+  updateId: string,
+  updateData: {
+    title?: string;
+    content?: string;
+    status?: string;
+    imageFile?: File;
+  },
+  userId: string
+): Promise<ApiResponse<any>> => {
+  // Get the update and verify permissions
+  const { data: existingUpdate, error: fetchError } = await supabase
+    .from('campaign_updates')
+    .select(`
+      *,
+      campaigns (
+        charities (
+          user_id
+        )
+      )
+    `)
+    .eq('id', updateId)
+    .single();
+
+  if (fetchError || !existingUpdate) {
+    throw new ClearCauseError('NOT_FOUND', 'Campaign update not found', 404);
+  }
+
+  // Check if user is the owner or admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .single();
+
+  if (userError) {
+    throw handleSupabaseError(userError);
+  }
+
+  const isOwner = existingUpdate.campaigns?.charities?.user_id === userId;
+  const isAdmin = currentUser?.role === 'admin';
+
+  if (!isOwner && !isAdmin) {
+    throw new ClearCauseError('FORBIDDEN', 'You can only edit your own campaign updates', 403);
+  }
+
+  // Handle image upload if provided
+  let imageUrl = existingUpdate.image_url;
+  if (updateData.imageFile) {
+    validateFile(updateData.imageFile, {
+      maxSize: 5 * 1024 * 1024, // 5MB
+      allowedTypes: ['image/jpeg', 'image/png', 'image/webp']
+    });
+
+    const filePath = `campaign-updates/${existingUpdate.campaign_id}/${Date.now()}-${updateData.imageFile.name}`;
+    const { url, error: uploadError } = await uploadFile('campaigns', filePath, updateData.imageFile);
+    if (uploadError) {
+      throw new ClearCauseError('UPLOAD_FAILED', 'Failed to upload image', 500);
+    }
+    imageUrl = url;
+  }
+
+  // Prepare update data
+  const updatePayload: any = {
+    updated_at: new Date().toISOString()
+  };
+
+  if (updateData.title !== undefined) updatePayload.title = updateData.title;
+  if (updateData.content !== undefined) updatePayload.content = updateData.content;
+  if (updateData.status !== undefined) updatePayload.status = updateData.status;
+  if (imageUrl !== existingUpdate.image_url) updatePayload.image_url = imageUrl;
+
+  // Update the record
+  const { data: updated, error: updateError } = await supabase
+    .from('campaign_updates')
+    .update(updatePayload)
+    .eq('id', updateId)
+    .select(`
+      *,
+      campaigns (
+        title,
+        charities (
+          organization_name
+        )
+      ),
+      milestones (
+        title
+      ),
+      profiles:created_by (
+        full_name
+      )
+    `)
+    .single();
+
+  if (updateError) {
+    throw handleSupabaseError(updateError);
+  }
+
+  // Log audit event
+  await logAuditEvent(
+    userId,
+    'update_campaign_update',
+    'campaign_update',
+    updateId,
+    {
+      changes: updateData,
+      is_admin_action: isAdmin
+    }
+  );
+
+  return createSuccessResponse({
+    id: updated.id,
+    campaignId: updated.campaign_id,
+    charityId: updated.charity_id,
+    title: updated.title,
+    content: updated.content,
+    updateType: updated.update_type,
+    milestoneId: updated.milestone_id,
+    imageUrl: updated.image_url,
+    status: updated.status,
+    createdAt: updated.created_at,
+    updatedAt: updated.updated_at,
+    campaign: {
+      title: updated.campaigns?.title,
+      organizationName: updated.campaigns?.charities?.organization_name
+    },
+    milestone: updated.milestones ? {
+      title: updated.milestones.title
+    } : null,
+    author: {
+      name: updated.profiles?.full_name
+    }
+  }, 'Campaign update updated successfully');
+});
+
+/**
+ * Delete campaign update
+ */
+export const deleteCampaignUpdate = withErrorHandling(async (
+  updateId: string,
+  userId: string
+): Promise<ApiResponse<void>> => {
+  // Get the update and verify permissions
+  const { data: existingUpdate, error: fetchError } = await supabase
+    .from('campaign_updates')
+    .select(`
+      *,
+      campaigns (
+        charities (
+          user_id
+        )
+      )
+    `)
+    .eq('id', updateId)
+    .single();
+
+  if (fetchError || !existingUpdate) {
+    throw new ClearCauseError('NOT_FOUND', 'Campaign update not found', 404);
+  }
+
+  // Check if user is the owner or admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .single();
+
+  if (userError) {
+    throw handleSupabaseError(userError);
+  }
+
+  const isOwner = existingUpdate.campaigns?.charities?.user_id === userId;
+  const isAdmin = currentUser?.role === 'admin';
+
+  if (!isOwner && !isAdmin) {
+    throw new ClearCauseError('FORBIDDEN', 'You can only delete your own campaign updates', 403);
+  }
+
+  // Delete the update
+  const { error: deleteError } = await supabase
+    .from('campaign_updates')
+    .delete()
+    .eq('id', updateId);
+
+  if (deleteError) {
+    throw handleSupabaseError(deleteError);
+  }
+
+  // Log audit event
+  await logAuditEvent(
+    userId,
+    'delete_campaign_update',
+    'campaign_update',
+    updateId,
+    {
+      campaign_id: existingUpdate.campaign_id,
+      is_admin_action: isAdmin
+    }
+  );
+
+  return createSuccessResponse(undefined, 'Campaign update deleted successfully');
+});
+
+/**
+ * Get campaign update by ID
+ */
+export const getCampaignUpdateById = withErrorHandling(async (
+  updateId: string
+): Promise<ApiResponse<any>> => {
+  const { data: update, error } = await supabase
+    .from('campaign_updates')
+    .select(`
+      *,
+      campaigns (
+        title,
+        charities (
+          organization_name
+        )
+      ),
+      milestones (
+        title
+      ),
+      profiles:created_by (
+        full_name,
+        avatar_url
+      )
+    `)
+    .eq('id', updateId)
+    .single();
+
+  if (error || !update) {
+    throw new ClearCauseError('NOT_FOUND', 'Campaign update not found', 404);
+  }
+
+  return createSuccessResponse({
+    id: update.id,
+    campaignId: update.campaign_id,
+    charityId: update.charity_id,
+    title: update.title,
+    content: update.content,
+    updateType: update.update_type,
+    milestoneId: update.milestone_id,
+    imageUrl: update.image_url,
+    status: update.status,
+    createdAt: update.created_at,
+    updatedAt: update.updated_at,
+    campaign: {
+      title: update.campaigns?.title,
+      organizationName: update.campaigns?.charities?.organization_name
+    },
+    milestone: update.milestones ? {
+      title: update.milestones.title
+    } : null,
+    author: {
+      name: update.profiles?.full_name,
+      avatarUrl: update.profiles?.avatar_url
+    }
+  });
+});
+
+/**
+ * Get campaign milestones
+ */
+export const getCampaignMilestones = withErrorHandling(async (
+  campaignId: string
+): Promise<ApiResponse<Milestone[]>> => {
+  const { data: milestonesData, error } = await supabase
+    .from('milestones')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .order('target_amount', { ascending: true });
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  const milestones: Milestone[] = milestonesData.map(m => ({
+    id: m.id,
+    campaignId: m.campaign_id,
+    title: m.title,
+    description: m.description,
+    targetAmount: m.target_amount,
+    evidenceDescription: m.evidence_description,
+    status: m.status,
+    proofDocuments: m.proof_documents,
+    verificationNotes: m.verification_notes,
+    verifiedAt: m.verified_at,
+    verifiedBy: m.verified_by,
+    createdAt: m.created_at,
+    updatedAt: m.updated_at,
+  }));
+
+  return createSuccessResponse(milestones);
 });

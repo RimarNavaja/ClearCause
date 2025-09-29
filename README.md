@@ -2,6 +2,8 @@
 
 ClearCause is a revolutionary charitable giving platform that ensures complete transparency through milestone-based funding, real-time impact tracking, and rigorous verification processes.
 
+> **Note**: This is a capstone project demonstrating modern web development practices and transparent charity management.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -16,10 +18,10 @@ Before getting started, make sure you have:
 
 ```sh
 # Step 1: Clone the repository
-git clone <YOUR_GIT_URL>
+git clone https://github.com/YOUR_USERNAME/clearcause-capstone.git
 
 # Step 2: Navigate to the project directory
-cd ClearCause-Capstone
+cd clearcause-capstone
 
 # Step 3: Install dependencies
 npm install
@@ -206,9 +208,12 @@ src/
 3. Update your Supabase project settings with your production URL
 4. Update your environment variables on your hosting platform
 
-### Deploy with Lovable
+### Deploy with Vercel (Recommended)
 
-Simply open [Lovable](https://lovable.dev/projects/e096e8a9-d603-4983-8d2e-083c421af9fc) and click on Share → Publish.
+1. Push your code to GitHub
+2. Connect your GitHub repository to [Vercel](https://vercel.com)
+3. Configure environment variables in Vercel dashboard
+4. Deploy automatically on every push
 
 ## 🤝 Contributing
 
@@ -229,10 +234,15 @@ If you encounter any issues:
 
 ## 🔗 Important Links
 
-- **Lovable Project**: https://lovable.dev/projects/e096e8a9-d603-4983-8d2e-083c421af9fc
 - **Supabase**: https://supabase.com
 - **shadcn/ui**: https://ui.shadcn.com
 - **Tailwind CSS**: https://tailwindcss.com
+- **React**: https://react.dev
+- **Vite**: https://vitejs.dev
+
+## 📝 License
+
+This project is part of a capstone project and is for educational purposes.
 
 ---
 

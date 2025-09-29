@@ -6,9 +6,10 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import * as adminService from '@/services/adminService';
 import { formatCurrency } from '@/utils/helpers';
+import { PlatformStatistics } from '@/lib/types';
 
 const AdminStatsGrid = () => {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<PlatformStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -129,12 +130,11 @@ const AdminStatsGrid = () => {
               {/* Mini progress bar based on relative value */}
               <div className="mt-2">
                 <div className="h-2 w-full rounded bg-muted relative overflow-hidden">
-                  <div 
-                    className="h-2 rounded bg-[--bar-color] animate-progress-fill" 
-                    style={{ 
-                      width: `${Math.min(100, (Number(stat.value) || 0) / (Number(stats?.totalUsers) || 1) * 100)}%`, 
-                      // @ts-ignore custom prop for color
-                      ['--bar-color' as any]: stat.barColor 
+                  <div
+                    className="h-2 rounded animate-progress-fill"
+                    style={{
+                      width: `${Math.min(100, (Number(stat.value) || 0) / (Number(stats?.totalUsers) || 1) * 100)}%`,
+                      backgroundColor: stat.barColor
                     }}
                   />
                 </div>

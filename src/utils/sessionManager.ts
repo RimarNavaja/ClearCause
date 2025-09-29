@@ -411,8 +411,28 @@ export const debounceAuthCall = async <T>(
   delay: number = 500
 ): Promise<T | null> => {
   if (authCallInProgress) {
-    console.warn('[SessionManager] Auth call already in progress, debouncing...');
-    return null;
+    console.warn('[SessionManager] Auth call already in progress, waiting for completion...');
+
+    // Wait for the current call to complete instead of returning null
+    const maxWaitTime = 15000; // 15 seconds max wait
+    const checkInterval = 100; // Check every 100ms
+    let waitTime = 0;
+
+    while (authCallInProgress && waitTime < maxWaitTime) {
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+      waitTime += checkInterval;
+    }
+
+    if (authCallInProgress) {
+      console.error('[SessionManager] Auth call timeout exceeded, forcing reset');
+      authCallInProgress = false;
+      if (authCallTimeout) {
+        clearTimeout(authCallTimeout);
+        authCallTimeout = null;
+      }
+    } else {
+      console.log('[SessionManager] Previous auth call completed, proceeding');
+    }
   }
 
   authCallInProgress = true;
@@ -423,16 +443,18 @@ export const debounceAuthCall = async <T>(
       clearTimeout(authCallTimeout);
     }
 
-    // Set timeout to release the lock
+    // Set a safety timeout to release the lock (much longer than before)
     authCallTimeout = setTimeout(() => {
+      console.warn('[SessionManager] Auth call safety timeout triggered, releasing lock');
       authCallInProgress = false;
-    }, delay);
+    }, 15000); // 15 seconds safety timeout
 
     const result = await authFunction();
 
     // Clear timeout and release lock immediately on success
     if (authCallTimeout) {
       clearTimeout(authCallTimeout);
+      authCallTimeout = null;
     }
     authCallInProgress = false;
 
@@ -441,6 +463,7 @@ export const debounceAuthCall = async <T>(
     // Clear timeout and release lock on error
     if (authCallTimeout) {
       clearTimeout(authCallTimeout);
+      authCallTimeout = null;
     }
     authCallInProgress = false;
     throw error;

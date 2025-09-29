@@ -514,6 +514,14 @@ export const getDonationsByDonor = withErrorHandling(async (
   params: PaginationParams,
   currentUserId: string
 ): Promise<PaginatedResponse<Donation>> => {
+  // Validate user IDs
+  if (!donorId || donorId === 'undefined' || donorId === 'null' || donorId === undefined || donorId === null || typeof donorId !== 'string' || donorId.trim() === '') {
+    throw new ClearCauseError('INVALID_USER_ID', 'Invalid donor ID provided', 400);
+  }
+  if (!currentUserId || currentUserId === 'undefined' || currentUserId === 'null' || currentUserId === undefined || currentUserId === null || typeof currentUserId !== 'string' || currentUserId.trim() === '') {
+    throw new ClearCauseError('INVALID_USER_ID', 'Invalid current user ID provided', 400);
+  }
+
   // Check if user can view donor's donations
   if (donorId !== currentUserId) {
     const currentUser = await getUserProfile(currentUserId);
@@ -867,6 +875,17 @@ export const getDonorStatistics = withErrorHandling(async (
     createdAt: string;
   }>;
 }>> => {
+  // Validate user ID
+  if (!userId || userId === 'undefined' || userId === 'null' || userId === undefined || userId === null || typeof userId !== 'string' || userId.trim() === '') {
+    throw new ClearCauseError('INVALID_USER_ID', 'Invalid user ID provided', 400);
+  }
+
+  // Validate UUID format
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(userId)) {
+    throw new ClearCauseError('INVALID_USER_ID', 'Invalid user ID format. Please ensure you are properly authenticated.', 400);
+  }
+
   // Get user's donations with campaign info
   const { data: donations, error } = await supabase
     .from('donations')

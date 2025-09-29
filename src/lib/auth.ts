@@ -17,32 +17,81 @@ export const signUp = async (userData: SignUpData): Promise<ApiResponse<User>> =
     console.debug('Starting signup process for:', userData.email);
     const { email, password, fullName, role } = userData;
 
-    // Create auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-          role: role,
-        },
-        emailRedirectTo: import.meta.env.VITE_REDIRECT_URL || `${window.location.origin}/auth/callback`,
-      },
-    });
+    // Create auth user with retry logic for timeouts
+    let authData, authError;
+    const maxRetries = 3;
+    let attempt = 0;
+
+    while (attempt < maxRetries) {
+      attempt++;
+      try {
+        console.debug(`Signup attempt ${attempt}/${maxRetries} for:`, email);
+
+        const result = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+              role: role,
+            },
+            emailRedirectTo: import.meta.env.VITE_REDIRECT_URL || `${window.location.origin}/auth/callback`,
+          },
+        });
+
+        authData = result.data;
+        authError = result.error;
+        break; // Success, exit retry loop
+
+      } catch (error: any) {
+        console.warn(`Signup attempt ${attempt} failed:`, error);
+
+        // If it's a timeout and we have retries left, continue
+        if (error.name === 'AbortError' || error.message?.includes('timeout') || error.message?.includes('signal timed out')) {
+          if (attempt < maxRetries) {
+            console.debug(`Retrying signup after timeout (attempt ${attempt}/${maxRetries})`);
+            // Wait before retry (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+            continue;
+          }
+
+          // Out of retries, throw timeout error
+          throw new ClearCauseError(
+            'NETWORK_TIMEOUT',
+            'The signup request timed out. Please check your internet connection and try again.',
+            408,
+            error
+          );
+        }
+
+        // Non-timeout error, throw immediately
+        throw error;
+      }
+    }
 
     if (authError) {
       reportAuthError(authError, { context: 'auth_signup', email });
-      
+
+      // Handle timeout specifically
+      if (authError.message?.includes('timeout') || authError.message?.includes('signal timed out')) {
+        throw new ClearCauseError(
+          'NETWORK_TIMEOUT',
+          'The signup request timed out. Please check your internet connection and try again.',
+          408,
+          authError
+        );
+      }
+
       // Provide more specific error message for database errors
       if (authError.message?.includes('Database error')) {
         throw new ClearCauseError(
-          'DATABASE_ERROR', 
+          'DATABASE_ERROR',
           'There was a problem setting up your account. This is likely a temporary issue. Please try again in a few minutes, or contact support if the problem persists.',
           500,
           authError
         );
       }
-      
+
       throw new ClearCauseError('SIGNUP_FAILED', authError.message, 400);
     }
 

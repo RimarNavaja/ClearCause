@@ -264,7 +264,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                   async () => {
                     const getCurrentUserPromise = authService.getCurrentUser();
                     const timeoutPromise = new Promise<null>((_, reject) =>
-                      setTimeout(() => reject(new Error('getCurrentUser timeout after 5 seconds')), 5000)
+                      setTimeout(() => reject(new Error('getCurrentUser timeout after 10 seconds')), 10000)
                     );
                     return await Promise.race([getCurrentUserPromise, timeoutPromise]);
                   },
