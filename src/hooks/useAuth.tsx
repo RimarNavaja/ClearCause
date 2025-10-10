@@ -3,7 +3,7 @@
  * Provides authentication state and functions for React components
  */
 
-import { useState, useEffect, useContext, createContext, ReactNode } from 'react';
+import { useState, useEffect, useContext, createContext, ReactNode, useRef } from 'react';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { User, SignUpData, SignInData, UserRole, ApiResponse } from '../lib/types';
@@ -44,6 +44,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [processingAuthChange, setProcessingAuthChange] = useState(false);
   const [lastProcessedUserId, setLastProcessedUserId] = useState<string | null>(null);
   const maxRetries = 3;
+
+  // Use ref to track current user ID to avoid closure issues in auth listener
+  const currentUserIdRef = useRef<string | null>(null);
+
+  // Keep ref in sync with user state
+  useEffect(() => {
+    currentUserIdRef.current = user?.id || null;
+  }, [user]);
 
   // Emergency timeout to prevent infinite loading
   useEffect(() => {
@@ -119,7 +127,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           try {
             const profilePromise = authService.getCurrentUser();
             const timeoutPromise = new Promise<null>((_, reject) =>
-              setTimeout(() => reject(new Error('Profile loading timeout')), 8000)
+              setTimeout(() => reject(new Error('Profile loading timeout')), 3000)
             );
 
             const currentUser = await Promise.race([profilePromise, timeoutPromise]);
@@ -238,6 +246,30 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
               if (!session?.user) return;
 
+              // Debug logging
+              console.log('[AUTH] SIGNED_IN event - Current user ref:', currentUserIdRef.current, 'Session user:', session.user.id);
+              console.log('[AUTH] User ID in ref?', !!currentUserIdRef.current, 'IDs match?', currentUserIdRef.current === session.user.id);
+
+              // CRITICAL: Skip re-authentication if we already have valid user data
+              // Use ref instead of state to avoid closure issues
+              if (currentUserIdRef.current && currentUserIdRef.current === session.user.id) {
+                console.log('[AUTH] ✅ User already authenticated (ref check), skipping redundant SIGNED_IN processing');
+                // Just update session silently without triggering a reload
+                setSession(session);
+                setLoading(false);
+                setProcessingAuthChange(false);
+                return;
+              }
+
+              // Additional check: if lastProcessedUserId matches, also skip
+              if (lastProcessedUserId && lastProcessedUserId === session.user.id) {
+                console.log('[AUTH] ✅ User already processed (lastProcessedUserId match), skipping');
+                setSession(session);
+                setLoading(false);
+                setProcessingAuthChange(false);
+                return;
+              }
+
               // Check for session contamination during sign in
               if (isSessionContaminated()) {
                 console.warn('[AUTH] Session contamination detected during SIGNED_IN event');
@@ -251,9 +283,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 return;
               }
 
-              console.log('[AUTH] Processing SIGNED_IN for user:', session.user.id);
+              console.log('[AUTH] 🔄 Processing SIGNED_IN for user:', session.user.id);
               setLastProcessedUserId(session.user.id);
               setSession(session);
+
               setLoading(true);
 
               try {
@@ -264,7 +297,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                   async () => {
                     const getCurrentUserPromise = authService.getCurrentUser();
                     const timeoutPromise = new Promise<null>((_, reject) =>
-                      setTimeout(() => reject(new Error('getCurrentUser timeout after 10 seconds')), 10000)
+                      setTimeout(() => reject(new Error('getCurrentUser timeout after 3 seconds')), 3000)
                     );
                     return await Promise.race([getCurrentUserPromise, timeoutPromise]);
                   },
@@ -301,13 +334,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                       email: session.user.email || '',
                       fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
                       avatarUrl: session.user.user_metadata?.avatar_url || null,
+                      phone: session.user.user_metadata?.phone || null,
                       role: userRole as 'donor' | 'charity' | 'admin',
                       isVerified: !!session.user.email_confirmed_at,
+                      isActive: true,
                       createdAt: session.user.created_at || new Date().toISOString(),
                       updatedAt: new Date().toISOString(),
                     };
 
                     console.log('[AUTH] Using fallback profile:', fallbackUser.email);
+                    console.log('[AUTH] Fallback user metadata:', session.user.user_metadata);
+                    console.log('[AUTH] Fallback phone from metadata:', session.user.user_metadata?.phone);
                     setUser(fallbackUser);
                     setAuthError(null);
                     setRetryCount(0);
@@ -336,13 +373,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     email: session.user.email || '',
                     fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
                     avatarUrl: session.user.user_metadata?.avatar_url || null,
+                    phone: session.user.user_metadata?.phone || null,
                     role: userRole as 'donor' | 'charity' | 'admin',
                     isVerified: !!session.user.email_confirmed_at,
+                    isActive: true,
                     createdAt: session.user.created_at || new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                   };
 
                   console.log('[AUTH] Using fallback profile after error:', fallbackUser.email);
+                  console.log('[AUTH] Error fallback user metadata:', session.user.user_metadata);
+                  console.log('[AUTH] Error fallback phone from metadata:', session.user.user_metadata?.phone);
                   setUser(fallbackUser);
                   setAuthError('Profile loaded from session (database unavailable)');
                   setRetryCount(0);

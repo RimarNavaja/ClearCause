@@ -24,13 +24,15 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
-import { 
-  getCharityVerificationById, 
-  approveCharityVerification, 
+import {
+  getCharityVerificationById,
+  approveCharityVerification,
   rejectCharityVerification,
   requestVerificationResubmission
 } from '@/services/adminService';
 import { toast } from 'sonner';
+import AdminLayout from '@/components/admin/AdminLayout';
+import { supabase } from '@/lib/supabase';
 
 const CharityVerificationDetail = () => {
   const { verificationId } = useParams();
@@ -45,6 +47,7 @@ const CharityVerificationDetail = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [showResubmissionForm, setShowResubmissionForm] = useState(false);
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
 
   useEffect(() => {
     const loadVerification = async () => {
@@ -72,20 +75,21 @@ const CharityVerificationDetail = () => {
     loadVerification();
   }, [verificationId, user?.id]);
 
-  const handleApprove = async () => {
+  const confirmApprove = async () => {
     if (!verification || !user?.id) return;
-    
+
     try {
       setProcessing(true);
+      setShowApproveConfirm(false);
       const response = await approveCharityVerification(
-        verification.id, 
-        adminNotes || null, 
+        verification.id,
+        adminNotes || null,
         user.id
       );
-      
+
       if (response.success) {
         toast.success('Charity verification approved successfully');
-        navigate('/admin/applications');
+        navigate('/admin/charity-verifications');
       } else {
         toast.error(response.error || 'Failed to approve verification');
       }
@@ -114,7 +118,7 @@ const CharityVerificationDetail = () => {
       
       if (response.success) {
         toast.success('Charity verification rejected');
-        navigate('/admin/applications');
+        navigate('/admin/charity-verifications');
       } else {
         toast.error(response.error || 'Failed to reject verification');
       }
@@ -144,7 +148,7 @@ const CharityVerificationDetail = () => {
       
       if (response.success) {
         toast.success('Resubmission requested successfully');
-        navigate('/admin/applications');
+        navigate('/admin/charity-verifications');
       } else {
         toast.error(response.error || 'Failed to request resubmission');
       }
@@ -172,44 +176,80 @@ const CharityVerificationDetail = () => {
     return new Date(dateString).toLocaleString();
   };
 
+  const viewDocument = async (fileUrl: string) => {
+    try {
+      // Extract just the file path from the URL if it's a full URL
+      let filePath = fileUrl;
+      if (fileUrl.includes('storage/v1/object/public/verification-documents/')) {
+        // Extract path after the bucket name
+        filePath = fileUrl.split('storage/v1/object/public/verification-documents/')[1];
+      } else if (fileUrl.startsWith('http')) {
+        // Handle any other URL format - extract after bucket name
+        const parts = fileUrl.split('/');
+        const bucketIndex = parts.indexOf('verification-documents');
+        if (bucketIndex !== -1) {
+          filePath = parts.slice(bucketIndex + 1).join('/');
+        }
+      }
+
+      const { data, error } = await supabase.storage
+        .from('verification-documents')
+        .createSignedUrl(filePath, 3600); // URL valid for 1 hour
+
+      if (error) throw error;
+
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('Error generating signed URL:', error);
+      toast.error('Failed to load document. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
-      <div className="space-y-6 p-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="h-96 bg-gray-200 rounded"></div>
-            <div className="h-96 bg-gray-200 rounded"></div>
+      <AdminLayout>
+        <div className="space-y-6">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="h-96 bg-gray-200 rounded"></div>
+              <div className="h-96 bg-gray-200 rounded"></div>
+            </div>
           </div>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
   if (error || !verification) {
     return (
-      <div className="space-y-6 p-6">
-        <Alert variant="destructive">
-          <AlertDescription>
-            {error || 'Verification not found'}
-          </AlertDescription>
-        </Alert>
-        <Button variant="outline" onClick={() => navigate('/admin/applications')}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Applications
-        </Button>
-      </div>
+      <AdminLayout>
+        <div className="space-y-6">
+          <Alert variant="destructive">
+            <AlertDescription>
+              {error || 'Verification not found'}
+            </AlertDescription>
+          </Alert>
+          <Button variant="outline" onClick={() => navigate('/admin/charity-verifications')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Verifications
+          </Button>
+        </div>
+      </AdminLayout>
     );
   }
 
   const canApproveOrReject = ['pending', 'under_review'].includes(verification.status);
 
   return (
-    <div className="space-y-6 p-6">
+    <AdminLayout>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => navigate('/admin/applications')}>
+          <Button variant="outline" onClick={() => navigate('/admin/charity-verifications')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
@@ -373,10 +413,10 @@ const CharityVerificationDetail = () => {
                           Uploaded: {formatDate(doc.uploaded_at)}
                         </p>
                       </div>
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         variant="outline"
-                        onClick={() => window.open(doc.file_url, '_blank')}
+                        onClick={() => viewDocument(doc.file_url)}
                       >
                         <Download className="h-4 w-4 mr-1" />
                         View
@@ -414,7 +454,7 @@ const CharityVerificationDetail = () => {
 
                 <div className="flex gap-2">
                   <Button
-                    onClick={handleApprove}
+                    onClick={() => setShowApproveConfirm(true)}
                     disabled={processing}
                     className="flex-1"
                   >
@@ -440,6 +480,53 @@ const CharityVerificationDetail = () => {
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     Reject
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Approve Confirmation */}
+          {showApproveConfirm && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-green-600">Approve Verification</CardTitle>
+                <CardDescription>
+                  Are you sure you want to approve this charity verification?
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+                  <p className="text-sm text-green-800">
+                    <strong>Organization:</strong> {verification.organization_name}
+                  </p>
+                  <p className="text-sm text-green-800 mt-1">
+                    <strong>Type:</strong> {verification.organization_type}
+                  </p>
+                  <p className="text-sm text-green-800 mt-1">
+                    <strong>Documents:</strong> {verification.documents?.length || 0} uploaded
+                  </p>
+                </div>
+
+                <p className="text-sm text-gray-600">
+                  By approving, this organization will be able to create campaigns and receive donations.
+                </p>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={confirmApprove}
+                    disabled={processing}
+                    className="flex-1"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Confirm Approval
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowApproveConfirm(false)}
+                    disabled={processing}
+                  >
+                    Cancel
                   </Button>
                 </div>
               </CardContent>
@@ -534,40 +621,8 @@ const CharityVerificationDetail = () => {
           )}
         </div>
       </div>
-
-      {/* Verification History */}
-      {verification.history && verification.history.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Review History</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {verification.history.map((entry) => (
-                <div key={entry.id} className="border-l-2 border-muted pl-4">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium">
-                      {entry.action.replace('_', ' ').toUpperCase()}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(entry.created_at)}
-                    </p>
-                  </div>
-                  {entry.admin && (
-                    <p className="text-sm text-muted-foreground">
-                      by {entry.admin.full_name || entry.admin.email}
-                    </p>
-                  )}
-                  {entry.notes && (
-                    <p className="text-sm mt-1">{entry.notes}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 

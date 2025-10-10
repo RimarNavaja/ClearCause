@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Clock, Calendar, Check, AlertTriangle, Heart, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import VerificationBadge from '@/components/ui/VerificationBadge';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtime } from '@/hooks/useRealtime';
 import { formatCurrency, getRelativeTime, calculateDaysLeft } from '@/utils/helpers';
@@ -112,11 +113,11 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           {/* Status and Verification Badges */}
           <div className="absolute top-3 right-3 flex flex-col gap-2">
             {getStatusBadge()}
-            {isVerified && (
-              <div className="verified-badge">
-                <Check size={14} /> 
-                <span>Verified</span>
-              </div>
+            {realtimeData.charity?.verificationStatus && (
+              <VerificationBadge
+                status={realtimeData.charity.verificationStatus as any}
+                size="sm"
+              />
             )}
           </div>
 

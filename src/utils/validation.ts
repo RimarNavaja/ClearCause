@@ -44,7 +44,7 @@ export const nonNegativeNumberSchema = z
 // ===== ENUM VALIDATIONS =====
 
 export const userRoleSchema = z.enum(['admin', 'charity', 'donor'] as const);
-export const campaignStatusSchema = z.enum(['draft', 'active', 'paused', 'completed', 'cancelled'] as const);
+export const campaignStatusSchema = z.enum(['draft', 'pending', 'active', 'paused', 'completed', 'cancelled'] as const);
 export const donationStatusSchema = z.enum(['pending', 'completed', 'failed', 'refunded'] as const);
 export const verificationStatusSchema = z.enum(['pending', 'under_review', 'approved', 'rejected', 'resubmission_required'] as const);
 export const milestoneStatusSchema = z.enum(['pending', 'in_progress', 'completed', 'verified'] as const);
@@ -80,6 +80,7 @@ export const updatePasswordSchema = z.object({
 export const updateProfileSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100, 'Full name is too long').optional(),
   avatarUrl: urlSchema,
+  phone: phoneSchema,
 });
 
 export const donorProfileSchema = z.object({
@@ -96,7 +97,7 @@ export const charityProfileSchema = z.object({
   contactEmail: emailSchema,
   contactPhone: phoneSchema,
   address: z.string().min(10, 'Address must be at least 10 characters').max(500, 'Address is too long'),
-  registrationNumber: z.string().min(1, 'Registration number is required').max(50, 'Registration number is too long'),
+  registrationNumber: z.string().max(50, 'Registration number is too long').optional(),
   contactPersonName: z.string().min(2, 'Contact person name must be at least 2 characters').max(100, 'Contact person name is too long'),
   contactPersonEmail: emailSchema,
   contactPersonPhone: phoneSchema,
@@ -133,7 +134,7 @@ export const charityVerificationSchema = z.object({
 
 export const campaignCreateSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters').max(200, 'Title is too long'),
-  description: z.string().min(20, 'Description must be at least 20 characters').max(5000, 'Description is too long'),
+  description: z.string().min(10, 'Description must be at least 10 characters').max(5000, 'Description is too long'),
   goalAmount: positiveNumberSchema.max(10000000, 'Goal amount is too large'),
   category: z.string().min(1, 'Category is required').max(50, 'Category is too long').optional(),
   location: z.string().min(2, 'Location must be at least 2 characters').max(100, 'Location is too long').optional(),
@@ -157,7 +158,7 @@ export const campaignCreateSchema = z.object({
 
 export const campaignUpdateSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters').max(200, 'Title is too long').optional(),
-  description: z.string().min(20, 'Description must be at least 20 characters').max(5000, 'Description is too long').optional(),
+  description: z.string().min(10, 'Description must be at least 10 characters').max(5000, 'Description is too long').optional(),
   goalAmount: positiveNumberSchema.max(10000000, 'Goal amount is too large').optional(),
   category: z.string().min(1, 'Category is required').max(50, 'Category is too long').optional(),
   location: z.string().min(2, 'Location must be at least 2 characters').max(100, 'Location is too long').optional(),

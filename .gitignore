@@ -43,3 +43,4 @@ ehthumbs.db
 
 # Claude Code directory
 .claude/
+.mcp.json

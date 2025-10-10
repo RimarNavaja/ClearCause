@@ -153,9 +153,11 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
             {/* Logo */}
             <div className="flex-shrink-0 flex items-center">
               <Link to="/" className="flex items-center">
-                <span className="text-2xl font-display font-bold text-clearcause-primary">
-                  Clear<span className="text-clearcause-accent">Cause</span>
-                </span>
+                <img
+                  src="/logo.png"
+                  alt="ClearCause"
+                  className="h-8 w-auto"
+                />
               </Link>
             </div>
             

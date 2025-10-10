@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import VerificationBadge from '@/components/ui/VerificationBadge';
 import DonorLayout from '@/components/layout/DonorLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtime } from '@/hooks/useRealtime';
@@ -348,13 +349,19 @@ const DonorDonations: React.FC = () => {
                           <h3 className="font-medium text-gray-900">
                             {donation.campaign?.title}
                           </h3>
-                          <Link 
+                          <Link
                             to={`/campaigns/${donation.campaign?.id}`}
                             className="text-blue-600 hover:text-blue-800"
                           >
                             <ExternalLink className="h-4 w-4" />
                           </Link>
                         </div>
+
+                        {donation.campaign?.charity?.organizationName && (
+                          <p className="text-sm text-gray-600 mb-2">
+                            by {donation.campaign.charity.organizationName}
+                          </p>
+                        )}
                         
                         <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
                           <span>{getRelativeTime(donation.createdAt)}</span>
@@ -370,9 +377,15 @@ const DonorDonations: React.FC = () => {
                           )}
                         </div>
                         
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           {getStatusBadge(donation.status)}
                           {getImpactStatus(donation)}
+                          {donation.campaign?.charity?.verificationStatus && (
+                            <VerificationBadge
+                              status={donation.campaign.charity.verificationStatus as any}
+                              size="sm"
+                            />
+                          )}
                         </div>
                       </div>
                       

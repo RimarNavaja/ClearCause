@@ -33,9 +33,11 @@ const Navbar: React.FC = () => {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link to="/" className="flex items-center">
-                <span className="text-2xl font-display font-bold text-clearcause-primary">
-                  Clear<span className="text-clearcause-accent">Cause</span>
-                </span>
+                <img
+                  src="/logo.png"
+                  alt="ClearCause"
+                  className="h-8 w-auto"
+                />
               </Link>
             </div>
             <div className="flex items-center space-x-4">
@@ -62,9 +64,11 @@ const Navbar: React.FC = () => {
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
               <Link to="/" className="flex items-center">
-                <span className="text-2xl font-display font-bold text-clearcause-primary">
-                  Clear<span className="text-clearcause-accent">Cause</span>
-                </span>
+                <img
+                  src="/logo.png"
+                  alt="ClearCause"
+                  className="h-8 w-auto"
+                />
               </Link>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
@@ -105,7 +109,7 @@ const Navbar: React.FC = () => {
               </Button>
             </Link>
             <Link to="/signup">
-              <Button className="bg-clearcause-accent hover:bg-clearcause-accent/90">
+              <Button className="bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white">
                 Sign Up
               </Button>
             </Link>
@@ -167,7 +171,7 @@ const Navbar: React.FC = () => {
                 </Button>
               </Link>
               <Link to="/signup" className="block w-full">
-                <Button className="w-full bg-clearcause-accent hover:bg-clearcause-accent/90">
+                <Button className="w-full bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white">
                   Sign Up
                 </Button>
               </Link>

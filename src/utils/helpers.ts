@@ -53,8 +53,12 @@ export const calculateDaysLeft = (endDate: string | Date): number => {
 /**
  * Get relative time (e.g., "2 hours ago")
  */
-export const getRelativeTime = (date: string | Date): string => {
+export const getRelativeTime = (date: string | Date | undefined | null): string => {
+  if (!date) return 'Unknown';
+
   const dateObj = typeof date === 'string' ? new Date(date) : date;
+  if (!dateObj || isNaN(dateObj.getTime())) return 'Unknown';
+
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - dateObj.getTime()) / 1000);
 

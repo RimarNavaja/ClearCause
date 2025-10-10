@@ -30,6 +30,7 @@ import { useAuth } from '@/hooks/useAuth';
 import * as charityService from '@/services/charityService';
 import { CharityRegistrationData } from '@/lib/types';
 import { charityProfileSchema } from '@/utils/validation';
+import { getCharityVerificationData } from '@/services/charityService';
 
 // Form schema
 const formSchema = charityProfileSchema;
@@ -44,41 +45,6 @@ interface DocumentFile {
   url: string;
 }
 
-const SAMPLE_DOCUMENTS: DocumentFile[] = [
-  {
-    id: '1',
-    name: 'SEC_Registration_Certificate.pdf',
-    type: 'SEC Registration Certificate',
-    uploadDate: new Date('2023-01-15'),
-    status: 'Verified',
-    url: '#'
-  },
-  {
-    id: '2',
-    name: 'BIR_Certificate.pdf',
-    type: 'BIR Certificate of Registration',
-    uploadDate: new Date('2023-01-15'),
-    status: 'Verified',
-    url: '#'
-  },
-  {
-    id: '3',
-    name: 'Board_Resolution.pdf',
-    type: 'Board Resolution',
-    uploadDate: new Date('2023-03-10'),
-    status: 'Verified',
-    url: '#'
-  },
-  {
-    id: '4',
-    name: 'Financial_Statement_2023.pdf',
-    type: 'Financial Statement',
-    uploadDate: new Date('2023-07-20'),
-    status: 'Pending',
-    url: '#'
-  }
-];
-
 const OrganizationProfile: React.FC = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -86,6 +52,8 @@ const OrganizationProfile: React.FC = () => {
   const [charityId, setCharityId] = useState<string | null>(null);
 
   const [charityData, setCharityData] = useState<any>(null);
+  const [documents, setDocuments] = useState<DocumentFile[]>([]);
+  const [registrationNumber, setRegistrationNumber] = useState<string>('');
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -103,8 +71,6 @@ const OrganizationProfile: React.FC = () => {
     },
   });
 
-  const [documents, setDocuments] = useState<DocumentFile[]>(SAMPLE_DOCUMENTS);
-
   // Load existing charity data
   useEffect(() => {
     const loadCharityData = async () => {
@@ -112,6 +78,8 @@ const OrganizationProfile: React.FC = () => {
 
       try {
         setLoading(true);
+
+        // Load charity data
         const result = await charityService.getCharityByUserId(user.id);
 
         if (result.success && result.data) {
@@ -119,20 +87,26 @@ const OrganizationProfile: React.FC = () => {
           setCharityId(charity.id);
           setCharityData(charity);
 
-          // Parse address components if needed
-          const addressParts = charity.address ? charity.address.split(', ') : ['', '', '', ''];
+          // Load verification data (registration number and documents)
+          const verificationResult = await getCharityVerificationData(user.id);
+
+          if (verificationResult.success && verificationResult.data) {
+            const { registrationNumber: regNum, documents: verificationDocs } = verificationResult.data;
+            setRegistrationNumber(regNum || '');
+            setDocuments(verificationDocs || []);
+          }
 
           form.reset({
             organizationName: charity.organizationName || '',
             description: charity.description || '',
             websiteUrl: charity.websiteUrl || '',
-            contactEmail: charity.user?.email || '',
-            contactPhone: charity.phone || '',
+            contactEmail: charity.contactEmail || user.email || '',
+            contactPhone: charity.contactPhone || '',
             address: charity.address || '',
-            registrationNumber: charity.registrationNumber || '',
-            contactPersonName: charity.user?.fullName || '',
-            contactPersonEmail: charity.user?.email || '',
-            contactPersonPhone: charity.phone || '',
+            registrationNumber: verificationResult.data?.registrationNumber || '',
+            contactPersonName: user.fullName || '',
+            contactPersonEmail: charity.contactEmail || user.email || '',
+            contactPersonPhone: charity.contactPhone || '',
           });
         }
       } catch (error) {
@@ -170,7 +144,6 @@ const OrganizationProfile: React.FC = () => {
         websiteUrl: data.websiteUrl,
         phone: data.contactPhone,
         address: data.address,
-        registrationNumber: data.registrationNumber
       };
 
       const result = await charityService.updateCharity(charityId, updateData, user.id);
@@ -307,9 +280,13 @@ const OrganizationProfile: React.FC = () => {
                             <Input
                               {...field}
                               placeholder="e.g., SEC Registration Number"
-                              disabled={loading}
+                              disabled={true}
+                              className="bg-gray-50"
                             />
                           </FormControl>
+                          <FormDescription className="text-xs">
+                            This is from your verification documents and cannot be changed here.
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}

@@ -81,7 +81,7 @@ const AdminStatsGrid = () => {
       icon: Clock,
       color: "text-clearcause-accent",
       barColor: "#F59E0B",
-      href: "/admin/verifications",
+      href: "/admin/charity-verifications",
     },
     {
       title: "Total Users",
@@ -90,7 +90,7 @@ const AdminStatsGrid = () => {
       icon: Users,
       color: "text-clearcause-primary",
       barColor: "#0891B2",
-      href: "/admin/donors",
+      href: "/admin/users",
     },
     {
       title: "Total Raised",

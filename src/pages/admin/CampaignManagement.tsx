@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Filter,
@@ -62,8 +63,8 @@ import { formatCurrency, getRelativeTime, debounce } from '@/utils/helpers';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Status', color: 'default' },
-  { value: 'draft', label: 'Draft', color: 'secondary' },
-  { value: 'pending', label: 'Pending Approval', color: 'warning' },
+  { value: 'pending', label: 'Pending Review', color: 'warning' },
+  { value: 'draft', label: 'Draft / Rejected', color: 'secondary' },
   { value: 'active', label: 'Active', color: 'success' },
   { value: 'paused', label: 'Paused', color: 'warning' },
   { value: 'completed', label: 'Completed', color: 'default' },
@@ -93,6 +94,7 @@ const SORT_OPTIONS = [
 ];
 
 const CampaignManagement = () => {
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -112,7 +114,6 @@ const CampaignManagement = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCampaigns, setTotalCampaigns] = useState(0);
   const [stats, setStats] = useState<any>(null);
-  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [actionDialog, setActionDialog] = useState<{
     open: boolean;
     type: 'approve' | 'reject' | 'revision' | 'suspend' | 'reactivate' | null;
@@ -211,9 +212,27 @@ const CampaignManagement = () => {
       const result = await campaignService.listCampaigns(filters, params);
 
       if (result.success && result.data) {
-        setCampaigns(result.data.items);
-        setTotalPages(result.data.pagination.totalPages);
-        setTotalCampaigns(result.data.pagination.totalItems);
+        // Handle both paginated and direct array responses
+        if (result.data.items) {
+          // Paginated response
+          setCampaigns(result.data.items);
+          setTotalPages(result.data.pagination?.totalPages || 1);
+          setTotalCampaigns(result.data.pagination?.totalItems || result.data.items.length);
+        } else if (Array.isArray(result.data)) {
+          // Direct array response
+          setCampaigns(result.data);
+          setTotalPages(1);
+          setTotalCampaigns(result.data.length);
+        } else {
+          // Fallback
+          setCampaigns([]);
+          setTotalPages(1);
+          setTotalCampaigns(0);
+        }
+      } else {
+        setCampaigns([]);
+        setTotalPages(1);
+        setTotalCampaigns(0);
       }
     } catch (error) {
       console.error('Failed to load campaigns:', error);
@@ -397,7 +416,8 @@ const CampaignManagement = () => {
   const getActionButtons = (campaign: Campaign) => {
     const buttons = [];
 
-    if (campaign.status === 'draft' || campaign.status === 'pending') {
+    // Only show approve/reject for pending campaigns
+    if (campaign.status === 'pending') {
       buttons.push(
         <DropdownMenuItem
           key="approve"
@@ -418,20 +438,16 @@ const CampaignManagement = () => {
           Reject
         </DropdownMenuItem>
       );
-
-      // Add revision option for pending campaigns
-      if (campaign.status === 'pending') {
-        buttons.push(
-          <DropdownMenuItem
-            key="revision"
-            onClick={() => handleCampaignAction(campaign, 'revision')}
-            className="text-blue-600"
-          >
-            <AlertTriangle className="mr-2 h-4 w-4" />
-            Request Revision
-          </DropdownMenuItem>
-        );
-      }
+      buttons.push(
+        <DropdownMenuItem
+          key="revision"
+          onClick={() => handleCampaignAction(campaign, 'revision')}
+          className="text-blue-600"
+        >
+          <AlertTriangle className="mr-2 h-4 w-4" />
+          Request Revision
+        </DropdownMenuItem>
+      );
     }
 
     if (campaign.status === 'active') {
@@ -709,7 +725,12 @@ const CampaignManagement = () => {
                               </Avatar>
                             )}
                             <div>
-                              <div className="font-medium">{campaign.title}</div>
+                              <div
+                                className="font-medium hover:text-clearcause-primary cursor-pointer transition-colors"
+                                onClick={() => navigate(`/admin/campaigns/${campaign.id}`)}
+                              >
+                                {campaign.title}
+                              </div>
                               <div className="text-sm text-muted-foreground">
                                 Goal: {formatCurrency(campaign.goalAmount)}
                               </div>
@@ -738,21 +759,61 @@ const CampaignManagement = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
+                          {/* Inline buttons for pending campaigns ONLY */}
+                          {campaign.status === 'pending' ? (
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate(`/admin/campaigns/${campaign.id}`)}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                View
                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setSelectedCampaign(campaign)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              {getActionButtons(campaign)}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                                onClick={() => handleCampaignAction(campaign, 'approve')}
+                              >
+                                <Check className="h-4 w-4 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleCampaignAction(campaign, 'reject')}
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Reject
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleCampaignAction(campaign, 'revision')}
+                              >
+                                <AlertTriangle className="h-4 w-4 mr-1" />
+                                Revision
+                              </Button>
+                            </div>
+                          ) : (
+                            /* Dropdown for other statuses */
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => navigate(`/admin/campaigns/${campaign.id}`)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                {getActionButtons(campaign)}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

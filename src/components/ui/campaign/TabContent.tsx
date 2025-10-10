@@ -37,6 +37,7 @@ interface TabContentProps {
   impactMetrics: ImpactMetric[];
   recentActivities: RecentActivity[];
   campaignId: string;
+  campaignStatus?: string;
 }
 
 const TabContent: React.FC<TabContentProps> = ({
@@ -46,7 +47,8 @@ const TabContent: React.FC<TabContentProps> = ({
   milestones,
   impactMetrics,
   recentActivities,
-  campaignId
+  campaignId,
+  campaignStatus
 }) => {
   switch (activeTab) {
     case 'about':

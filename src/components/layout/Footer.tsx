@@ -10,9 +10,11 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-1">
             <Link to="/" className="flex items-center">
-              <span className="text-2xl font-display font-bold text-clearcause-primary">
-                Clear<span className="text-clearcause-accent">Cause</span>
-              </span>
+              <img
+                src="/logo.png"
+                alt="ClearCause"
+                className="h-8 w-auto"
+              />
             </Link>
             <p className="mt-4 text-sm text-gray-500">
               Donate with confidence. Track every dollar, see the impact, in real time.

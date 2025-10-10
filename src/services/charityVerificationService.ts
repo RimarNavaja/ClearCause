@@ -423,18 +423,6 @@ export const getCharityVerificationStatus = withErrorHandling(async (
         uploaded_at,
         is_verified,
         admin_notes
-      ),
-      history:admin_verification_history (
-        id,
-        action,
-        previous_status,
-        new_status,
-        notes,
-        created_at,
-        admin:profiles!admin_id (
-          full_name,
-          email
-        )
       )
     `)
     .eq('charity_id', currentUserId)

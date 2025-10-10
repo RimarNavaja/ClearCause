@@ -75,7 +75,7 @@ export const createCampaign = withErrorHandling(async (
     }
 
     const filePath = `campaign-images/${charity.id}-${Date.now()}`;
-    const { url, error: uploadError } = await uploadFile('campaigns', filePath, campaignData.imageFile);
+    const { url, error: uploadError } = await uploadFile('Campaigns', filePath, campaignData.imageFile);
 
     if (uploadError || !url) {
       throw new ClearCauseError('UPLOAD_FAILED', uploadError || 'Image upload failed', 500);
@@ -94,7 +94,7 @@ export const createCampaign = withErrorHandling(async (
       goal_amount: validatedData.goalAmount,
       current_amount: 0,
       image_url: imageUrl,
-      status: 'pending',
+      status: validatedData.status || 'pending',
       start_date: validatedData.startDate || null,
       end_date: validatedData.endDate || null,
       category: validatedData.category || null,
@@ -329,7 +329,7 @@ export const updateCampaign = withErrorHandling(async (
     }
 
     const filePath = `campaign-images/${campaign.charityId}-${Date.now()}`;
-    const { url, error: uploadError } = await uploadFile('campaigns', filePath, updates.imageFile);
+    const { url, error: uploadError } = await uploadFile('Campaigns', filePath, updates.imageFile);
 
     if (uploadError || !url) {
       throw new ClearCauseError('UPLOAD_FAILED', uploadError || 'Image upload failed', 500);
@@ -483,9 +483,11 @@ export const listCampaigns = withErrorHandling(async (
 export const getCampaignsByCharity = withErrorHandling(async (
   charityId: string,
   params: PaginationParams,
-  currentUserId?: string
+  currentUserId?: string,
+  filters?: CampaignFilters
 ): Promise<PaginatedResponse<Campaign>> => {
   const validatedParams = validateData(paginationSchema, params);
+  const validatedFilters = filters ? validateData(campaignFilterSchema, filters) : {};
   const { page, limit, sortBy = 'created_at', sortOrder = 'desc' } = validatedParams;
   const offset = (page - 1) * limit;
 
@@ -499,14 +501,35 @@ export const getCampaignsByCharity = withErrorHandling(async (
   if (currentUserId) {
     const charityResult = await getCharityByUserId(currentUserId);
     const currentUser = await getUserProfile(currentUserId);
-    
-    if (!charityResult.success || 
-        charityResult.data?.id !== charityId ||
-        (currentUser.success && currentUser.data?.role !== 'admin')) {
+
+    // Check if user is charity owner
+    const isCharityOwner = charityResult.success && charityResult.data?.id === charityId;
+    // Check if user is admin
+    const isAdmin = currentUser.success && currentUser.data?.role === 'admin';
+
+    // Only filter to active campaigns if user is neither charity owner nor admin
+    if (!isCharityOwner && !isAdmin) {
       query = query.eq('status', 'active');
     }
   } else {
     query = query.eq('status', 'active');
+  }
+
+  // Apply additional filters if provided
+  if (validatedFilters.status && validatedFilters.status.length > 0) {
+    query = query.in('status', validatedFilters.status);
+  }
+
+  if (validatedFilters.search) {
+    query = query.or(`title.ilike.%${validatedFilters.search}%,description.ilike.%${validatedFilters.search}%`);
+  }
+
+  if (validatedFilters.category && validatedFilters.category.length > 0) {
+    query = query.in('category', validatedFilters.category);
+  }
+
+  if (validatedFilters.location && validatedFilters.location.length > 0) {
+    query = query.in('location', validatedFilters.location);
   }
 
   // Apply pagination and sorting
@@ -674,7 +697,7 @@ export const getCampaignsPendingApproval = withErrorHandling(async (
   }
 
   return listCampaigns(
-    { status: ['pending'] },
+    { status: ['draft'] },
     { ...params, sortBy: 'created_at', sortOrder: 'asc' }
   );
 });
@@ -705,9 +728,9 @@ export const approveCampaign = withErrorHandling(async (
 
   const campaign = campaignResult.data;
 
-  // Validate current status
-  if (campaign.status !== 'pending') {
-    throw new ClearCauseError('INVALID_STATUS', 'Only pending campaigns can be approved', 400);
+  // Validate current status - allow draft or pending
+  if (campaign.status !== 'pending' && campaign.status !== 'draft') {
+    throw new ClearCauseError('INVALID_STATUS', 'Only draft or pending campaigns can be approved', 400);
   }
 
   // Update campaign status to active (or draft if not auto-activating)
@@ -769,9 +792,9 @@ export const rejectCampaign = withErrorHandling(async (
 
   const campaign = campaignResult.data;
 
-  // Validate current status
-  if (campaign.status !== 'pending') {
-    throw new ClearCauseError('INVALID_STATUS', 'Only pending campaigns can be rejected', 400);
+  // Validate current status - allow draft or pending
+  if (campaign.status !== 'pending' && campaign.status !== 'draft') {
+    throw new ClearCauseError('INVALID_STATUS', 'Only draft or pending campaigns can be rejected', 400);
   }
 
   // Update campaign status
@@ -834,13 +857,19 @@ export const requestCampaignRevision = withErrorHandling(async (
 
   const campaign = campaignResult.data;
 
-  // Validate current status
-  if (campaign.status !== 'pending') {
-    throw new ClearCauseError('INVALID_STATUS', 'Only pending campaigns can be sent for revision', 400);
+  // Validate current status - allow draft or pending
+  if (campaign.status !== 'pending' && campaign.status !== 'draft') {
+    throw new ClearCauseError('INVALID_STATUS', 'Only draft or pending campaigns can be sent for revision', 400);
   }
 
-  // Update campaign status back to draft
-  const result = await updateCampaignStatus(campaignId, 'draft', adminId);
+  // Update campaign status back to draft (only if not already draft)
+  let result;
+  if (campaign.status !== 'draft') {
+    result = await updateCampaignStatus(campaignId, 'draft', adminId);
+  } else {
+    // Campaign is already in draft, just return it
+    result = campaignResult;
+  }
 
   // Create revision record
   const { error: revisionError } = await supabase
@@ -1040,7 +1069,7 @@ export const createCampaignUpdate = withErrorHandling(async (
     });
 
     const filePath = `campaign-updates/${campaignId}/${Date.now()}-${updateData.imageFile.name}`;
-    const { url, error: uploadError } = await uploadFile('campaigns', filePath, updateData.imageFile);
+    const { url, error: uploadError } = await uploadFile('Campaigns', filePath, updateData.imageFile);
     if (uploadError) {
       throw new ClearCauseError('UPLOAD_FAILED', 'Failed to upload image', 500);
     }
@@ -1366,7 +1395,7 @@ export const updateCampaignUpdate = withErrorHandling(async (
     });
 
     const filePath = `campaign-updates/${existingUpdate.campaign_id}/${Date.now()}-${updateData.imageFile.name}`;
-    const { url, error: uploadError } = await uploadFile('campaigns', filePath, updateData.imageFile);
+    const { url, error: uploadError } = await uploadFile('Campaigns', filePath, updateData.imageFile);
     if (uploadError) {
       throw new ClearCauseError('UPLOAD_FAILED', 'Failed to upload image', 500);
     }

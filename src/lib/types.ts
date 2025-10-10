@@ -443,6 +443,40 @@ export interface AuditLog {
   user?: User;
 }
 
+export interface PlatformSetting {
+  id: string;
+  key: string;
+  value: any;
+  description: string | null;
+  category: string;
+  updatedAt: string;
+  updatedBy: string | null;
+  createdAt: string;
+}
+
+export interface CampaignCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  icon: string | null;
+  isActive: boolean;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlatformStatistics {
+  totalUsers: number;
+  totalCharities: number;
+  totalCampaigns: number;
+  totalDonations: number;
+  totalAmountRaised: number;
+  activeUsers: number;
+  activeCampaigns: number;
+  pendingVerifications: number;
+}
+
 // ===== FORM TYPES =====
 export interface SignUpData {
   email: string;

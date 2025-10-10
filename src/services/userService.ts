@@ -16,9 +16,9 @@ import { logAuditEvent } from './adminService';
  * Get user profile by ID
  */
 export const getUserProfile = withErrorHandling(async (userId: string): Promise<ApiResponse<User>> => {
-  // Add timeout to prevent hanging - shorter timeout since fallback works
+  // Add timeout to prevent hanging - increased timeout for better reliability
   const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('getUserProfile timeout - using fallback')), 1000);
+    setTimeout(() => reject(new Error('getUserProfile timeout - using fallback')), 5000);
   });
 
   const profilePromise = (async () => {
@@ -66,49 +66,68 @@ export const updateUserProfile = withErrorHandling(async (
   updates: {
     fullName?: string;
     avatarUrl?: string;
+    phone?: string;
   },
   currentUserId: string
 ): Promise<ApiResponse<User>> => {
+  console.log('[updateUserProfile] Starting update for user:', userId, 'with updates:', updates);
+
   // Validate input
   const validatedUpdates = validateData(updateProfileSchema, updates);
+  console.log('[updateUserProfile] Validation passed:', validatedUpdates);
 
-  // Check if user can update this profile
+  // Simplified permission check - avoid recursive calls
   if (userId !== currentUserId) {
-    // Only admin can update other users' profiles
-    const currentUser = await getUserProfile(currentUserId);
-    if (!currentUser.success || currentUser.data?.role !== 'admin') {
-      throw new ClearCauseError('FORBIDDEN', 'You can only update your own profile', 403);
+    console.log('[updateUserProfile] User trying to update another user\'s profile, checking permissions');
+    throw new ClearCauseError('FORBIDDEN', 'You can only update your own profile', 403);
+  }
+
+  console.log('[updateUserProfile] Updating database...');
+
+  // Simplified database update without Promise.race timeout (which can cause issues)
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: validatedUpdates.fullName,
+        avatar_url: validatedUpdates.avatarUrl,
+        phone: validatedUpdates.phone,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[updateUserProfile] Database update failed:', error);
+      throw handleSupabaseError(error);
     }
+
+    if (!data) {
+      console.error('[updateUserProfile] No data returned from update');
+      throw new ClearCauseError('UPDATE_FAILED', 'Profile update returned no data', 500);
+    }
+
+    console.log('[updateUserProfile] Database update successful');
+
+    return createSuccessResponse({
+      id: data.id,
+      email: data.email,
+      fullName: data.full_name,
+      avatarUrl: data.avatar_url,
+      phone: data.phone,
+      role: data.role,
+      isVerified: data.is_verified,
+      isActive: data.is_active,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    }, 'Profile updated successfully');
+
+  } catch (updateError) {
+    console.error('[updateUserProfile] Database update exception:', updateError);
+    throw updateError instanceof ClearCauseError ? updateError : handleSupabaseError(updateError);
   }
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .update({
-      full_name: validatedUpdates.fullName,
-      avatar_url: validatedUpdates.avatarUrl,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', userId)
-    .select()
-    .single();
-
-  if (error) {
-    throw handleSupabaseError(error);
-  }
-
-  // Log audit event
-  await logAuditEvent(currentUserId, 'USER_PROFILE_UPDATE', 'user', userId, validatedUpdates);
-
-  return createSuccessResponse({
-    id: data.id,
-    email: data.email,
-    fullName: data.full_name,
-    avatarUrl: data.avatar_url,
-    role: data.role,
-    isVerified: data.is_verified,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
-  }, 'Profile updated successfully');
 });
 
 /**
@@ -119,13 +138,15 @@ export const uploadUserAvatar = withErrorHandling(async (
   avatarFile: File,
   currentUserId: string
 ): Promise<ApiResponse<{ avatarUrl: string }>> => {
-  // Check if user can update this profile
+  console.log('[uploadUserAvatar] Starting avatar upload for user:', userId);
+
+  // Simplified permission check to avoid recursive calls
   if (userId !== currentUserId) {
-    const currentUser = await getUserProfile(currentUserId);
-    if (!currentUser.success || currentUser.data?.role !== 'admin') {
-      throw new ClearCauseError('FORBIDDEN', 'You can only update your own avatar', 403);
-    }
+    console.log('[uploadUserAvatar] User trying to update another user\'s avatar');
+    throw new ClearCauseError('FORBIDDEN', 'You can only update your own avatar', 403);
   }
+
+  console.log('[uploadUserAvatar] Validating file...');
 
   // Validate file
   const maxSize = 2 * 1024 * 1024; // 2MB
@@ -139,31 +160,51 @@ export const uploadUserAvatar = withErrorHandling(async (
     throw new ClearCauseError('INVALID_FILE_TYPE', 'Avatar must be a JPEG, PNG, or WebP image', 400);
   }
 
+  console.log('[uploadUserAvatar] File validation passed, uploading to storage...');
+  console.log('[uploadUserAvatar] User ID:', userId);
+  console.log('[uploadUserAvatar] File type:', avatarFile.type);
+  console.log('[uploadUserAvatar] File size:', avatarFile.size);
+
   // Upload file
-  const filePath = `avatars/${userId}-${Date.now()}`;
-  const { url: avatarUrl, error: uploadError } = await uploadFile('avatars', filePath, avatarFile);
+  const filePath = `${userId}-${Date.now()}`;
+  console.log('[uploadUserAvatar] Upload path:', filePath);
 
-  if (uploadError || !avatarUrl) {
-    throw new ClearCauseError('UPLOAD_FAILED', uploadError || 'Avatar upload failed', 500);
+  try {
+    const { url: avatarUrl, error: uploadError } = await uploadFile('avatars', filePath, avatarFile);
+
+    if (uploadError || !avatarUrl) {
+      console.error('[uploadUserAvatar] File upload failed:', uploadError);
+      throw new ClearCauseError('UPLOAD_FAILED', uploadError || 'Avatar upload failed', 500);
+    }
+
+    console.log('[uploadUserAvatar] File uploaded successfully, updating profile...');
+
+    // Update user profile with new avatar URL
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        avatar_url: avatarUrl,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error('[uploadUserAvatar] Profile update failed:', updateError);
+      throw handleSupabaseError(updateError);
+    }
+
+    console.log('[uploadUserAvatar] Avatar upload completed successfully');
+
+    // Non-blocking audit log
+    logAuditEvent(currentUserId, 'USER_AVATAR_UPDATE', 'user', userId, { avatarUrl })
+      .then(() => console.log('[uploadUserAvatar] Audit log successful'))
+      .catch(auditError => console.warn('[uploadUserAvatar] Audit log failed:', auditError));
+
+    return createSuccessResponse({ avatarUrl }, 'Avatar updated successfully');
+  } catch (error) {
+    console.error('[uploadUserAvatar] Avatar upload exception:', error);
+    throw error instanceof ClearCauseError ? error : new ClearCauseError('UPLOAD_FAILED', 'Avatar upload failed', 500, error);
   }
-
-  // Update user profile with new avatar URL
-  const { error: updateError } = await supabase
-    .from('profiles')
-    .update({
-      avatar_url: avatarUrl,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', userId);
-
-  if (updateError) {
-    throw handleSupabaseError(updateError);
-  }
-
-  // Log audit event
-  await logAuditEvent(currentUserId, 'USER_AVATAR_UPDATE', 'user', userId, { avatarUrl });
-
-  return createSuccessResponse({ avatarUrl }, 'Avatar updated successfully');
 });
 
 /**
@@ -465,9 +506,14 @@ export const searchUsers = withErrorHandling(async (
   params: PaginationParams,
   currentUserId: string
 ): Promise<PaginatedResponse<User>> => {
-  // Check if current user is admin
-  const currentUser = await getUserProfile(currentUserId);
-  if (!currentUser.success || currentUser.data?.role !== 'admin') {
+  // Check if current user is admin - simplified to avoid timeout
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
     throw new ClearCauseError('FORBIDDEN', 'Only administrators can search users', 403);
   }
 
@@ -513,6 +559,7 @@ export const searchUsers = withErrorHandling(async (
     avatarUrl: user.avatar_url,
     role: user.role,
     isVerified: user.is_verified,
+    isActive: user.is_active,
     createdAt: user.created_at,
     updatedAt: user.updated_at,
   }));

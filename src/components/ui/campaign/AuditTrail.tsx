@@ -89,6 +89,9 @@ const SAMPLE_AUDIT_EVENTS: AuditEvent[] = [
 ];
 
 const AuditTrail: React.FC<AuditTrailProps> = ({ campaignId }) => {
+  // For now, we don't have real audit data, so show empty state
+  const auditEvents: AuditEvent[] = [];
+
   const getEventIcon = (type: string) => {
     switch (type) {
       case 'donation':
@@ -150,8 +153,18 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ campaignId }) => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {SAMPLE_AUDIT_EVENTS.map((event) => (
+        {auditEvents.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="max-w-md mx-auto">
+              <p className="text-gray-500 mb-2">No audit trail data available yet</p>
+              <p className="text-sm text-gray-400">
+                All donations, milestone verifications, and fund releases will be logged here once the campaign is active.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {auditEvents.map((event) => (
             <div key={event.id} className="flex items-start space-x-4 p-4 border rounded-lg bg-gray-50/50">
               <div className="flex-shrink-0 mt-1">
                 {getEventIcon(event.type)}
@@ -191,14 +204,17 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ campaignId }) => {
               </div>
             </div>
           ))}
-        </div>
-        
-        <div className="mt-6 p-4 bg-clearcause-muted rounded-lg">
-          <div className="flex items-center text-sm text-gray-600">
-            <Eye className="h-4 w-4 mr-2" />
-            <span>This audit trail is publicly accessible and shows all financial activities for this campaign. Donor identities are anonymized for privacy protection.</span>
           </div>
-        </div>
+        )}
+
+        {auditEvents.length > 0 && (
+          <div className="mt-6 p-4 bg-clearcause-muted rounded-lg">
+            <div className="flex items-center text-sm text-gray-600">
+              <Eye className="h-4 w-4 mr-2" />
+              <span>This audit trail is publicly accessible and shows all financial activities for this campaign. Donor identities are anonymized for privacy protection.</span>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

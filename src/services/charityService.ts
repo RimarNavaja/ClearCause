@@ -3,7 +3,7 @@
  * Handles charity organization registration, verification, and management
  */
 
-import { supabase, uploadFile } from '../lib/supabase';
+import { supabase, uploadFile, createSignedUrl } from '../lib/supabase';
 import { 
   CharityOrganization, 
   ApiResponse, 
@@ -178,13 +178,17 @@ export const getCharityById = withErrorHandling(async (
     id: data.id,
     userId: data.user_id,
     organizationName: data.organization_name,
+    organizationType: data.organization_type,
     description: data.description,
     websiteUrl: data.website_url,
-    phone: data.phone,
+    logoUrl: data.logo_url,
+    contactEmail: data.contact_email,
+    contactPhone: data.contact_phone,
     address: data.address,
-    registrationNumber: data.registration_number,
     verificationStatus: data.verification_status,
-    verificationDocuments: data.verification_documents,
+    verificationNotes: data.verification_notes,
+    transparencyScore: data.transparency_score,
+    totalRaised: parseFloat(data.total_raised || '0'),
     createdAt: data.created_at,
     updatedAt: data.updated_at,
     user: data.profiles ? {
@@ -208,7 +212,7 @@ export const getCharityByUserId = withErrorHandling(async (
 ): Promise<ApiResponse<CharityOrganization | null>> => {
   // Add timeout to prevent hanging during auth transitions
   const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('getCharityByUserId timeout - charity not found')), 1000);
+    setTimeout(() => reject(new Error('getCharityByUserId timeout - charity not found')), 10000);
   });
 
   const charityPromise = (async () => {
@@ -217,21 +221,10 @@ export const getCharityByUserId = withErrorHandling(async (
     }
 
     // Use maybeSingle() to avoid 406 errors when no rows are found
+    // Note: Removed profiles join to avoid RLS recursion issues
     const { data, error } = await supabase
       .from('charities')
-      .select(`
-        *,
-        profiles:user_id (
-          id,
-          email,
-          full_name,
-          avatar_url,
-          role,
-          is_verified,
-          created_at,
-          updated_at
-        )
-      `)
+      .select('*')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -249,25 +242,20 @@ export const getCharityByUserId = withErrorHandling(async (
     id: data.id,
     userId: data.user_id,
     organizationName: data.organization_name,
+    organizationType: data.organization_type,
     description: data.description,
     websiteUrl: data.website_url,
-    phone: data.phone,
+    logoUrl: data.logo_url,
+    contactEmail: data.contact_email,
+    contactPhone: data.contact_phone,
     address: data.address,
-    registrationNumber: data.registration_number,
     verificationStatus: data.verification_status,
-    verificationDocuments: data.verification_documents,
+    verificationNotes: data.verification_notes,
+    transparencyScore: data.transparency_score,
+    totalRaised: parseFloat(data.total_raised || '0'),
     createdAt: data.created_at,
     updatedAt: data.updated_at,
-    user: data.profiles ? {
-      id: data.profiles.id,
-      email: data.profiles.email,
-      fullName: data.profiles.full_name,
-      avatarUrl: data.profiles.avatar_url,
-      role: data.profiles.role,
-      isVerified: data.profiles.is_verified,
-      createdAt: data.profiles.created_at,
-      updatedAt: data.profiles.updated_at,
-    } : undefined,
+    // User data removed to avoid RLS recursion issues with is_admin() function
   });
   })();
 
@@ -371,13 +359,17 @@ export const updateCharity = withErrorHandling(async (
     id: data.id,
     userId: data.user_id,
     organizationName: data.organization_name,
+    organizationType: data.organization_type,
     description: data.description,
     websiteUrl: data.website_url,
-    phone: data.phone,
+    logoUrl: data.logo_url,
+    contactEmail: data.contact_email,
+    contactPhone: data.contact_phone,
     address: data.address,
-    registrationNumber: data.registration_number,
     verificationStatus: data.verification_status,
-    verificationDocuments: data.verification_documents,
+    verificationNotes: data.verification_notes,
+    transparencyScore: data.transparency_score,
+    totalRaised: parseFloat(data.total_raised || '0'),
     createdAt: data.created_at,
     updatedAt: data.updated_at,
     user: data.profiles ? {
@@ -453,13 +445,17 @@ export const verifyCharity = withErrorHandling(async (
     id: data.id,
     userId: data.user_id,
     organizationName: data.organization_name,
+    organizationType: data.organization_type,
     description: data.description,
     websiteUrl: data.website_url,
-    phone: data.phone,
+    logoUrl: data.logo_url,
+    contactEmail: data.contact_email,
+    contactPhone: data.contact_phone,
     address: data.address,
-    registrationNumber: data.registration_number,
     verificationStatus: data.verification_status,
-    verificationDocuments: data.verification_documents,
+    verificationNotes: data.verification_notes,
+    transparencyScore: data.transparency_score,
+    totalRaised: parseFloat(data.total_raised || '0'),
     createdAt: data.created_at,
     updatedAt: data.updated_at,
     user: data.profiles ? {
@@ -530,13 +526,17 @@ export const listCharities = withErrorHandling(async (
     id: charity.id,
     userId: charity.user_id,
     organizationName: charity.organization_name,
+    organizationType: charity.organization_type,
     description: charity.description,
     websiteUrl: charity.website_url,
-    phone: charity.phone,
+    logoUrl: charity.logo_url,
+    contactEmail: charity.contact_email,
+    contactPhone: charity.contact_phone,
     address: charity.address,
-    registrationNumber: charity.registration_number,
     verificationStatus: charity.verification_status,
-    verificationDocuments: charity.verification_documents,
+    verificationNotes: charity.verification_notes,
+    transparencyScore: charity.transparency_score,
+    totalRaised: parseFloat(charity.total_raised || '0'),
     createdAt: charity.created_at,
     updatedAt: charity.updated_at,
     user: charity.profiles ? {
@@ -602,6 +602,7 @@ export const getCharityActivity = withErrorHandling(async (
     title: `Campaign Created: ${campaign.title}`,
     description: campaign.description.substring(0, 100) + '...',
     amount: campaign.goal_amount,
+    timestamp: campaign.created_at,
     createdAt: campaign.created_at,
   }));
 
@@ -769,9 +770,9 @@ export const uploadCharityLogo = withErrorHandling(async (
     throw new ClearCauseError('INVALID_FILE_TYPE', 'Logo must be a JPEG, PNG, or WebP image', 400);
   }
 
-  // Upload file
-  const filePath = `charity-logos/${charityId}-${Date.now()}`;
-  const { url: logoUrl, error: uploadError } = await uploadFile('logos', filePath, logoFile);
+  // Upload file to avatars bucket (use existing bucket)
+  const filePath = `charity-logos/${charityId}-${Date.now()}.${logoFile.name.split('.').pop()}`;
+  const { url: logoUrl, error: uploadError } = await uploadFile('avatars', filePath, logoFile);
 
   if (uploadError || !logoUrl) {
     throw new ClearCauseError('UPLOAD_FAILED', uploadError || 'Logo upload failed', 500);
@@ -794,4 +795,72 @@ export const uploadCharityLogo = withErrorHandling(async (
   await logAuditEvent(currentUserId, 'CHARITY_LOGO_UPDATE', 'charity', charityId, { logoUrl });
 
   return createSuccessResponse({ logoUrl }, 'Logo updated successfully');
+});
+
+/**
+ * Get charity verification data including registration number and documents
+ */
+export const getCharityVerificationData = withErrorHandling(async (
+  userId: string
+): Promise<ApiResponse<any>> => {
+  // Query directly with userId since charity_verifications.charity_id actually stores the user_id, not charities.id
+  const { data: verification, error: verificationError } = await supabase
+    .from('charity_verifications')
+    .select('*')
+    .eq('charity_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (verificationError && verificationError.code !== 'PGRST116') {
+    throw handleSupabaseError(verificationError);
+  }
+
+  if (!verification) {
+    return createSuccessResponse({
+      registrationNumber: null,
+      documents: []
+    });
+  }
+
+  // Get verification documents
+  const { data: documents, error: documentsError } = await supabase
+    .from('verification_documents')
+    .select('*')
+    .eq('verification_id', verification.id)
+    .order('uploaded_at', { ascending: false });
+
+  if (documentsError) {
+    throw handleSupabaseError(documentsError);
+  }
+
+  // Generate signed URLs for all documents (private bucket)
+  const documentsWithUrls = await Promise.all(
+    (documents || []).map(async (doc: any) => {
+      let documentUrl = '#';
+
+      if (doc.file_url) {
+        // Create signed URL for private bucket (expires in 1 hour)
+        const { url, error } = await createSignedUrl('verification-documents', doc.file_url, 3600);
+        if (!error && url) {
+          documentUrl = url;
+        }
+      }
+
+      return {
+        id: doc.id,
+        name: doc.document_name || 'Document',
+        type: doc.document_type || 'Verification Document',
+        uploadDate: new Date(doc.uploaded_at),
+        status: verification.status === 'approved' ? 'Verified' : verification.status === 'pending' ? 'Pending' : 'Expired',
+        url: documentUrl,
+      };
+    })
+  );
+
+  return createSuccessResponse({
+    registrationNumber: verification.registration_number,
+    verificationStatus: verification.status,
+    documents: documentsWithUrls
+  });
 });

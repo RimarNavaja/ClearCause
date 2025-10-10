@@ -14,6 +14,8 @@ interface Campaign {
   transparency: number;
   efficiency: number;
   title: string;
+  status?: string;
+  charityId?: string;
 }
 
 interface DonationCardProps {
@@ -48,48 +50,58 @@ const DonationCard: React.FC<DonationCardProps> = ({ campaign }) => {
         </div>
       </div>
 
-      <div className="mb-6">
-        <label htmlFor="donation-amount" className="block text-sm font-medium text-gray-700 mb-2">
-          Select Donation Amount
-        </label>
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          {[500, 1000, 2500].map((amount) => (
-            <button
-              key={amount}
-              type="button"
-              onClick={() => setDonationAmount(amount)}
-              className={`rounded-md py-2 text-sm font-medium transition-colors ${
-                donationAmount === amount
-                  ? 'bg-clearcause-primary text-white'
-                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-              }`}
-            >
-              ₱{amount.toLocaleString()}
-            </button>
-          ))}
+      {campaign.status === 'draft' ? (
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+          <p className="text-sm text-yellow-800 text-center">
+            This campaign is pending review and not yet accepting donations.
+          </p>
         </div>
-        <div className="relative mt-1 rounded-md shadow-sm">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <span className="text-gray-500 sm:text-sm">₱</span>
+      ) : (
+        <>
+          <div className="mb-6">
+            <label htmlFor="donation-amount" className="block text-sm font-medium text-gray-700 mb-2">
+              Select Donation Amount
+            </label>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {[500, 1000, 2500].map((amount) => (
+                <button
+                  key={amount}
+                  type="button"
+                  onClick={() => setDonationAmount(amount)}
+                  className={`rounded-md py-2 text-sm font-medium transition-colors ${
+                    donationAmount === amount
+                      ? 'bg-clearcause-primary text-white'
+                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                  }`}
+                >
+                  ₱{amount.toLocaleString()}
+                </button>
+              ))}
+            </div>
+            <div className="relative mt-1 rounded-md shadow-sm">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <span className="text-gray-500 sm:text-sm">₱</span>
+              </div>
+              <input
+                type="number"
+                name="donation-amount"
+                id="donation-amount"
+                value={donationAmount}
+                onChange={(e) => setDonationAmount(Number(e.target.value))}
+                className="block w-full rounded-md border-gray-300 pl-8 pr-12 focus:border-clearcause-primary focus:ring-clearcause-primary sm:text-sm"
+                placeholder="0.00"
+              />
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                <span className="text-gray-500 sm:text-sm">PHP</span>
+              </div>
+            </div>
           </div>
-          <input
-            type="number"
-            name="donation-amount"
-            id="donation-amount"
-            value={donationAmount}
-            onChange={(e) => setDonationAmount(Number(e.target.value))}
-            className="block w-full rounded-md border-gray-300 pl-8 pr-12 focus:border-clearcause-primary focus:ring-clearcause-primary sm:text-sm"
-            placeholder="0.00"
-          />
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-            <span className="text-gray-500 sm:text-sm">PHP</span>
-          </div>
-        </div>
-      </div>
 
-      <Button className="w-full bg-clearcause-accent hover:bg-clearcause-accent/90 mb-4">
-        Donate Now
-      </Button>
+          <Button className="w-full bg-clearcause-accent hover:bg-clearcause-accent/90 mb-4">
+            Donate Now
+          </Button>
+        </>
+      )}
 
       <div className="flex justify-center space-x-4">
         <ShareMenu 
@@ -114,21 +126,25 @@ const DonationCard: React.FC<DonationCardProps> = ({ campaign }) => {
           </div>
           <div>
             <h3 className="font-medium">{campaign.charity}</h3>
-            <Link to="/charities/1" className="text-sm text-clearcause-primary">
-              View Profile
-            </Link>
+            {campaign.charityId && (
+              <Link to={`/charities/${campaign.charityId}`} className="text-sm text-clearcause-primary">
+                View Profile
+              </Link>
+            )}
           </div>
         </div>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-500">Transparency Score:</span>
-            <span className="font-medium">{campaign.transparency}%</span>
+        {campaign.status !== 'draft' && campaign.transparency > 0 && campaign.efficiency > 0 && (
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Transparency Score:</span>
+              <span className="font-medium">{campaign.transparency}%</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Efficiency Rating:</span>
+              <span className="font-medium">{campaign.efficiency}%</span>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Efficiency Rating:</span>
-            <span className="font-medium">{campaign.efficiency}%</span>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -160,11 +160,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // Charity users must complete application until approved
-  if (requireRoles.includes('charity') && user && !isVerified) {
-    // Send them to application status page
-    return <Navigate to="/signup/charity-application/status" replace />;
-  }
+  // Note: Removed charity application redirect - charities can now access dashboard
+  // and complete verification through the sidebar "Verification Status" option
 
   // Check email verification requirement
   if (requireVerification && !isVerified) {
@@ -218,6 +215,7 @@ export const AdminRoute: React.FC<{ children: React.ReactNode; fallback?: React.
 /**
  * Charity Route Component
  * Shorthand for charity-only routes
+ * Note: requireVerification removed - charities need dashboard access to submit verification
  */
 export const CharityRoute: React.FC<{ children: React.ReactNode; fallback?: React.ReactNode }> = ({
   children,
@@ -226,7 +224,7 @@ export const CharityRoute: React.FC<{ children: React.ReactNode; fallback?: Reac
   <ProtectedRoute
     requireAuth={true}
     requireRoles={['charity']}
-    requireVerification={true}
+    requireVerification={false}
     fallback={fallback}
   >
     {children}

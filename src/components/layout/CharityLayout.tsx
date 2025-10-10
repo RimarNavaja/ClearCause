@@ -10,7 +10,12 @@ import {
   LogOut,
   Bell,
   User,
-  Loader2
+  Loader2,
+  PlusCircle,
+  Target,
+  FileText,
+  BarChart3,
+  Settings
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -83,35 +88,50 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
   };
   
   const navItems = [
-    { 
-      path: '/charity/dashboard', 
-      label: 'Dashboard', 
-      icon: <LayoutDashboard className="w-5 h-5" /> 
+    {
+      path: '/charity/dashboard',
+      label: 'Dashboard',
+      icon: <LayoutDashboard className="w-5 h-5" />
     },
-    { 
-      path: '/charity/campaigns', 
-      label: 'Manage Campaigns', 
-      icon: <ListChecks className="w-5 h-5" /> 
+    {
+      path: '/charity/campaigns/new',
+      label: 'Create New Campaign',
+      icon: <PlusCircle className="w-5 h-5" />
     },
-    { 
-      path: '/charity/verifications', 
-      label: 'Verification Status', 
-      icon: <BadgeCheck className="w-5 h-5" /> 
+    {
+      path: '/charity/campaigns',
+      label: 'Manage Campaigns',
+      icon: <ListChecks className="w-5 h-5" />
     },
-    { 
-      path: '/charity/funds', 
-      label: 'Funds Management', 
-      icon: <DollarSign className="w-5 h-5" /> 
+    {
+      path: '/charity/milestones',
+      label: 'Milestones',
+      icon: <Target className="w-5 h-5" />
     },
-    { 
-      path: '/charity/profile', 
-      label: 'Organization Profile', 
-      icon: <Landmark className="w-5 h-5" /> 
+    {
+      path: '/charity/updates',
+      label: 'Post Updates',
+      icon: <FileText className="w-5 h-5" />
     },
-    { 
-      path: '/charity/settings', 
-      label: 'Settings', 
-      icon: <Bell className="w-5 h-5" /> 
+    {
+      path: '/charity/analytics',
+      label: 'Analytics',
+      icon: <BarChart3 className="w-5 h-5" />
+    },
+    {
+      path: '/charity/funds',
+      label: 'Funds Management',
+      icon: <DollarSign className="w-5 h-5" />
+    },
+    {
+      path: '/charity/profile',
+      label: 'Organization Profile',
+      icon: <Landmark className="w-5 h-5" />
+    },
+    {
+      path: '/charity/settings',
+      label: 'Settings',
+      icon: <Settings className="w-5 h-5" />
     },
   ];
 

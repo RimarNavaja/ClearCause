@@ -1,0 +1,256 @@
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { TrendingUp, Eye, Bell, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import DonorLayout from '@/components/layout/DonorLayout';
+import { useAuth } from '@/hooks/useAuth';
+import { formatCurrency } from '@/utils/helpers';
+
+interface TrackedCampaign {
+  id: string;
+  title: string;
+  charity: {
+    organizationName: string;
+  };
+  currentAmount: number;
+  goalAmount: number;
+  status: string;
+  imageUrl: string;
+  milestones: Array<{
+    id: string;
+    title: string;
+    status: string;
+    targetAmount: number;
+  }>;
+  updates: Array<{
+    id: string;
+    title: string;
+    createdAt: string;
+  }>;
+}
+
+const TrackCampaigns: React.FC = () => {
+  const { user } = useAuth();
+  const [trackedCampaigns, setTrackedCampaigns] = useState<TrackedCampaign[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Mock data - replace with actual API call
+    setTrackedCampaigns([
+      {
+        id: '1',
+        title: 'Clean Water for Rural Communities',
+        charity: { organizationName: 'Water for Life' },
+        currentAmount: 75000,
+        goalAmount: 100000,
+        status: 'active',
+        imageUrl: '/api/placeholder/400/300',
+        milestones: [
+          { id: '1', title: 'Initial Assessment', status: 'completed', targetAmount: 25000 },
+          { id: '2', title: 'Equipment Purchase', status: 'in_progress', targetAmount: 50000 },
+          { id: '3', title: 'Installation', status: 'pending', targetAmount: 25000 },
+        ],
+        updates: [
+          { id: '1', title: 'Equipment has arrived!', createdAt: '2025-01-15' },
+          { id: '2', title: 'Assessment completed successfully', createdAt: '2025-01-10' },
+        ],
+      },
+    ]);
+    setLoading(false);
+  }, [user]);
+
+  const getMilestoneStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Completed</Badge>;
+      case 'in_progress':
+        return <Badge className="bg-blue-100 text-blue-800"><Clock className="w-3 h-3 mr-1" />In Progress</Badge>;
+      case 'pending':
+        return <Badge variant="outline"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
+      default:
+        return null;
+    }
+  };
+
+  if (loading) {
+    return (
+      <DonorLayout title="Track Campaigns">
+        <div className="space-y-6">
+          <div className="h-8 bg-gray-200 rounded animate-pulse" />
+          <div className="grid gap-6">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-6">
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-4 bg-gray-200 rounded" />
+                    <div className="h-4 bg-gray-200 rounded w-2/3" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </DonorLayout>
+    );
+  }
+
+  return (
+    <DonorLayout title="Track Campaigns">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Track Campaigns</h1>
+            <p className="text-gray-600">Monitor real-time updates and milestone progress</p>
+          </div>
+          <Button variant="outline">
+            <Bell className="w-4 h-4 mr-2" />
+            Notification Settings
+          </Button>
+        </div>
+
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Campaigns Tracked</p>
+                  <p className="text-2xl font-bold">{trackedCampaigns.length}</p>
+                </div>
+                <TrendingUp className="h-8 w-8 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Active Milestones</p>
+                  <p className="text-2xl font-bold">
+                    {trackedCampaigns.reduce(
+                      (acc, c) => acc + c.milestones.filter((m) => m.status === 'in_progress').length,
+                      0
+                    )}
+                  </p>
+                </div>
+                <Clock className="h-8 w-8 text-orange-600" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Recent Updates</p>
+                  <p className="text-2xl font-bold">
+                    {trackedCampaigns.reduce((acc, c) => acc + c.updates.length, 0)}
+                  </p>
+                </div>
+                <Bell className="h-8 w-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tracked Campaigns */}
+        {trackedCampaigns.length === 0 ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <TrendingUp className="mx-auto h-12 w-12 text-gray-300" />
+              <h3 className="mt-4 text-lg font-medium text-gray-900">No campaigns tracked yet</h3>
+              <p className="mt-2 text-gray-500">
+                Start tracking campaigns you've donated to for real-time updates
+              </p>
+              <Button className="mt-4" asChild>
+                <Link to="/donor/donations">View My Donations</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {trackedCampaigns.map((campaign) => (
+              <Card key={campaign.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex gap-4">
+                      <img
+                        src={campaign.imageUrl}
+                        alt={campaign.title}
+                        className="w-24 h-24 rounded-lg object-cover"
+                      />
+                      <div>
+                        <CardTitle>{campaign.title}</CardTitle>
+                        <p className="text-sm text-gray-600 mt-1">by {campaign.charity.organizationName}</p>
+                        <div className="mt-2">
+                          <Progress value={(campaign.currentAmount / campaign.goalAmount) * 100} className="h-2" />
+                          <div className="flex justify-between text-sm mt-1">
+                            <span className="font-semibold">{formatCurrency(campaign.currentAmount)}</span>
+                            <span className="text-gray-500">of {formatCurrency(campaign.goalAmount)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/campaigns/${campaign.id}`}>
+                        <Eye className="w-4 h-4 mr-2" />
+                        View Campaign
+                      </Link>
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Tabs defaultValue="milestones">
+                    <TabsList>
+                      <TabsTrigger value="milestones">
+                        Milestones ({campaign.milestones.length})
+                      </TabsTrigger>
+                      <TabsTrigger value="updates">
+                        Updates ({campaign.updates.length})
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="milestones" className="space-y-3 mt-4">
+                      {campaign.milestones.map((milestone) => (
+                        <div key={milestone.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1">
+                            <h4 className="font-medium">{milestone.title}</h4>
+                            <p className="text-sm text-gray-600">Target: {formatCurrency(milestone.targetAmount)}</p>
+                          </div>
+                          {getMilestoneStatusBadge(milestone.status)}
+                        </div>
+                      ))}
+                    </TabsContent>
+
+                    <TabsContent value="updates" className="space-y-3 mt-4">
+                      {campaign.updates.length === 0 ? (
+                        <p className="text-center text-gray-500 py-6">No updates yet</p>
+                      ) : (
+                        campaign.updates.map((update) => (
+                          <div key={update.id} className="p-3 border rounded-lg">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium">{update.title}</h4>
+                              <span className="text-sm text-gray-500">
+                                {new Date(update.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </DonorLayout>
+  );
+};
+
+export default TrackCampaigns;

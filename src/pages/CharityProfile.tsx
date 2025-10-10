@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, Mail, Phone, Globe, Star, BarChart4, Award, Calendar, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -9,6 +9,9 @@ import Footer from '@/components/layout/Footer';
 import CampaignGrid from '@/components/ui/campaign/CampaignGrid';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import * as charityService from '@/services/charityService';
+import * as campaignService from '@/services/campaignService';
+import { CharityOrganization, Campaign } from '@/lib/types';
 
 const CHARITY_INFO = {
   id: '1',
@@ -88,19 +91,112 @@ const PAST_CAMPAIGNS = [
 ];
 
 const CharityProfile: React.FC = () => {
+  const { charityId } = useParams<{ charityId: string }>();
+  const navigate = useNavigate();
+  const [charity, setCharity] = useState<CharityOrganization | null>(null);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Get the campaign ID from navigation state if coming from campaign detail page
+  const fromCampaignId = window.history.state?.usr?.fromCampaignId;
+
+  useEffect(() => {
+    const loadCharityData = async () => {
+      if (!charityId) {
+        setError('No charity ID provided');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        // Fetch charity details
+        const charityResult = await charityService.getCharityById(charityId);
+        if (!charityResult.success || !charityResult.data) {
+          setError(charityResult.error || 'Charity not found');
+          setLoading(false);
+          return;
+        }
+
+        setCharity(charityResult.data);
+
+        // Fetch charity campaigns
+        const campaignsResult = await campaignService.getCampaignsByCharity(
+          charityId,
+          { page: 1, limit: 50 }
+        );
+
+        if (campaignsResult.success && campaignsResult.data) {
+          setCampaigns(campaignsResult.data);
+        }
+      } catch (err) {
+        setError('Failed to load charity profile');
+        console.error('Charity profile loading error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCharityData();
+  }, [charityId]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-clearcause-primary mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading charity profile...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error || !charity) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Charity Not Found</h2>
+            <p className="text-gray-600 mb-4">{error || 'The charity you are looking for does not exist.'}</p>
+            <button
+              onClick={() => navigate('/')}
+              className="px-4 py-2 bg-clearcause-primary text-white rounded-md hover:bg-clearcause-primary-dark"
+            >
+              Back to Home
+            </button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const activeCampaigns = campaigns.filter(c => c.status === 'active');
+  const completedCampaigns = campaigns.filter(c => c.status === 'completed');
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      
+
       <main className="flex-grow">
         {/* Breadcrumb */}
         <div className="bg-clearcause-muted py-2">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center text-sm">
-              <Link to="/charities" className="text-clearcause-primary hover:text-clearcause-secondary flex items-center">
+              <button
+                onClick={() => navigate(-1)}
+                className="text-clearcause-primary hover:text-clearcause-secondary flex items-center"
+              >
                 <ArrowLeft className="h-4 w-4 mr-1" />
-                Back to Charities
-              </Link>
+                Back to Campaign
+              </button>
             </div>
           </div>
         </div>
@@ -111,46 +207,56 @@ const CharityProfile: React.FC = () => {
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
               <div className="h-24 w-24 rounded-lg overflow-hidden border-2 border-gray-100 bg-white flex-shrink-0">
                 <img
-                  src={CHARITY_INFO.logo}
-                  alt={CHARITY_INFO.name}
+                  src={charity.user?.avatarUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(charity.organizationName) + '&background=3b82f6&color=fff'}
+                  alt={charity.organizationName}
                   className="h-full w-full object-cover"
                 />
               </div>
-              
+
               <div className="flex-1">
                 <div className="flex items-center flex-wrap gap-2 mb-2">
-                  <h1 className="text-3xl font-bold text-gray-900">{CHARITY_INFO.name}</h1>
-                  <div className="verified-badge ml-2">
-                    <Check size={14} />
-                    <span>Verified</span>
-                  </div>
+                  <h1 className="text-3xl font-bold text-gray-900">{charity.organizationName}</h1>
+                  {charity.verificationStatus === 'approved' && (
+                    <div className="verified-badge ml-2">
+                      <Check size={14} />
+                      <span>Verified</span>
+                    </div>
+                  )}
                 </div>
-                
+
                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mt-3">
-                  <div className="flex items-center">
-                    <Globe className="h-4 w-4 mr-1" />
-                    <a 
-                      href={CHARITY_INFO.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-clearcause-primary hover:underline flex items-center"
-                    >
-                      Website
-                      <ExternalLink className="h-3 w-3 ml-1" />
-                    </a>
-                  </div>
-                  <div className="flex items-center">
-                    <Mail className="h-4 w-4 mr-1" />
-                    <span>{CHARITY_INFO.email}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Phone className="h-4 w-4 mr-1" />
-                    <span>{CHARITY_INFO.phone}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Calendar className="h-4 w-4 mr-1" />
-                    <span>Founded: {CHARITY_INFO.founded}</span>
-                  </div>
+                  {charity.websiteUrl && (
+                    <div className="flex items-center">
+                      <Globe className="h-4 w-4 mr-1" />
+                      <a
+                        href={charity.websiteUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-clearcause-primary hover:underline flex items-center"
+                      >
+                        Website
+                        <ExternalLink className="h-3 w-3 ml-1" />
+                      </a>
+                    </div>
+                  )}
+                  {charity.user?.email && (
+                    <div className="flex items-center">
+                      <Mail className="h-4 w-4 mr-1" />
+                      <span>{charity.user.email}</span>
+                    </div>
+                  )}
+                  {charity.contactPhone && (
+                    <div className="flex items-center">
+                      <Phone className="h-4 w-4 mr-1" />
+                      <span>{charity.contactPhone}</span>
+                    </div>
+                  )}
+                  {charity.createdAt && (
+                    <div className="flex items-center">
+                      <Calendar className="h-4 w-4 mr-1" />
+                      <span>Founded: {new Date(charity.createdAt).getFullYear()}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -166,170 +272,130 @@ const CharityProfile: React.FC = () => {
                 {/* About Section */}
                 <div className="bg-white rounded-xl shadow-md p-6">
                   <h2 className="text-xl font-semibold mb-4">About</h2>
-                  <p className="text-gray-700">{CHARITY_INFO.description}</p>
+                  <p className="text-gray-700">{charity.description || 'No description available.'}</p>
+                  {charity.address && (
+                    <div className="mt-4 pt-4 border-t">
+                      <h3 className="text-sm font-medium text-gray-500 mb-1">Address</h3>
+                      <p className="text-gray-700">{charity.address}</p>
+                    </div>
+                  )}
                 </div>
-                
+
                 {/* Active Campaigns */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-end">
-                    <h2 className="text-xl font-semibold">Active Campaigns</h2>
-                    <Link 
-                      to={`/charities/${CHARITY_INFO.id}/campaigns`}
-                      className="text-clearcause-primary hover:text-clearcause-secondary text-sm font-medium"
-                    >
-                      View all
-                    </Link>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {ACTIVE_CAMPAIGNS.map((campaign) => (
-                      <Link 
-                        key={campaign.id}
-                        to={`/campaigns/${campaign.id}`}
-                        className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-                      >
-                        <div className="h-44 overflow-hidden">
-                          <img
-                            src={campaign.imageUrl}
-                            alt={campaign.title}
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                        <div className="p-4">
-                          <h3 className="font-semibold text-lg mb-2 line-clamp-2">{campaign.title}</h3>
-                          <div className="mb-3">
-                            <div className="flex justify-between text-sm mb-1">
-                              <span className="text-gray-600">
-                                ₱{campaign.raised.toLocaleString()} raised
-                              </span>
-                              <span className="font-medium">
-                                {Math.round((campaign.raised / campaign.goal) * 100)}%
-                              </span>
+                {activeCampaigns.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-end">
+                      <h2 className="text-xl font-semibold">Active Campaigns</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {activeCampaigns.map((campaign) => (
+                        <Link
+                          key={campaign.id}
+                          to={`/campaigns/${campaign.id}`}
+                          className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                        >
+                          <div className="h-44 overflow-hidden">
+                            <img
+                              src={campaign.imageUrl || 'https://via.placeholder.com/400x300?text=No+Image'}
+                              alt={campaign.title}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                          <div className="p-4">
+                            <h3 className="font-semibold text-lg mb-2 line-clamp-2">{campaign.title}</h3>
+                            <div className="mb-3">
+                              <div className="flex justify-between text-sm mb-1">
+                                <span className="text-gray-600">
+                                  ₱{campaign.currentAmount.toLocaleString()} raised
+                                </span>
+                                <span className="font-medium">
+                                  {Math.round((campaign.currentAmount / campaign.goalAmount) * 100)}%
+                                </span>
+                              </div>
+                              <Progress value={(campaign.currentAmount / campaign.goalAmount) * 100} className="h-2" />
                             </div>
-                            <Progress value={(campaign.raised / campaign.goal) * 100} className="h-2" />
+                            <div className="flex justify-between text-sm text-gray-500">
+                              <span>{campaign.category || 'General'}</span>
+                            </div>
                           </div>
-                          <div className="flex justify-between text-sm text-gray-500">
-                            <span>{campaign.daysLeft} days left</span>
-                            <span>{campaign.category}</span>
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
+                        </Link>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
                 
                 {/* Past Campaigns */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-end">
-                    <h2 className="text-xl font-semibold">Past Campaigns</h2>
-                    <Link 
-                      to={`/charities/${CHARITY_INFO.id}/campaigns?filter=past`}
-                      className="text-clearcause-primary hover:text-clearcause-secondary text-sm font-medium"
-                    >
-                      View all
-                    </Link>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {PAST_CAMPAIGNS.map((campaign) => (
-                      <Link 
-                        key={campaign.id}
-                        to={`/campaigns/${campaign.id}`}
-                        className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-                      >
-                        <div className="h-44 overflow-hidden relative">
-                          <img
-                            src={campaign.imageUrl}
-                            alt={campaign.title}
-                            className="h-full w-full object-cover"
-                          />
-                          <div className="absolute top-2 right-2 bg-clearcause-success text-white text-xs font-medium px-2 py-1 rounded-full">
-                            Completed
-                          </div>
-                        </div>
-                        <div className="p-4">
-                          <h3 className="font-semibold text-lg mb-2 line-clamp-2">{campaign.title}</h3>
-                          <div className="mb-3">
-                            <div className="flex justify-between text-sm mb-1">
-                              <span className="text-gray-600">
-                                ₱{campaign.raised.toLocaleString()} raised
-                              </span>
-                              <span className="font-medium">
-                                100%
-                              </span>
+                {completedCampaigns.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-end">
+                      <h2 className="text-xl font-semibold">Past Campaigns</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {completedCampaigns.map((campaign) => (
+                        <Link
+                          key={campaign.id}
+                          to={`/campaigns/${campaign.id}`}
+                          className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                        >
+                          <div className="h-44 overflow-hidden relative">
+                            <img
+                              src={campaign.imageUrl || 'https://via.placeholder.com/400x300?text=No+Image'}
+                              alt={campaign.title}
+                              className="h-full w-full object-cover"
+                            />
+                            <div className="absolute top-2 right-2 bg-clearcause-success text-white text-xs font-medium px-2 py-1 rounded-full">
+                              Completed
                             </div>
-                            <Progress value={100} className="h-2 bg-clearcause-muted" />
                           </div>
-                          <div className="flex justify-between text-sm text-gray-500">
-                            <span>Completed: {campaign.completionDate}</span>
-                            <span>{campaign.category}</span>
+                          <div className="p-4">
+                            <h3 className="font-semibold text-lg mb-2 line-clamp-2">{campaign.title}</h3>
+                            <div className="mb-3">
+                              <div className="flex justify-between text-sm mb-1">
+                                <span className="text-gray-600">
+                                  ₱{campaign.currentAmount.toLocaleString()} raised
+                                </span>
+                                <span className="font-medium">
+                                  {Math.round((campaign.currentAmount / campaign.goalAmount) * 100)}%
+                                </span>
+                              </div>
+                              <Progress value={(campaign.currentAmount / campaign.goalAmount) * 100} className="h-2 bg-clearcause-muted" />
+                            </div>
+                            <div className="flex justify-between text-sm text-gray-500">
+                              <span>{campaign.category || 'General'}</span>
+                            </div>
                           </div>
-                        </div>
-                      </Link>
-                    ))}
+                        </Link>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
               
               {/* Sidebar */}
               <div className="space-y-6">
-                {/* Performance Scorecard */}
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <h2 className="text-xl font-semibold mb-4">Transparency & Performance</h2>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium">Transparency Score</span>
-                        <span className="text-sm font-semibold">{CHARITY_INFO.scorecard.transparency}%</span>
-                      </div>
-                      <Progress value={CHARITY_INFO.scorecard.transparency} className="h-2" />
-                    </div>
-                    
-                    <div>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium">Efficiency Rating</span>
-                        <span className="text-sm font-semibold">{CHARITY_INFO.scorecard.efficiency}%</span>
-                      </div>
-                      <Progress value={CHARITY_INFO.scorecard.efficiency} className="h-2" />
-                    </div>
-                    
-                    <div className="pt-4 space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Reporting Frequency</span>
-                        <span className="font-medium">{CHARITY_INFO.scorecard.reportingFrequency}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Milestone Achievement</span>
-                        <span className="font-medium">{CHARITY_INFO.scorecard.milestoneAchievement}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Avg. Verification Time</span>
-                        <span className="font-medium">{CHARITY_INFO.scorecard.averageVerificationTime}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
                 {/* Quick Stats */}
                 <div className="bg-clearcause-muted rounded-xl p-6">
                   <h2 className="text-lg font-semibold mb-3">Quick Stats</h2>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-clearcause-primary">7</div>
+                      <div className="text-2xl font-bold text-clearcause-primary">{campaigns.length}</div>
                       <div className="text-sm text-gray-600">Total Campaigns</div>
                     </div>
                     <div className="bg-white rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-clearcause-primary">₱4.2M</div>
+                      <div className="text-2xl font-bold text-clearcause-primary">
+                        ₱{(campaigns.reduce((sum, c) => sum + c.currentAmount, 0) / 1000).toFixed(1)}K
+                      </div>
                       <div className="text-sm text-gray-600">Total Raised</div>
                     </div>
                     <div className="bg-white rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-clearcause-primary">23K</div>
-                      <div className="text-sm text-gray-600">People Helped</div>
+                      <div className="text-2xl font-bold text-clearcause-primary">{activeCampaigns.length}</div>
+                      <div className="text-sm text-gray-600">Active Campaigns</div>
                     </div>
                     <div className="bg-white rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-clearcause-primary">5</div>
-                      <div className="text-sm text-gray-600">Years on Platform</div>
+                      <div className="text-2xl font-bold text-clearcause-primary">{completedCampaigns.length}</div>
+                      <div className="text-sm text-gray-600">Completed</div>
                     </div>
                   </div>
                 </div>

@@ -28,6 +28,23 @@ const Signup: React.FC = () => {
   const { user, signUp, loading } = useAuth();
   const navigate = useNavigate();
 
+  // Clean up logout parameters from URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('_logout') || params.has('_clear') || params.has('_nuclear') || params.has('_nocache')) {
+      // Remove all logout-related parameters
+      params.delete('_logout');
+      params.delete('_clear');
+      params.delete('_nuclear');
+      params.delete('_nocache');
+
+      // Update URL without reload
+      const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+      window.history.replaceState({}, '', newUrl);
+      console.log('[Signup] Cleaned up logout parameters from URL');
+    }
+  }, []);
+
   // Redirect if already authenticated
   useEffect(() => {
     if (user && !loading) {

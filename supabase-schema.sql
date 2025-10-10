@@ -395,6 +395,105 @@ CREATE POLICY "Users can view their own audit logs" ON public.audit_logs FOR SEL
 CREATE POLICY "System can insert audit logs" ON public.audit_logs FOR INSERT WITH CHECK (true);
 
 -- =====================================================
+-- STORAGE SETUP
+-- =====================================================
+
+-- Create storage buckets (Run in Supabase Dashboard > Storage > Create Bucket)
+-- 1. Go to Storage in your Supabase dashboard
+-- 2. Create a new bucket named: 'avatars'
+-- 3. Set it as Public bucket
+-- 4. Or run this SQL in the SQL Editor:
+
+INSERT INTO storage.buckets (id, name, public, avif_autodetection, allowed_mime_types, file_size_limit)
+VALUES (
+  'avatars',
+  'avatars',
+  true,
+  false,
+  ARRAY['image/jpeg', 'image/png', 'image/webp']::text[],
+  2097152  -- 2MB limit
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Create storage policies for avatars bucket
+CREATE POLICY "Avatar images are publicly accessible" ON storage.objects
+FOR SELECT USING (bucket_id = 'avatars');
+
+CREATE POLICY "Authenticated users can upload avatars" ON storage.objects
+FOR INSERT WITH CHECK (
+  bucket_id = 'avatars'
+  AND auth.role() = 'authenticated'
+);
+
+CREATE POLICY "Authenticated users can update avatars" ON storage.objects
+FOR UPDATE USING (
+  bucket_id = 'avatars'
+  AND auth.role() = 'authenticated'
+);
+
+CREATE POLICY "Authenticated users can delete avatars" ON storage.objects
+FOR DELETE USING (
+  bucket_id = 'avatars'
+  AND auth.role() = 'authenticated'
+);
+
+-- =====================================================
+-- HELPER FUNCTIONS
+-- =====================================================
+
+-- Drop existing functions if they exist (to handle return type changes)
+DROP FUNCTION IF EXISTS get_user_profile_safe(UUID);
+DROP FUNCTION IF EXISTS ensure_user_profile(UUID, TEXT, TEXT, user_role);
+
+-- Function to safely get user profile without RLS issues
+CREATE OR REPLACE FUNCTION get_user_profile_safe(user_id UUID)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  profile_data JSON;
+BEGIN
+  SELECT to_json(p.*) INTO profile_data
+  FROM public.profiles p
+  WHERE p.id = user_id;
+
+  RETURN profile_data;
+END;
+$$;
+
+-- Function to ensure user profile exists
+CREATE OR REPLACE FUNCTION ensure_user_profile(
+  p_user_id UUID,
+  p_email TEXT,
+  p_full_name TEXT,
+  p_role user_role DEFAULT 'donor'
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  profile_data JSON;
+BEGIN
+  -- Try to insert the profile
+  INSERT INTO public.profiles (id, email, full_name, role, is_verified, is_active)
+  VALUES (p_user_id, p_email, p_full_name, p_role, false, true)
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    full_name = EXCLUDED.full_name,
+    updated_at = NOW();
+
+  -- Return the profile data
+  SELECT to_json(p.*) INTO profile_data
+  FROM public.profiles p
+  WHERE p.id = p_user_id;
+
+  RETURN profile_data;
+END;
+$$;
+
+-- =====================================================
 -- ADMIN SETUP INSTRUCTIONS
 -- =====================================================
 

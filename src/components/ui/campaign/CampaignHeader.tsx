@@ -9,6 +9,7 @@ interface CampaignHeaderProps {
   title: string;
   charityLogo: string;
   charity: string;
+  charityId?: string;
   daysLeft: number;
 }
 
@@ -18,6 +19,7 @@ const CampaignHeader: React.FC<CampaignHeaderProps> = ({
   title,
   charityLogo,
   charity,
+  charityId,
   daysLeft
 }) => {
   return (
@@ -39,9 +41,15 @@ const CampaignHeader: React.FC<CampaignHeaderProps> = ({
           <div className="h-8 w-8 rounded-full overflow-hidden">
             <img src={charityLogo} alt={charity} className="h-full w-full object-cover" />
           </div>
-          <Link to={`/charities/1`} className="ml-2 text-sm font-medium text-gray-900 hover:text-clearcause-primary">
-            {charity}
-          </Link>
+          {charityId ? (
+            <Link to={`/charities/${charityId}`} className="ml-2 text-sm font-medium text-gray-900 hover:text-clearcause-primary">
+              {charity}
+            </Link>
+          ) : (
+            <span className="ml-2 text-sm font-medium text-gray-900">
+              {charity}
+            </span>
+          )}
         </div>
         <div className="flex items-center text-sm text-gray-500">
           <Calendar size={16} className="mr-1" />

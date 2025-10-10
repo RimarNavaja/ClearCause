@@ -174,6 +174,7 @@ const DonorProfile: React.FC = () => {
         user.id,
         {
           fullName: data.fullName,
+          phone: data.phone,
         },
         user.id
       );

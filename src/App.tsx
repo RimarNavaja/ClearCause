@@ -34,6 +34,8 @@ import DonorDashboard from "./pages/donor/DonorDashboard";
 import DonorDonations from "./pages/donor/DonorDonations";
 import DonorProfile from "./pages/donor/DonorProfile";
 import DonorSettings from "./pages/donor/DonorSettings";
+import TrackCampaigns from "./pages/donor/TrackCampaigns";
+import DonorFeedback from "./pages/donor/DonorFeedback";
 import CharityApplicationForm from "./pages/CharityApplicationForm";
 import CharityApplicationStatus from "./pages/CharityApplicationStatus";
 import CharityDashboard from "./pages/charity/CharityDashboard";
@@ -43,23 +45,31 @@ import ManageMilestones from "./pages/charity/ManageMilestones";
 import SubmitProofForm from "./pages/charity/SubmitProofForm";
 import PostImpactUpdate from "./pages/charity/PostImpactUpdate";
 import VerificationStatus from "./pages/charity/VerificationStatus";
+import OrganizationVerificationForm from "./pages/charity/OrganizationVerificationForm";
+import OrganizationVerificationStatus from "./pages/charity/OrganizationVerificationStatus";
 import FundsManagement from "./pages/charity/FundsManagement";
 import OrganizationProfile from "./pages/charity/OrganizationProfile";
 import CharitySettings from "./pages/charity/CharitySettings";
+import CharityMilestones from "./pages/charity/CharityMilestones";
+import CharityAnalytics from "./pages/charity/CharityAnalytics";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import VerificationQueue from "./pages/admin/VerificationQueue";
 import VerificationDetail from "./pages/admin/VerificationDetail";
 import CharityVerificationDetail from "./pages/admin/CharityVerificationDetail";
+import CharityVerificationQueue from "./pages/admin/CharityVerificationQueue";
 import FundReleaseManagement from "./pages/admin/FundReleaseManagement";
 import CharityManagement from "./pages/admin/CharityManagement";
 import CharityApplicationReview from "./pages/admin/CharityApplicationReview";
 import DonorManagement from "./pages/admin/DonorManagement";
 import CampaignManagement from "./pages/admin/CampaignManagement";
+import CampaignReview from "./pages/admin/CampaignReview";
 import ScorecardManagement from "./pages/admin/ScorecardManagement";
 import PlatformSettings from "./pages/admin/PlatformSettings";
 import AuditLogs from "./pages/admin/AuditLogs";
 import AdminProfile from "./pages/admin/AdminProfile";
+import ActivityMonitor from "./pages/admin/ActivityMonitor";
+import UserManagement from "./pages/admin/UserManagement";
 
 const queryClient = new QueryClient();
 
@@ -144,6 +154,16 @@ const App = () => (
               <DonorSettings />
             </DonorRoute>
           } />
+          <Route path="/donor/track-campaigns" element={
+            <DonorRoute>
+              <TrackCampaigns />
+            </DonorRoute>
+          } />
+          <Route path="/donor/feedback" element={
+            <DonorRoute>
+              <DonorFeedback />
+            </DonorRoute>
+          } />
 
           {/* Charity routes */}
           <Route path="/charity/dashboard" element={
@@ -186,6 +206,16 @@ const App = () => (
               <VerificationStatus />
             </CharityRoute>
           } />
+          <Route path="/charity/verification/apply" element={
+            <CharityRoute>
+              <OrganizationVerificationForm />
+            </CharityRoute>
+          } />
+          <Route path="/charity/verification/status" element={
+            <CharityRoute>
+              <OrganizationVerificationStatus />
+            </CharityRoute>
+          } />
           <Route path="/charity/funds" element={
             <CharityRoute>
               <FundsManagement />
@@ -199,6 +229,21 @@ const App = () => (
           <Route path="/charity/settings" element={
             <CharityRoute>
               <CharitySettings />
+            </CharityRoute>
+          } />
+          <Route path="/charity/milestones" element={
+            <CharityRoute>
+              <CharityMilestones />
+            </CharityRoute>
+          } />
+          <Route path="/charity/analytics" element={
+            <CharityRoute>
+              <CharityAnalytics />
+            </CharityRoute>
+          } />
+          <Route path="/charity/updates" element={
+            <CharityRoute>
+              <PostImpactUpdate />
             </CharityRoute>
           } />
 
@@ -218,7 +263,12 @@ const App = () => (
               <VerificationDetail />
             </AdminRoute>
           } />
-          <Route path="/admin/charity-verifications/:verificationId" element={
+          <Route path="/admin/charity-verifications" element={
+            <AdminRoute>
+              <CharityVerificationQueue />
+            </AdminRoute>
+          } />
+          <Route path="/admin/verifications/charity/:verificationId" element={
             <AdminRoute>
               <CharityVerificationDetail />
             </AdminRoute>
@@ -248,6 +298,11 @@ const App = () => (
               <CampaignManagement />
             </AdminRoute>
           } />
+          <Route path="/admin/campaigns/:campaignId" element={
+            <AdminRoute>
+              <CampaignReview />
+            </AdminRoute>
+          } />
           <Route path="/admin/scorecards" element={
             <AdminRoute>
               <ScorecardManagement />
@@ -266,6 +321,16 @@ const App = () => (
           <Route path="/admin/profile" element={
             <AdminRoute>
               <AdminProfile />
+            </AdminRoute>
+          } />
+          <Route path="/admin/activity" element={
+            <AdminRoute>
+              <ActivityMonitor />
+            </AdminRoute>
+          } />
+          <Route path="/admin/users" element={
+            <AdminRoute>
+              <UserManagement />
             </AdminRoute>
           } />
 

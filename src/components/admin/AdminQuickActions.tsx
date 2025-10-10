@@ -1,35 +1,70 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle, DollarSign, Shield, FileText } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import * as adminService from '@/services/adminService';
 
 const AdminQuickActions = () => {
+  const { user } = useAuth();
+  const [counts, setCounts] = useState({
+    pendingCharityVerifications: 0,
+    pendingCampaigns: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadCounts = async () => {
+      if (!user?.id) return;
+
+      try {
+        setLoading(true);
+
+        // Fetch all stats in parallel
+        const [statsResult] = await Promise.all([
+          adminService.getPlatformStatistics(user.id),
+        ]);
+
+        setCounts({
+          pendingCharityVerifications: statsResult.data?.pendingVerifications || 0,
+          pendingCampaigns: 0, // Will be calculated from campaigns with draft status
+        });
+      } catch (error) {
+        console.error('Error loading quick action counts:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCounts();
+  }, [user?.id]);
+
   const quickActions = [
     {
-      title: "Verification Queue",
-      description: "Review milestone proofs",
-      icon: CheckCircle,
-      href: "/admin/verifications",
-      color: "bg-clearcause-light-blue text-clearcause-dark-blue",
-      count: "15 pending"
-    },
-    {
-      title: "Fund Releases",
-      description: "Authorize approved payouts",
-      icon: DollarSign,
-      href: "/admin/payouts",
-      color: "bg-emerald-50 text-emerald-600",
-      count: "₱450K pending"
-    },
-    {
-      title: "Charity Applications",
-      description: "Review new registrations",
+      title: "Charity Verifications",
+      description: "Review charity applications",
       icon: Shield,
-      href: "/admin/applications",
+      href: "/admin/charity-verifications",
+      color: "bg-clearcause-light-blue text-clearcause-dark-blue",
+      count: loading ? "..." : counts.pendingCharityVerifications > 0 ? `${counts.pendingCharityVerifications} pending` : "No pending"
+    },
+    {
+      title: "Campaign Reviews",
+      description: "Approve campaign applications",
+      icon: CheckCircle,
+      href: "/admin/campaigns",
+      color: "bg-emerald-50 text-emerald-600",
+      count: loading ? "..." : counts.pendingCampaigns > 0 ? `${counts.pendingCampaigns} pending` : "View all"
+    },
+    {
+      title: "User Management",
+      description: "Manage user accounts",
+      icon: FileText,
+      href: "/admin/users",
       color: "bg-purple-50 text-purple-600",
-      count: "8 new"
+      count: null
     },
     {
       title: "Platform Settings",

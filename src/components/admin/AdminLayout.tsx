@@ -49,6 +49,9 @@ import {
   LogOut,
   User,
   Loader2,
+  Target,
+  Activity,
+  UserCog,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -122,14 +125,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ title = 'Dashboard', children
       <Sidebar variant="inset" collapsible="icon">
         <SidebarHeader className="pt-4">
           <Link to="/" className="flex items-center gap-2 px-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-md bg-clearcause-primary text-white font-bold">
-              CC
-            </div>
-            <div className="text-sm font-display font-bold">
-              <span className="text-clearcause-primary">Clear</span>
-              <span className="text-clearcause-accent">Cause</span>
-              <span className="ml-1 text-[10px] text-muted-foreground">Admin</span>
-            </div>
+            <img
+              src="/logo.png"
+              alt="ClearCause"
+              className="h-8 w-auto"
+            />
+            <span className="text-xs text-muted-foreground">Admin</span>
           </Link>
         </SidebarHeader>
         <SidebarContent>
@@ -137,8 +138,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ title = 'Dashboard', children
             <SidebarGroupLabel className="text-xs text-muted-foreground">Overview</SidebarGroupLabel>
             <SidebarMenu>
               <NavItem to="/admin/dashboard" icon={<LayoutDashboard className="h-4 w-4" />} label="Dashboard" />
-              <NavItem to="/admin/verifications" icon={<ShieldCheck className="h-4 w-4" />} label="Verifications" />
-              <NavItem to="/admin/payouts" icon={<DollarSign className="h-4 w-4" />} label="Payouts" />
+              <NavItem to="/admin/activity" icon={<Activity className="h-4 w-4" />} label="Monitor Activity" />
+            </SidebarMenu>
+          </SidebarGroup>
+
+          <SidebarSeparator />
+
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-xs text-muted-foreground">Verification</SidebarGroupLabel>
+            <SidebarMenu>
+              <NavItem to="/admin/charity-verifications" icon={<ShieldCheck className="h-4 w-4" />} label="Charity Verifications" />
+              <NavItem to="/admin/verifications" icon={<Target className="h-4 w-4" />} label="Milestone Proofs" />
+              <NavItem to="/admin/fund-release" icon={<DollarSign className="h-4 w-4" />} label="Fund Releases" />
             </SidebarMenu>
           </SidebarGroup>
 
@@ -147,10 +158,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ title = 'Dashboard', children
           <SidebarGroup>
             <SidebarGroupLabel className="text-xs text-muted-foreground">Management</SidebarGroupLabel>
             <SidebarMenu>
+              <NavItem to="/admin/users" icon={<UserCog className="h-4 w-4" />} label="User Management" />
               <NavItem to="/admin/charities" icon={<Building2 className="h-4 w-4" />} label="Charities" />
               <NavItem to="/admin/campaigns" icon={<LineChart className="h-4 w-4" />} label="Campaigns" />
               <NavItem to="/admin/donors" icon={<Users className="h-4 w-4" />} label="Donors" />
-              <NavItem to="/admin/scorecards" icon={<CheckCircle className="h-4 w-4" />} label="Scorecards" />
               <NavItem to="/admin/logs" icon={<FileText className="h-4 w-4" />} label="Audit Logs" />
             </SidebarMenu>
           </SidebarGroup>

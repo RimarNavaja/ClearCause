@@ -81,8 +81,11 @@ export const useRealtime = <T = unknown>(
             old: payload.old,
           };
 
-          callbackRef.current(formattedPayload);
-          
+          // Safety check: only call callback if it's a function
+          if (typeof callbackRef.current === 'function') {
+            callbackRef.current(formattedPayload);
+          }
+
           // Update local data based on event type
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             setData(payload.new);

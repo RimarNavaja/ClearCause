@@ -402,11 +402,12 @@ export const getCurrentUserWithTimeout = async (timeoutMs: number = 10000): Prom
 };
 
 /**
- * Get current authenticated user (optimized version with profile creation fallback)
+ * Get current authenticated user (simplified and reliable version)
  */
 export const getCurrentUser = async (): Promise<User | null> => {
   try {
     console.log('[getCurrentUser] Step 1: Getting auth user...');
+
     // Get authenticated user from Supabase
     const { data: { user }, error } = await supabase.auth.getUser();
 
@@ -417,177 +418,55 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
     console.log('[getCurrentUser] Step 1 success: Auth user found:', user.id);
 
-    // Special handling for RLS recursion issues
-    let profileData = null;
-    let profileError = null;
-
+    // Try simple profile query first
     try {
-      console.log('[getCurrentUser] Step 2: Querying profile from database...');
-      // Query profile with a timeout
-      const profilePromise = supabase
+      console.log('[getCurrentUser] Step 2: Simple profile query...');
+
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .maybeSingle();
 
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Profile query timeout')), 3000)
-      );
-
-      console.log('[getCurrentUser] Step 2a: Starting profile query race...');
-      const result = await Promise.race([profilePromise, timeoutPromise]);
-      console.log('[getCurrentUser] Step 2b: Profile query completed');
-      profileData = result.data;
-      profileError = result.error;
-    } catch (raceError) {
-      // If we get recursion or timeout, try with service role
-      console.warn('[getCurrentUser] Step 2 failed - Profile query error:', raceError);
-
-      try {
-        // Use a simpler query that might bypass RLS issues
-        const { data: serviceData, error: serviceError } = await supabase
-          .rpc('get_user_profile_safe', { user_id: user.id });
-
-        if (!serviceError && serviceData) {
-          profileData = serviceData;
-        } else {
-          profileError = serviceError || raceError;
-        }
-      } catch (serviceRoleError) {
-        console.warn('[getCurrentUser] Service role query also failed:', serviceRoleError);
-        profileError = raceError;
-      }
-    }
-
-    if (profileError) {
-      // If it's a recursion error, create a fallback profile from auth data
-      if (profileError.message?.includes('infinite recursion') ||
-          profileError.message?.includes('recursion detected')) {
-        console.warn('[getCurrentUser] RLS recursion detected, creating fallback profile');
-
-        // Return a profile based on auth user data
+      if (!profileError && profileData) {
+        console.log('[getCurrentUser] Step 2 success: Profile found in database');
         return {
-          id: user.id,
-          email: user.email || '',
-          fullName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-          avatarUrl: user.user_metadata?.avatar_url || null,
-          role: (user.user_metadata?.role || 'donor') as 'donor' | 'charity' | 'admin',
-          isVerified: !!user.email_confirmed_at,
-          createdAt: user.created_at || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-      }
-      throw new Error(`Profile query failed: ${profileError.message}`);
-    }
-
-    // If profile exists, return it
-    if (profileData) {
-      return {
-        id: profileData.id,
-        email: profileData.email,
-        fullName: profileData.full_name,
-        avatarUrl: profileData.avatar_url,
-        role: profileData.role,
-        isVerified: profileData.is_verified,
-        createdAt: profileData.created_at,
-        updatedAt: profileData.updated_at,
-      };
-    }
-
-    // If no profile found, try to create one for the authenticated user
-    console.log('[getCurrentUser] No profile found, attempting to create one for user:', user.id);
-
-    try {
-      // Try using the database function first
-      const { data: functionResult, error: functionError } = await supabase
-        .rpc('ensure_user_profile', {
-          p_user_id: user.id,
-          p_email: user.email || '',
-          p_full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-          p_role: (user.user_metadata?.role || 'donor')
-        });
-
-      if (functionError) {
-        console.warn('[getCurrentUser] Function failed, trying direct insert:', functionError);
-
-        // Fallback to direct insert
-        const { data: insertedProfile, error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            id: user.id,
-            email: user.email || '',
-            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-            role: user.user_metadata?.role || 'donor',
-            is_verified: !!user.email_confirmed_at,
-            is_active: true
-          })
-          .select()
-          .single();
-
-        if (insertError) {
-          // If it's a duplicate key error, try to fetch the existing profile
-          if (insertError.code === '23505') {
-            const { data: existingProfile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', user.id)
-              .single();
-
-            if (existingProfile) {
-              return {
-                id: existingProfile.id,
-                email: existingProfile.email,
-                fullName: existingProfile.full_name,
-                avatarUrl: existingProfile.avatar_url,
-                role: existingProfile.role,
-                isVerified: existingProfile.is_verified,
-                createdAt: existingProfile.created_at,
-                updatedAt: existingProfile.updated_at,
-              };
-            }
-          }
-          throw insertError;
-        }
-
-        return {
-          id: insertedProfile.id,
-          email: insertedProfile.email,
-          fullName: insertedProfile.full_name,
-          avatarUrl: insertedProfile.avatar_url,
-          role: insertedProfile.role,
-          isVerified: insertedProfile.is_verified,
-          createdAt: insertedProfile.created_at,
-          updatedAt: insertedProfile.updated_at,
+          id: profileData.id,
+          email: profileData.email,
+          fullName: profileData.full_name,
+          avatarUrl: profileData.avatar_url,
+          phone: profileData.phone,
+          role: profileData.role,
+          isVerified: profileData.is_verified,
+          isActive: profileData.is_active,
+          createdAt: profileData.created_at,
+          updatedAt: profileData.updated_at,
         };
       }
 
-      // If function succeeded, fetch the created profile
-      const { data: createdProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (createdProfile) {
-        return {
-          id: createdProfile.id,
-          email: createdProfile.email,
-          fullName: createdProfile.full_name,
-          avatarUrl: createdProfile.avatar_url,
-          role: createdProfile.role,
-          isVerified: createdProfile.is_verified,
-          createdAt: createdProfile.created_at,
-          updatedAt: createdProfile.updated_at,
-        };
-      }
-    } catch (profileCreationError) {
-      console.error('[getCurrentUser] Failed to create profile:', profileCreationError);
+      console.warn('[getCurrentUser] Step 2 failed or no profile found:', profileError);
+    } catch (queryError) {
+      console.warn('[getCurrentUser] Profile query exception:', queryError);
     }
 
-    // If all else fails, return null
-    return null;
+    // If database query fails or returns no profile, use auth data as fallback
+    console.log('[getCurrentUser] Using auth metadata as fallback profile');
+
+    return {
+      id: user.id,
+      email: user.email || '',
+      fullName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+      avatarUrl: user.user_metadata?.avatar_url || null,
+      phone: user.user_metadata?.phone || null,
+      role: (user.user_metadata?.role || 'donor') as 'donor' | 'charity' | 'admin',
+      isVerified: !!user.email_confirmed_at,
+      isActive: true,
+      createdAt: user.created_at || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
   } catch (error) {
-    console.error('getCurrentUser error:', error);
+    console.error('[getCurrentUser] General error:', error);
     return null;
   }
 };

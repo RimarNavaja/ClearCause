@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CreditCard, UserRound, Settings, LogOut, Loader2 } from 'lucide-react';
+import { LayoutDashboard, CreditCard, UserRound, Settings, LogOut, Loader2, Search, Heart, TrendingUp, MessageSquare, List } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,25 +73,40 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
   };
   
   const navItems = [
-    { 
-      path: '/donor/dashboard', 
-      label: 'Dashboard', 
-      icon: <LayoutDashboard className="w-5 h-5" /> 
+    {
+      path: '/donor/dashboard',
+      label: 'Dashboard',
+      icon: <LayoutDashboard className="w-5 h-5" />
     },
-    { 
-      path: '/donor/donations', 
-      label: 'My Donations', 
-      icon: <CreditCard className="w-5 h-5" /> 
+    {
+      path: '/campaigns',
+      label: 'Browse Campaigns',
+      icon: <List className="w-5 h-5" />
     },
-    { 
-      path: '/donor/profile', 
-      label: 'My Profile', 
-      icon: <UserRound className="w-5 h-5" /> 
+    {
+      path: '/campaigns',
+      label: 'Search Campaigns',
+      icon: <Search className="w-5 h-5" />
     },
-    { 
-      path: '/donor/settings', 
-      label: 'Settings', 
-      icon: <Settings className="w-5 h-5" /> 
+    {
+      path: '/donor/donations',
+      label: 'My Donations',
+      icon: <CreditCard className="w-5 h-5" />
+    },
+    {
+      path: '/donor/track-campaigns',
+      label: 'Track Campaigns',
+      icon: <TrendingUp className="w-5 h-5" />
+    },
+    {
+      path: '/donor/feedback',
+      label: 'Feedback/Reviews',
+      icon: <MessageSquare className="w-5 h-5" />
+    },
+    {
+      path: '/donor/settings',
+      label: 'Settings',
+      icon: <Settings className="w-5 h-5" />
     },
   ];
 
