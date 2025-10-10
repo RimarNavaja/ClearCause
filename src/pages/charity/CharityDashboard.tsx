@@ -10,6 +10,7 @@ import { useRealtime } from '@/hooks/useRealtime';
 import * as charityService from '@/services/charityService';
 import * as campaignService from '@/services/campaignService';
 import { formatCurrency, getRelativeTime } from '@/utils/helpers';
+import { waitForAuthReady } from '@/utils/authHelper';
 
 const CharityDashboard: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
@@ -53,11 +54,21 @@ const CharityDashboard: React.FC = () => {
       setLastLoadTime(now);
 
       console.debug('Loading charity dashboard data for user:', user.id, 'Attempt:', loadingAttempts + 1);
-      
+
+      // Wait for auth to be fully ready before making RLS-dependent queries
+      console.debug('[CharityDashboard] Waiting for auth to be ready...');
+      const authReady = await waitForAuthReady(5000); // Wait up to 5 seconds
+
+      if (!authReady) {
+        console.warn('[CharityDashboard] Auth not ready, retrying in 1 second...');
+        // If auth isn't ready, wait a bit and the retry logic in getCharityByUserId will handle it
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
       // First get the charity organization for this user
       let charityId: string | null = null;
       try {
-        console.debug('Getting charity organization for user...');
+        console.debug('[CharityDashboard] Fetching charity organization for user...');
         const charityResult = await charityService.getCharityByUserId(user.id);
         console.debug('Charity result:', JSON.stringify(charityResult, null, 2));
         if (charityResult.success && charityResult.data) {

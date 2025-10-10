@@ -14,12 +14,14 @@ interface CampaignCardProps {
   campaign: Campaign;
   showRealTimeUpdates?: boolean;
   compact?: boolean;
+  isDonated?: boolean;
 }
 
 const CampaignCard: React.FC<CampaignCardProps> = ({
   campaign,
   showRealTimeUpdates = true,
   compact = false,
+  isDonated = false,
 }) => {
   const [realtimeData, setRealtimeData] = useState(campaign);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -103,11 +105,17 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             }}
           />
           
-          {/* Category Badge */}
-          <div className="absolute top-3 left-3">
+          {/* Category and Donation Badges */}
+          <div className="absolute top-3 left-3 flex flex-col gap-2">
             <span className="bg-white/90 backdrop-blur-sm text-xs font-medium px-2.5 py-1 rounded-full">
               {realtimeData.category}
             </span>
+            {isDonated && (
+              <span className="bg-green-500 text-white text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1">
+                <Heart className="w-3 h-3 fill-current" />
+                You Donated
+              </span>
+            )}
           </div>
           
           {/* Status and Verification Badges */}

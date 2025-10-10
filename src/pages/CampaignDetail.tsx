@@ -11,8 +11,10 @@ import DonationCard from '@/components/ui/campaign/DonationCard';
 import TabNavigation from '@/components/ui/campaign/TabNavigation';
 import TabContent from '@/components/ui/campaign/TabContent';
 import * as campaignService from '@/services/campaignService';
+import * as charityService from '@/services/charityService';
 import { Campaign } from '@/lib/types';
 import { calculateDaysLeft } from '@/utils/helpers';
+import { useAuth } from '@/hooks/useAuth';
 
 const SAMPLE_CAMPAIGN = {
   id: "1",
@@ -126,10 +128,12 @@ const RECENT_ACTIVITIES = [
 const CampaignDetail: React.FC = () => {
   const { campaignId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('about');
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     const loadCampaign = async () => {
@@ -158,6 +162,33 @@ const CampaignDetail: React.FC = () => {
 
     loadCampaign();
   }, [campaignId]);
+
+  // Check if current user is the campaign owner
+  useEffect(() => {
+    const checkOwnership = async () => {
+      if (!user || !campaign) {
+        setIsOwner(false);
+        return;
+      }
+
+      try {
+        // Get the charity profile for the current user
+        const charityResult = await charityService.getCharityByUserId(user.id);
+
+        if (charityResult.success && charityResult.data) {
+          // Check if this charity owns the campaign
+          setIsOwner(charityResult.data.id === campaign.charityId);
+        } else {
+          setIsOwner(false);
+        }
+      } catch (err) {
+        console.error('Error checking campaign ownership:', err);
+        setIsOwner(false);
+      }
+    };
+
+    checkOwnership();
+  }, [user, campaign]);
 
   if (loading) {
     return (
@@ -228,7 +259,7 @@ const CampaignDetail: React.FC = () => {
                 category={campaign.category || 'General'}
                 verified={campaign.status === 'active' && campaign.charity?.verificationStatus === 'approved'}
                 title={campaign.title}
-                charityLogo={campaign.charity?.user?.avatarUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(campaign.charity?.organizationName || 'Charity') + '&background=3b82f6&color=fff'}
+                charityLogo={campaign.charity?.logoUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(campaign.charity?.organizationName || 'Charity') + '&background=3b82f6&color=fff'}
                 charity={campaign.charity?.organizationName || 'Unknown Organization'}
                 charityId={campaign.charityId}
                 daysLeft={daysLeft}
@@ -266,26 +297,29 @@ const CampaignDetail: React.FC = () => {
 
             {/* Right Column - Donation Box */}
             <div className="lg:col-span-1 space-y-6">
-              <DonationCard campaign={{
-                id: campaign.id,
-                title: campaign.title,
-                imageUrl: campaign.imageUrl || '',
-                charity: campaign.charity?.organizationName || 'Unknown Organization',
-                raised: campaign.currentAmount,
-                goal: campaign.goalAmount,
-                daysLeft: daysLeft,
-                verified: campaign.charity?.verificationStatus === 'approved',
-                category: campaign.category || 'General',
-                donors: 0,
-                location: campaign.location || 'Not specified',
-                charityLogo: campaign.charity?.user?.avatarUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(campaign.charity?.organizationName || 'Charity') + '&background=3b82f6&color=fff',
-                transparency: 0,
-                efficiency: 0,
-                description: campaign.description,
-                bannerUrl: campaign.imageUrl || '',
-                status: campaign.status,
-                charityId: campaign.charityId,
-              }} />
+              <DonationCard
+                campaign={{
+                  id: campaign.id,
+                  title: campaign.title,
+                  imageUrl: campaign.imageUrl || '',
+                  charity: campaign.charity?.organizationName || 'Unknown Organization',
+                  raised: campaign.currentAmount,
+                  goal: campaign.goalAmount,
+                  daysLeft: daysLeft,
+                  verified: campaign.charity?.verificationStatus === 'approved',
+                  category: campaign.category || 'General',
+                  donors: 0,
+                  location: campaign.location || 'Not specified',
+                  charityLogo: campaign.charity?.logoUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(campaign.charity?.organizationName || 'Charity') + '&background=3b82f6&color=fff',
+                  transparency: 0,
+                  efficiency: 0,
+                  description: campaign.description,
+                  bannerUrl: campaign.imageUrl || '',
+                  status: campaign.status,
+                  charityId: campaign.charityId,
+                }}
+                isOwner={isOwner}
+              />
             </div>
           </div>
         </div>

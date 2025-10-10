@@ -58,7 +58,7 @@ const DonorDashboard: React.FC = () => {
       // Load suggested campaigns
       const suggestionsResult = await campaignService.getSuggestedCampaigns(user.id, { limit: 4 });
       if (suggestionsResult.success && suggestionsResult.data) {
-        setSuggestedCampaigns(suggestionsResult.data.campaigns);
+        setSuggestedCampaigns(suggestionsResult.data);
       }
 
     } catch (err) {
@@ -214,10 +214,10 @@ const DonorDashboard: React.FC = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-500">Total Donated</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(stats?.totalDonated || 0)}
+                    {formatCurrency(stats?.totalAmount || 0)}
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
-                    {stats?.donationCount || 0} donations made
+                    {stats?.totalDonations || 0} donations made
                   </p>
                 </div>
                 <div className="bg-blue-100 p-3 rounded-full">
@@ -236,7 +236,7 @@ const DonorDashboard: React.FC = () => {
                     {stats?.campaignsSupported || 0}
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
-                    {stats?.activeDonations || 0} currently active
+                    Unique campaigns
                   </p>
                 </div>
                 <div className="bg-rose-100 p-3 rounded-full">
@@ -250,12 +250,12 @@ const DonorDashboard: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Impact Score</p>
+                  <p className="text-sm font-medium text-gray-500">Average Donation</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {stats?.impactScore || 0}
+                    {formatCurrency(stats?.averageDonation || 0)}
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
-                    Based on campaign outcomes
+                    Per donation
                   </p>
                 </div>
                 <div className="bg-green-100 p-3 rounded-full">

@@ -20,9 +20,10 @@ interface Campaign {
 
 interface DonationCardProps {
   campaign: Campaign;
+  isOwner?: boolean;
 }
 
-const DonationCard: React.FC<DonationCardProps> = ({ campaign }) => {
+const DonationCard: React.FC<DonationCardProps> = ({ campaign, isOwner = false }) => {
   const [donationAmount, setDonationAmount] = useState(1000);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   
@@ -50,7 +51,13 @@ const DonationCard: React.FC<DonationCardProps> = ({ campaign }) => {
         </div>
       </div>
 
-      {campaign.status === 'draft' ? (
+      {isOwner ? (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-sm text-blue-800 text-center">
+            This is your campaign. You cannot donate to your own campaign.
+          </p>
+        </div>
+      ) : campaign.status === 'draft' ? (
         <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
           <p className="text-sm text-yellow-800 text-center">
             This campaign is pending review and not yet accepting donations.

@@ -127,7 +127,7 @@ export const createDonation = withErrorHandling(async (
     transactionId: donation.transaction_id,
     message: donation.message,
     isAnonymous: donation.is_anonymous,
-    createdAt: donation.created_at,
+    createdAt: donation.donated_at,
     updatedAt: donation.updated_at,
     donor: donation.profiles ? {
       id: donation.profiles.id,
@@ -283,7 +283,7 @@ export const getDonationById = withErrorHandling(async (
     transactionId: donation.transaction_id,
     message: donation.message,
     isAnonymous: donation.is_anonymous,
-    createdAt: donation.created_at,
+    createdAt: donation.donated_at,
     updatedAt: donation.updated_at,
     donor: donation.profiles && !donation.is_anonymous ? {
       id: donation.profiles.id,
@@ -339,7 +339,7 @@ export const listDonations = withErrorHandling(async (
 ): Promise<PaginatedResponse<Donation>> => {
   const validatedFilters = validateData(donationFilterSchema, filters);
   const validatedParams = validateData(paginationSchema, params);
-  const { page, limit, sortBy = 'created_at', sortOrder = 'desc' } = validatedParams;
+  const { page, limit, sortBy = 'donated_at', sortOrder = 'desc' } = validatedParams;
   const offset = (page - 1) * limit;
 
   // Check user permissions
@@ -392,11 +392,11 @@ export const listDonations = withErrorHandling(async (
   }
 
   if (validatedFilters.dateFrom) {
-    query = query.gte('created_at', validatedFilters.dateFrom);
+    query = query.gte('donated_at', validatedFilters.dateFrom);
   }
 
   if (validatedFilters.dateTo) {
-    query = query.lte('created_at', validatedFilters.dateTo);
+    query = query.lte('donated_at', validatedFilters.dateTo);
   }
 
   // Apply pagination and sorting
@@ -420,7 +420,7 @@ export const listDonations = withErrorHandling(async (
     transactionId: donation.transaction_id,
     message: donation.message,
     isAnonymous: donation.is_anonymous,
-    createdAt: donation.created_at,
+    createdAt: donation.donated_at,
     updatedAt: donation.updated_at,
     donor: donation.profiles && !donation.is_anonymous ? {
       id: donation.profiles.id,
@@ -531,7 +531,7 @@ export const getDonationsByDonor = withErrorHandling(async (
   }
 
   const validatedParams = validateData(paginationSchema, params);
-  const { page, limit, sortBy = 'created_at', sortOrder = 'desc' } = validatedParams;
+  const { page, limit, sortBy = 'donated_at', sortOrder = 'desc' } = validatedParams;
   const offset = (page - 1) * limit;
 
   // Get donations
@@ -566,7 +566,7 @@ export const getDonationsByDonor = withErrorHandling(async (
     transactionId: donation.transaction_id,
     message: donation.message,
     isAnonymous: donation.is_anonymous,
-    createdAt: donation.created_at,
+    createdAt: donation.donated_at,
     updatedAt: donation.updated_at,
     campaign: donation.campaigns ? {
       id: donation.campaigns.id,
@@ -676,7 +676,7 @@ export const updateDonationStatus = withErrorHandling(async (
     transactionId: donation.transaction_id,
     message: donation.message,
     isAnonymous: donation.is_anonymous,
-    createdAt: donation.created_at,
+    createdAt: donation.donated_at,
     updatedAt: donation.updated_at,
     campaign: donation.campaigns ? {
       id: donation.campaigns.id,
@@ -726,7 +726,7 @@ export const getDonationStatistics = withErrorHandling(async (
   // Build query
   let query = supabase
     .from('donations')
-    .select('amount, status, created_at, campaign_id, campaigns:campaign_id(charity_organizations:charity_id(user_id))');
+    .select('amount, status, donated_at, campaign_id, campaigns:campaign_id(charity_organizations:charity_id(user_id))');
 
   // Apply user-based filtering for non-admins
   if (!isAdmin) {
@@ -739,11 +739,11 @@ export const getDonationStatistics = withErrorHandling(async (
   }
 
   if (filters.dateFrom) {
-    query = query.gte('created_at', filters.dateFrom);
+    query = query.gte('donated_at', filters.dateFrom);
   }
 
   if (filters.dateTo) {
-    query = query.lte('created_at', filters.dateTo);
+    query = query.lte('donated_at', filters.dateTo);
   }
 
   const { data: donations, error } = await query;
@@ -772,7 +772,7 @@ export const getDonationStatistics = withErrorHandling(async (
   // Group by month
   const monthlyData: Record<string, { count: number; amount: number }> = {};
   donations.forEach(donation => {
-    const month = new Date(donation.created_at).toISOString().slice(0, 7); // YYYY-MM
+    const month = new Date(donation.donated_at).toISOString().slice(0, 7); // YYYY-MM
     if (!monthlyData[month]) {
       monthlyData[month] = { count: 0, amount: 0 };
     }

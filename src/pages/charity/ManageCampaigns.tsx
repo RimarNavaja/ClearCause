@@ -25,6 +25,7 @@ import * as charityService from '@/services/charityService';
 import { Campaign, CampaignStatus } from '@/lib/types';
 import { formatCurrency, getRelativeTime, debounce, calculateDaysLeft } from '@/utils/helpers';
 import { toast } from 'sonner';
+import { waitForAuthReady } from '@/utils/authHelper';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Campaigns' },
@@ -68,7 +69,18 @@ const ManageCampaigns: React.FC = () => {
       setLoading(true);
       setError(null);
 
+      // Wait for auth to be fully ready before making RLS-dependent queries
+      console.log('[ManageCampaigns] Waiting for auth to be ready...');
+      const authReady = await waitForAuthReady(5000); // Wait up to 5 seconds
+
+      if (!authReady) {
+        console.warn('[ManageCampaigns] Auth not ready, retrying in 1 second...');
+        // If auth isn't ready, wait a bit and the retry logic in getCharityByUserId will handle it
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
       // First get charity ID from user ID
+      console.log('[ManageCampaigns] Fetching charity data...');
       const charityResult = await charityService.getCharityByUserId(user.id);
 
       if (!charityResult.success || !charityResult.data) {

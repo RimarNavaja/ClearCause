@@ -14,6 +14,7 @@ import * as campaignService from '@/services/campaignService';
 import * as charityService from '@/services/charityService';
 import { CampaignCreateData } from '@/lib/types';
 import { getRelativeTime } from '@/utils/helpers';
+import { waitForAuthReady } from '@/utils/authHelper';
 
 // TypeScript interfaces
 interface Milestone {
@@ -58,6 +59,18 @@ const CampaignForm: React.FC = () => {
 
       try {
         setCheckingVerification(true);
+
+        // Wait for auth to be fully ready before making RLS-dependent queries
+        console.log('[CampaignForm] Waiting for auth to be ready...');
+        const authReady = await waitForAuthReady(5000); // Wait up to 5 seconds
+
+        if (!authReady) {
+          console.warn('[CampaignForm] Auth not ready, retrying in 1 second...');
+          // If auth isn't ready, wait a bit and the retry logic in getCharityByUserId will handle it
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        console.log('[CampaignForm] Fetching charity verification status...');
         const charityResult = await charityService.getCharityByUserId(user.id);
 
         if (charityResult.success && charityResult.data) {

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Menu, X, Search } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import AuthenticatedNavbar from './AuthenticatedNavbar';
@@ -10,6 +10,7 @@ const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, loading, authError } = useAuth();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
+  const location = useLocation();
 
   // Add timeout protection for navbar loading
   React.useEffect(() => {
@@ -24,6 +25,29 @@ const Navbar: React.FC = () => {
       setLoadingTimeout(false);
     }
   }, [loading]);
+
+  // Check if link is active
+  const isActiveLink = (path: string) => {
+    return location.pathname === path;
+  };
+
+  // Get link classes with active state
+  const getLinkClasses = (path: string) => {
+    const baseClasses = "inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors";
+    const activeClasses = "border-clearcause-primary text-clearcause-primary";
+    const inactiveClasses = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300";
+
+    return `${baseClasses} ${isActiveLink(path) ? activeClasses : inactiveClasses}`;
+  };
+
+  // Get mobile link classes with active state
+  const getMobileLinkClasses = (path: string) => {
+    const baseClasses = "block pl-3 pr-4 py-2 text-base font-medium transition-colors";
+    const activeClasses = "text-clearcause-primary bg-blue-50 border-l-4 border-clearcause-primary";
+    const inactiveClasses = "text-gray-500 hover:text-gray-800 hover:bg-gray-50";
+
+    return `${baseClasses} ${isActiveLink(path) ? activeClasses : inactiveClasses}`;
+  };
 
   // Show loading skeleton while auth is loading (with timeout protection)
   if (loading && !authError && !loadingTimeout) {
@@ -72,44 +96,25 @@ const Navbar: React.FC = () => {
               </Link>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <Link 
-                to="/campaigns" 
-                className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              >
+              <Link to="/campaigns" className={getLinkClasses('/campaigns')}>
                 Browse Campaigns
               </Link>
-              <Link 
-                to="/how-it-works" 
-                className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              >
+              <Link to="/how-it-works" className={getLinkClasses('/how-it-works')}>
                 How It Works
               </Link>
-              <Link 
-                to="/about" 
-                className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              >
+              <Link to="/about" className={getLinkClasses('/about')}>
                 About Us
               </Link>
             </div>
           </div>
-          <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-4">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search campaigns..."
-                className="pl-10 block w-full rounded-md border border-gray-300 bg-white py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-clearcause-primary focus:border-clearcause-primary"
-              />
-            </div>
+          <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-3">
             <Link to="/login">
-              <Button variant="outline" className="text-clearcause-primary hover:text-clearcause-primary border-clearcause-primary hover:border-clearcause-primary">
+              <Button variant="ghost" className="text-gray-700 hover:text-clearcause-primary">
                 Log In
               </Button>
             </Link>
             <Link to="/signup">
-              <Button className="bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white">
+              <Button className="bg-clearcause-primary hover:bg-clearcause-secondary">
                 Sign Up
               </Button>
             </Link>
@@ -136,42 +141,35 @@ const Navbar: React.FC = () => {
           <div className="pt-2 pb-3 space-y-1">
             <Link
               to="/campaigns"
-              className="block pl-3 pr-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+              className={getMobileLinkClasses('/campaigns')}
+              onClick={() => setIsMenuOpen(false)}
             >
               Browse Campaigns
             </Link>
             <Link
               to="/how-it-works"
-              className="block pl-3 pr-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+              className={getMobileLinkClasses('/how-it-works')}
+              onClick={() => setIsMenuOpen(false)}
             >
               How It Works
             </Link>
             <Link
               to="/about"
-              className="block pl-3 pr-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+              className={getMobileLinkClasses('/about')}
+              onClick={() => setIsMenuOpen(false)}
             >
               About Us
             </Link>
           </div>
-          <div className="pt-4 pb-3 border-t border-gray-200">
-            <div className="px-4 space-y-3">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search campaigns..."
-                  className="pl-10 block w-full rounded-md border border-gray-300 bg-white py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-clearcause-primary focus:border-clearcause-primary"
-                />
-              </div>
-              <Link to="/login" className="block w-full">
-                <Button variant="outline" className="w-full text-clearcause-primary hover:text-clearcause-primary border-clearcause-primary hover:border-clearcause-primary">
+          <div className="pt-3 pb-4 border-t border-gray-200">
+            <div className="px-4 space-y-2">
+              <Link to="/login" className="block w-full" onClick={() => setIsMenuOpen(false)}>
+                <Button variant="outline" className="w-full">
                   Log In
                 </Button>
               </Link>
-              <Link to="/signup" className="block w-full">
-                <Button className="w-full bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white">
+              <Link to="/signup" className="block w-full" onClick={() => setIsMenuOpen(false)}>
+                <Button className="w-full bg-clearcause-primary hover:bg-clearcause-secondary">
                   Sign Up
                 </Button>
               </Link>

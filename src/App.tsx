@@ -31,6 +31,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import AuthCallback from "./pages/AuthCallback";
 import DonorDashboard from "./pages/donor/DonorDashboard";
+import DonorCampaigns from "./pages/donor/DonorCampaigns";
 import DonorDonations from "./pages/donor/DonorDonations";
 import DonorProfile from "./pages/donor/DonorProfile";
 import DonorSettings from "./pages/donor/DonorSettings";
@@ -137,6 +138,11 @@ const App = () => (
           <Route path="/donor/dashboard" element={
             <DonorRoute>
               <DonorDashboard />
+            </DonorRoute>
+          } />
+          <Route path="/donor/campaigns" element={
+            <DonorRoute>
+              <DonorCampaigns />
             </DonorRoute>
           } />
           <Route path="/donor/donations" element={

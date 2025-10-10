@@ -4,19 +4,19 @@
  */
 
 import { supabase, uploadFile, createSignedUrl } from '../lib/supabase';
-import { 
-  CharityOrganization, 
-  ApiResponse, 
-  PaginatedResponse, 
-  PaginationParams, 
+import {
+  CharityOrganization,
+  ApiResponse,
+  PaginatedResponse,
+  PaginationParams,
   CharityRegistrationData,
   VerificationStatus,
-  ClearCauseError 
+  ClearCauseError
 } from '../lib/types';
-import { 
-  validateData, 
-  charityRegistrationSchema, 
-  charityUpdateSchema, 
+import {
+  validateData,
+  charityRegistrationSchema,
+  charityUpdateSchema,
   charityVerificationSchema,
   paginationSchema,
   validateFile
@@ -25,6 +25,7 @@ import { withErrorHandling, handleSupabaseError, createSuccessResponse } from '.
 import { createPaginatedResponse } from '../utils/helpers';
 import { logAuditEvent } from './adminService';
 import { getUserProfile } from './userService';
+import { retryWithBackoff } from '../utils/authHelper';
 
 /**
  * Register charity organization
@@ -206,20 +207,20 @@ export const getCharityById = withErrorHandling(async (
 
 /**
  * Get charity organization by user ID
+ * Includes retry logic to handle auth state synchronization delays
  */
 export const getCharityByUserId = withErrorHandling(async (
   userId: string
 ): Promise<ApiResponse<CharityOrganization | null>> => {
-  // Add timeout to prevent hanging during auth transitions
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('getCharityByUserId timeout - charity not found')), 10000);
-  });
+  // Validate user ID
+  if (!userId || userId === 'undefined' || userId === 'null' || userId === undefined || userId === null || typeof userId !== 'string' || userId.trim() === '') {
+    throw new ClearCauseError('INVALID_USER_ID', 'Invalid user ID provided', 400);
+  }
 
-  const charityPromise = (async () => {
-    if (!userId || userId === 'undefined' || userId === 'null' || userId === undefined || userId === null || typeof userId !== 'string' || userId.trim() === '') {
-      throw new ClearCauseError('INVALID_USER_ID', 'Invalid user ID provided', 400);
-    }
+  console.log('[getCharityByUserId] Fetching charity for user:', userId);
 
+  // Wrap the actual query in a retry-able function
+  const queryCharity = async (): Promise<ApiResponse<CharityOrganization | null>> => {
     // Use maybeSingle() to avoid 406 errors when no rows are found
     // Note: Removed profiles join to avoid RLS recursion issues
     const { data, error } = await supabase
@@ -228,38 +229,56 @@ export const getCharityByUserId = withErrorHandling(async (
       .eq('user_id', userId)
       .maybeSingle();
 
-  if (error) {
-    console.error('Error fetching charity by user ID:', error);
-    throw handleSupabaseError(error);
-  }
+    if (error) {
+      console.error('[getCharityByUserId] Error fetching charity:', error);
+      throw handleSupabaseError(error);
+    }
 
-  if (!data) {
-    console.log('No charity organization found for user:', userId);
-    return createSuccessResponse(null);
-  }
+    if (!data) {
+      console.log('[getCharityByUserId] No charity organization found for user:', userId);
+      return createSuccessResponse(null);
+    }
 
-  return createSuccessResponse({
-    id: data.id,
-    userId: data.user_id,
-    organizationName: data.organization_name,
-    organizationType: data.organization_type,
-    description: data.description,
-    websiteUrl: data.website_url,
-    logoUrl: data.logo_url,
-    contactEmail: data.contact_email,
-    contactPhone: data.contact_phone,
-    address: data.address,
-    verificationStatus: data.verification_status,
-    verificationNotes: data.verification_notes,
-    transparencyScore: data.transparency_score,
-    totalRaised: parseFloat(data.total_raised || '0'),
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
-    // User data removed to avoid RLS recursion issues with is_admin() function
+    console.log('[getCharityByUserId] Successfully fetched charity:', data.organization_name);
+
+    return createSuccessResponse({
+      id: data.id,
+      userId: data.user_id,
+      organizationName: data.organization_name,
+      organizationType: data.organization_type,
+      description: data.description,
+      websiteUrl: data.website_url,
+      logoUrl: data.logo_url,
+      contactEmail: data.contact_email,
+      contactPhone: data.contact_phone,
+      address: data.address,
+      verificationStatus: data.verification_status,
+      verificationNotes: data.verification_notes,
+      transparencyScore: data.transparency_score,
+      totalRaised: parseFloat(data.total_raised || '0'),
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      // User data removed to avoid RLS recursion issues with is_admin() function
+    });
+  };
+
+  // Add timeout to prevent hanging during auth transitions (increased from 10s to 30s)
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      console.error('[getCharityByUserId] Query timeout after 30 seconds');
+      reject(new Error('Database query timeout - this may be a temporary auth synchronization issue. Please try again.'));
+    }, 30000);
   });
-  })();
 
-  // Race between the actual function and timeout
+  // Execute with retry logic (3 attempts with exponential backoff: immediate, +1s, +2s)
+  const charityPromise = retryWithBackoff(
+    queryCharity,
+    3,           // max retries
+    1000,        // initial delay: 1 second
+    4000         // max delay: 4 seconds
+  );
+
+  // Race between the query (with retries) and timeout
   return await Promise.race([charityPromise, timeoutPromise]);
 });
 

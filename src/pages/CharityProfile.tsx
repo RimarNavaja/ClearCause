@@ -207,7 +207,7 @@ const CharityProfile: React.FC = () => {
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
               <div className="h-24 w-24 rounded-lg overflow-hidden border-2 border-gray-100 bg-white flex-shrink-0">
                 <img
-                  src={charity.user?.avatarUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(charity.organizationName) + '&background=3b82f6&color=fff'}
+                  src={charity.logoUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(charity.organizationName) + '&background=3b82f6&color=fff'}
                   alt={charity.organizationName}
                   className="h-full w-full object-cover"
                 />

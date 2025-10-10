@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Menu,
   X,
-  Search,
   User,
   Settings,
   LayoutDashboard,
@@ -12,7 +11,11 @@ import {
   CreditCard,
   Building2,
   ShieldCheck,
-  Loader2
+  Loader2,
+  TrendingUp,
+  Heart,
+  PlusCircle,
+  BarChart3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,6 +45,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -54,6 +58,29 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Check if link is active
+  const isActiveLink = (path: string) => {
+    return location.pathname === path;
+  };
+
+  // Get link classes with active state
+  const getLinkClasses = (path: string) => {
+    const baseClasses = "inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors";
+    const activeClasses = "border-clearcause-primary text-clearcause-primary";
+    const inactiveClasses = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300";
+
+    return `${baseClasses} ${isActiveLink(path) ? activeClasses : inactiveClasses}`;
+  };
+
+  // Get mobile link classes with active state
+  const getMobileLinkClasses = (path: string) => {
+    const baseClasses = "block pl-3 pr-4 py-2 text-base font-medium transition-colors";
+    const activeClasses = "text-clearcause-primary bg-blue-50 border-l-4 border-clearcause-primary";
+    const inactiveClasses = "text-gray-500 hover:text-gray-800 hover:bg-gray-50";
+
+    return `${baseClasses} ${isActiveLink(path) ? activeClasses : inactiveClasses}`;
+  };
 
   // Get role-specific dashboard link
   const getDashboardLink = (role: string) => {
@@ -69,26 +96,85 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
     }
   };
 
-  // Get role-specific navigation items
+  // Get role-based navigation links (shown in navbar)
+  const getRoleBasedNavLinks = (role: string) => {
+    switch (role) {
+      case 'donor':
+        return [
+          { to: '/donor/campaigns', label: 'Browse Campaigns' },
+          { to: '/donor/track-campaigns', label: 'Track Impact' },
+          { to: '/donor/donations', label: 'My Donations' },
+        ];
+      case 'charity':
+        return [
+          { to: '/charity/manage-campaigns', label: 'My Campaigns' },
+          { to: '/campaigns', label: 'Browse Campaigns' },
+          { to: '/charity/dashboard', label: 'Analytics' },
+        ];
+      case 'admin':
+        return [
+          { to: '/admin/verifications', label: 'Verifications' },
+          { to: '/admin/campaign-management', label: 'Campaigns' },
+          { to: '/admin/charity-management', label: 'Charities' },
+        ];
+      default:
+        return [
+          { to: '/campaigns', label: 'Browse Campaigns' },
+          { to: '/how-it-works', label: 'How It Works' },
+        ];
+    }
+  };
+
+  // Get role-specific dropdown menu items
   const getRoleSpecificNavItems = (role: string) => {
     switch (role) {
       case 'donor':
         return [
           { to: '/donor/donations', label: 'My Donations', icon: <CreditCard className="h-4 w-4" /> },
-          { to: '/donor/profile', label: 'My Profile', icon: <User className="h-4 w-4" /> },
+          { to: '/donor/track-campaigns', label: 'Track Campaigns', icon: <TrendingUp className="h-4 w-4" /> },
         ];
       case 'charity':
         return [
-          { to: '/charity/campaigns', label: 'My Campaigns', icon: <Building2 className="h-4 w-4" /> },
+          { to: '/charity/manage-campaigns', label: 'My Campaigns', icon: <Building2 className="h-4 w-4" /> },
           { to: '/charity/profile', label: 'Organization Profile', icon: <Building2 className="h-4 w-4" /> },
         ];
       case 'admin':
         return [
           { to: '/admin/verifications', label: 'Verifications', icon: <ShieldCheck className="h-4 w-4" /> },
-          { to: '/admin/charities', label: 'Manage Charities', icon: <Building2 className="h-4 w-4" /> },
+          { to: '/admin/charity-management', label: 'Manage Charities', icon: <Building2 className="h-4 w-4" /> },
+          { to: '/admin/campaign-management', label: 'Manage Campaigns', icon: <BarChart3 className="h-4 w-4" /> },
         ];
       default:
         return [];
+    }
+  };
+
+  // Get role-specific quick action button
+  const getQuickActionButton = (role: string) => {
+    switch (role) {
+      case 'donor':
+        return {
+          to: '/donor/campaigns',
+          label: 'Donate Now',
+          icon: <Heart className="h-4 w-4 mr-2" />,
+          className: 'bg-clearcause-primary hover:bg-clearcause-secondary text-white'
+        };
+      case 'charity':
+        return {
+          to: '/charity/create-campaign',
+          label: 'Create Campaign',
+          icon: <PlusCircle className="h-4 w-4 mr-2" />,
+          className: 'bg-clearcause-primary hover:bg-clearcause-secondary text-white'
+        };
+      case 'admin':
+        return {
+          to: '/admin/verifications',
+          label: 'Verifications',
+          icon: <ShieldCheck className="h-4 w-4 mr-2" />,
+          className: 'bg-clearcause-primary hover:bg-clearcause-secondary text-white'
+        };
+      default:
+        return null;
     }
   };
 
@@ -144,6 +230,8 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
   };
 
   const roleSpecificItems = getRoleSpecificNavItems(user.role);
+  const navLinks = getRoleBasedNavLinks(user.role);
+  const quickAction = getQuickActionButton(user.role);
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
@@ -160,51 +248,32 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
                 />
               </Link>
             </div>
-            
-            {/* Desktop Navigation */}
+
+            {/* Desktop Navigation - Role-based */}
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <Link 
-                to="/campaigns" 
-                className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              >
-                Browse Campaigns
-              </Link>
-              <Link 
-                to="/how-it-works" 
-                className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              >
-                How It Works
-              </Link>
-              <Link 
-                to="/about" 
-                className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              >
-                About Us
-              </Link>
+              {navLinks.map((link, index) => (
+                <Link
+                  key={index}
+                  to={link.to}
+                  className={getLinkClasses(link.to)}
+                >
+                  {link.label}
+                </Link>
+              ))}
             </div>
           </div>
-          
+
           {/* Desktop Right Side */}
-          <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-4">
-            {/* Search */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search campaigns..."
-                className="pl-10 block w-full rounded-md border border-gray-300 bg-white py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-clearcause-primary focus:border-clearcause-primary"
-              />
-            </div>
-            
-            {/* Dashboard Button */}
-            <Link to={getDashboardLink(user.role)}>
-              <Button variant="outline" className="text-clearcause-primary hover:text-clearcause-primary border-clearcause-primary hover:border-clearcause-primary">
-                <LayoutDashboard className="h-4 w-4 mr-2" />
-                Dashboard
-              </Button>
-            </Link>
+          <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-3">
+            {/* Quick Action Button */}
+            {quickAction && (
+              <Link to={quickAction.to}>
+                <Button className={quickAction.className}>
+                  {quickAction.icon}
+                  {quickAction.label}
+                </Button>
+              </Link>
+            )}
             
             {/* User Menu */}
             <div className="relative" ref={userMenuRef}>
@@ -316,28 +385,21 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="sm:hidden">
+          {/* Mobile Navigation Links */}
           <div className="pt-2 pb-3 space-y-1">
-            <Link
-              to="/campaigns"
-              className="block pl-3 pr-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-            >
-              Browse Campaigns
-            </Link>
-            <Link
-              to="/how-it-works"
-              className="block pl-3 pr-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-            >
-              How It Works
-            </Link>
-            <Link
-              to="/about"
-              className="block pl-3 pr-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-            >
-              About Us
-            </Link>
+            {navLinks.map((link, index) => (
+              <Link
+                key={index}
+                to={link.to}
+                className={getMobileLinkClasses(link.to)}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
           </div>
-          
-          <div className="pt-4 pb-3 border-t border-gray-200">
+
+          <div className="pt-3 pb-4 border-t border-gray-200">
             {/* Mobile User Info */}
             <div className="px-4 mb-3">
               <div className="flex items-center">
@@ -350,50 +412,49 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
                 </div>
               </div>
             </div>
-            
-            {/* Mobile Search */}
-            <div className="px-4 mb-3">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search campaigns..."
-                  className="pl-10 block w-full rounded-md border border-gray-300 bg-white py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-clearcause-primary focus:border-clearcause-primary"
-                />
-              </div>
-            </div>
-            
+
             {/* Mobile Menu Items */}
             <div className="px-4 space-y-2">
-              <Link to={getDashboardLink(user.role)} className="block w-full">
-                <Button className="w-full bg-clearcause-primary hover:bg-clearcause-secondary">
+              {/* Quick Action Button */}
+              {quickAction && (
+                <Link to={quickAction.to} className="block w-full" onClick={() => setIsMenuOpen(false)}>
+                  <Button className={`w-full ${quickAction.className}`}>
+                    {quickAction.icon}
+                    {quickAction.label}
+                  </Button>
+                </Link>
+              )}
+
+              {/* Dashboard Link */}
+              <Link to={getDashboardLink(user.role)} className="block w-full" onClick={() => setIsMenuOpen(false)}>
+                <Button variant="outline" className="w-full justify-start">
                   <LayoutDashboard className="h-4 w-4 mr-2" />
                   Dashboard
                 </Button>
               </Link>
-              
+
               {/* Role-specific mobile items */}
               {roleSpecificItems.map((item, index) => (
-                <Link 
+                <Link
                   key={index}
-                  to={item.to} 
+                  to={item.to}
                   className="flex items-center px-3 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-md"
+                  onClick={() => setIsMenuOpen(false)}
                 >
                   {item.icon && <span className="mr-3">{item.icon}</span>}
                   {item.label}
                 </Link>
               ))}
-              
-              <Link 
-                to={`/${user.role}/settings`} 
+
+              <Link
+                to={`/${user.role}/settings`}
                 className="flex items-center px-3 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-md"
+                onClick={() => setIsMenuOpen(false)}
               >
                 <Settings className="h-4 w-4 mr-3" />
                 Settings
               </Link>
-              
+
               <button
                 onClick={handleLogoutClick}
                 disabled={isLoggingOut}

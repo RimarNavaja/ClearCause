@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import CampaignGrid from '@/components/ui/campaign/CampaignGrid';
-import { Search, Filter, Check, X, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, Check, X, SlidersHorizontal, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -33,6 +34,7 @@ const SORT_OPTIONS = [
 ];
 
 const Campaigns: React.FC = () => {
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +47,7 @@ const Campaigns: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
-  
+
   const { user } = useAuth();
 
   // Debounced search function
@@ -61,20 +63,27 @@ const Campaigns: React.FC = () => {
       setError(null);
 
       const filters = {
-        category: selectedCategory !== "All Categories" ? selectedCategory : undefined,
+        category: selectedCategory !== "All Categories" ? [selectedCategory] : undefined,
         search: searchQuery || undefined,
-        verifiedOnly,
-        sortBy,
-        page: currentPage,
-        limit: 12,
+        status: ['active'],
       };
 
-      const result = await campaignService.getAllCampaigns(filters);
+      const params = {
+        page: currentPage,
+        limit: 12,
+        sortBy: sortBy === 'newest' ? 'created_at' :
+                sortBy === 'oldest' ? 'created_at' :
+                sortBy === 'most_raised' ? 'current_amount' :
+                sortBy === 'least_raised' ? 'current_amount' : 'created_at',
+        sortOrder: sortBy === 'oldest' || sortBy === 'least_raised' ? 'asc' : 'desc',
+      };
+
+      const result = await campaignService.getAllCampaigns(filters, params);
 
       if (result.success && result.data) {
-        setCampaigns(result.data.campaigns);
-        setTotalPages(result.data.pagination.totalPages);
-        setTotalCount(result.data.pagination.total);
+        setCampaigns(result.data);
+        setTotalPages(result.pagination.totalPages);
+        setTotalCount(result.pagination.total);
       } else {
         setError(result.error || 'Failed to load campaigns');
       }
@@ -132,6 +141,17 @@ const Campaigns: React.FC = () => {
         {/* Page Header */}
         <section className="bg-white border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex items-center gap-4 mb-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
+            </div>
             <h1 className="text-3xl font-bold text-gray-900">Browse Campaigns</h1>
             <p className="mt-2 text-lg text-gray-600">
               Discover verified campaigns and track your impact in real-time

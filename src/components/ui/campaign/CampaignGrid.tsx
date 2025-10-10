@@ -11,15 +11,17 @@ interface CampaignGridProps {
   showRealTimeUpdates?: boolean;
   compact?: boolean;
   columns?: 2 | 3 | 4;
+  donatedCampaignIds?: Set<string>;
 }
 
-const CampaignGrid: React.FC<CampaignGridProps> = ({ 
+const CampaignGrid: React.FC<CampaignGridProps> = ({
   campaigns,
   loading = false,
   error = null,
   showRealTimeUpdates = true,
   compact = false,
   columns = 3,
+  donatedCampaignIds,
 }) => {
   const getGridCols = () => {
     switch (columns) {
@@ -87,6 +89,7 @@ const CampaignGrid: React.FC<CampaignGridProps> = ({
           campaign={campaign}
           showRealTimeUpdates={showRealTimeUpdates}
           compact={compact}
+          isDonated={donatedCampaignIds?.has(campaign.id) || false}
         />
       ))}
     </div>

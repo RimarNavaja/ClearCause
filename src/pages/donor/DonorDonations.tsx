@@ -62,15 +62,17 @@ const DonorDonations: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const filters = {
-        search: searchQuery || undefined,
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-        sortBy,
+      const params = {
         page: currentPage,
         limit: 10,
+        sortBy: sortBy === 'newest' ? 'donated_at' :
+                sortBy === 'oldest' ? 'donated_at' :
+                sortBy === 'amount_high' ? 'amount' :
+                sortBy === 'amount_low' ? 'amount' : 'donated_at',
+        sortOrder: (sortBy === 'oldest' || sortBy === 'amount_low') ? 'asc' : 'desc',
       };
 
-      const result = await donationService.getDonationsByDonor(user.id, filters, user.id);
+      const result = await donationService.getDonationsByDonor(user.id, params, user.id);
 
       if (result.success && result.data) {
         setDonations(result.data);

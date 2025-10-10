@@ -63,12 +63,12 @@ import { formatCurrency, getRelativeTime, debounce } from '@/utils/helpers';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Status', color: 'default' },
-  { value: 'pending', label: 'Pending Review', color: 'warning' },
-  { value: 'draft', label: 'Draft / Rejected', color: 'secondary' },
+  { value: 'pending', label: 'Under Review', color: 'warning' },
+  { value: 'draft', label: 'Draft', color: 'secondary' },
   { value: 'active', label: 'Active', color: 'success' },
   { value: 'paused', label: 'Paused', color: 'warning' },
   { value: 'completed', label: 'Completed', color: 'default' },
-  { value: 'cancelled', label: 'Cancelled', color: 'destructive' },
+  { value: 'cancelled', label: 'Rejected', color: 'destructive' },
 ];
 
 const CATEGORY_OPTIONS = [
@@ -114,6 +114,7 @@ const CampaignManagement = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCampaigns, setTotalCampaigns] = useState(0);
   const [stats, setStats] = useState<any>(null);
+  const [approvalFeedback, setApprovalFeedback] = useState<Record<string, any>>({});
   const [actionDialog, setActionDialog] = useState<{
     open: boolean;
     type: 'approve' | 'reject' | 'revision' | 'suspend' | 'reactivate' | null;
@@ -213,22 +214,40 @@ const CampaignManagement = () => {
 
       if (result.success && result.data) {
         // Handle both paginated and direct array responses
+        let campaignsData: Campaign[] = [];
         if (result.data.items) {
           // Paginated response
-          setCampaigns(result.data.items);
+          campaignsData = result.data.items;
+          setCampaigns(campaignsData);
           setTotalPages(result.data.pagination?.totalPages || 1);
-          setTotalCampaigns(result.data.pagination?.totalItems || result.data.items.length);
+          setTotalCampaigns(result.data.pagination?.totalItems || campaignsData.length);
         } else if (Array.isArray(result.data)) {
           // Direct array response
-          setCampaigns(result.data);
+          campaignsData = result.data;
+          setCampaigns(campaignsData);
           setTotalPages(1);
-          setTotalCampaigns(result.data.length);
+          setTotalCampaigns(campaignsData.length);
         } else {
           // Fallback
           setCampaigns([]);
           setTotalPages(1);
           setTotalCampaigns(0);
         }
+
+        // Load approval feedback for draft campaigns
+        const feedbackMap: Record<string, any> = {};
+        await Promise.all(
+          campaignsData.map(async (campaign) => {
+            if (campaign.status === 'draft') {
+              const historyResult = await campaignService.getCampaignApprovalHistory(campaign.id, user.id);
+              if (historyResult.success && historyResult.data && historyResult.data.length > 0) {
+                // Get the most recent feedback
+                feedbackMap[campaign.id] = historyResult.data[0];
+              }
+            }
+          })
+        );
+        setApprovalFeedback(feedbackMap);
       } else {
         setCampaigns([]);
         setTotalPages(1);
@@ -396,19 +415,55 @@ const CampaignManagement = () => {
     }
   };
 
-  const getStatusBadge = (status: CampaignStatus) => {
-    const statusConfig = STATUS_OPTIONS.find(s => s.value === status) || STATUS_OPTIONS[0];
+  // Get status display label with feedback awareness
+  const getStatusLabel = (status: CampaignStatus, feedback?: any) => {
+    // If there's rejection feedback, show as Rejected
+    if (status === 'draft' && feedback?.action === 'rejected') {
+      return 'Rejected';
+    }
+    // If there's revision feedback, show as Needs Revision
+    if (status === 'draft' && feedback?.action === 'revision_requested') {
+      return 'Needs Revision';
+    }
 
-    const variants: Record<string, any> = {
-      success: 'default',
-      warning: 'secondary',
-      destructive: 'destructive',
-      default: 'outline'
-    };
+    switch (status) {
+      case 'draft': return 'Draft';
+      case 'pending': return 'Under Review';
+      case 'active': return 'Active';
+      case 'paused': return 'Paused';
+      case 'completed': return 'Completed';
+      case 'cancelled': return 'Rejected';
+      default: return status;
+    }
+  };
 
+  // Get status badge variant with feedback awareness
+  const getStatusBadgeVariantWithFeedback = (status: CampaignStatus, feedback?: any) => {
+    // If rejected, show destructive variant
+    if (status === 'draft' && feedback?.action === 'rejected') {
+      return 'destructive';
+    }
+    // If needs revision, show secondary variant
+    if (status === 'draft' && feedback?.action === 'revision_requested') {
+      return 'secondary';
+    }
+
+    // Default variants based on status
+    switch (status) {
+      case 'active': return 'default';
+      case 'completed': return 'secondary';
+      case 'paused': return 'outline';
+      case 'draft': return 'outline';
+      case 'pending': return 'secondary';
+      case 'cancelled': return 'destructive';
+      default: return 'outline';
+    }
+  };
+
+  const getStatusBadge = (status: CampaignStatus, feedback?: any) => {
     return (
-      <Badge variant={variants[statusConfig.color] || 'outline'}>
-        {statusConfig.label}
+      <Badge variant={getStatusBadgeVariantWithFeedback(status, feedback)}>
+        {getStatusLabel(status, feedback)}
       </Badge>
     );
   };
@@ -743,7 +798,7 @@ const CampaignManagement = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {getStatusBadge(campaign.status)}
+                          {getStatusBadge(campaign.status, approvalFeedback[campaign.id])}
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
