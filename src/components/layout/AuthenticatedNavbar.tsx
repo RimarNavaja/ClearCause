@@ -107,9 +107,8 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
         ];
       case 'charity':
         return [
-          { to: '/charity/manage-campaigns', label: 'My Campaigns' },
-          { to: '/campaigns', label: 'Browse Campaigns' },
-          { to: '/charity/dashboard', label: 'Analytics' },
+          { to: '/charity/campaigns', label: 'My Campaigns' },
+          { to: '/charity/dashboard', label: 'Dashboard' },
         ];
       case 'admin':
         return [
@@ -135,7 +134,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
         ];
       case 'charity':
         return [
-          { to: '/charity/manage-campaigns', label: 'My Campaigns', icon: <Building2 className="h-4 w-4" /> },
+          { to: '/charity/campaigns', label: 'My Campaigns', icon: <Building2 className="h-4 w-4" /> },
           { to: '/charity/profile', label: 'Organization Profile', icon: <Building2 className="h-4 w-4" /> },
         ];
       case 'admin':
@@ -161,7 +160,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
         };
       case 'charity':
         return {
-          to: '/charity/create-campaign',
+          to: '/charity/campaigns/new',
           label: 'Create Campaign',
           icon: <PlusCircle className="h-4 w-4 mr-2" />,
           className: 'bg-clearcause-primary hover:bg-clearcause-secondary text-white'
@@ -240,7 +239,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
           <div className="flex">
             {/* Logo */}
             <div className="flex-shrink-0 flex items-center">
-              <Link to="/" className="flex items-center">
+              <Link to={getDashboardLink(user.role)} className="flex items-center">
                 <img
                   src="/logo.png"
                   alt="ClearCause"

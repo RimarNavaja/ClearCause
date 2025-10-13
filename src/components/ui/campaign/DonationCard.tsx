@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import ShareMenu from './ShareMenu';
 
 interface Campaign {
+  id?: string;
   raised: number;
   goal: number;
   donors: number;
@@ -21,13 +22,17 @@ interface Campaign {
 interface DonationCardProps {
   campaign: Campaign;
   isOwner?: boolean;
+  userRole?: string | null;
 }
 
-const DonationCard: React.FC<DonationCardProps> = ({ campaign, isOwner = false }) => {
+const DonationCard: React.FC<DonationCardProps> = ({ campaign, isOwner = false, userRole = null }) => {
   const [donationAmount, setDonationAmount] = useState(1000);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
-  
+
   const progressPercentage = Math.min((campaign.raised / campaign.goal) * 100, 100);
+
+  // Check if user is a charity (any charity, not just the owner)
+  const isCharityUser = userRole === 'charity';
 
   return (
     <div className="bg-white rounded-xl shadow-md p-6 sticky top-24">
@@ -55,6 +60,12 @@ const DonationCard: React.FC<DonationCardProps> = ({ campaign, isOwner = false }
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
           <p className="text-sm text-blue-800 text-center">
             This is your campaign. You cannot donate to your own campaign.
+          </p>
+        </div>
+      ) : isCharityUser ? (
+        <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-md">
+          <p className="text-sm text-purple-800 text-center">
+            Charity accounts cannot make donations. Only donors can contribute to campaigns.
           </p>
         </div>
       ) : campaign.status === 'draft' ? (
@@ -104,9 +115,12 @@ const DonationCard: React.FC<DonationCardProps> = ({ campaign, isOwner = false }
             </div>
           </div>
 
-          <Button className="w-full bg-clearcause-accent hover:bg-clearcause-accent/90 mb-4">
-            Donate Now
-          </Button>
+          <Link to={`/donate/${campaign.id}`} className="block">
+            <Button className="w-full bg-clearcause-accent hover:bg-clearcause-accent/90 mb-4">
+              <Heart className="h-4 w-4 mr-2" />
+              Donate ₱{donationAmount.toLocaleString()}
+            </Button>
+          </Link>
         </>
       )}
 

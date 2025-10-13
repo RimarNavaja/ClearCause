@@ -319,6 +319,7 @@ const CampaignDetail: React.FC = () => {
                   charityId: campaign.charityId,
                 }}
                 isOwner={isOwner}
+                userRole={user?.role || null}
               />
             </div>
           </div>

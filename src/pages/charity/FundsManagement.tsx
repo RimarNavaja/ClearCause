@@ -1,14 +1,15 @@
-
-import React, { useState } from 'react';
-import { 
-  Landmark, 
-  Building2, 
-  DollarSign, 
-  Download, 
-  FileText, 
-  Filter, 
-  PencilIcon, 
-  Save
+import React, { useState, useEffect } from 'react';
+import {
+  Landmark,
+  Building2,
+  DollarSign,
+  Download,
+  FileText,
+  Filter,
+  PencilIcon,
+  Save,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import CharityLayout from '@/components/layout/CharityLayout';
@@ -18,61 +19,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select } from '@/components/ui/select';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-// Sample data for demonstration
-const SAMPLE_TRANSACTIONS = [
-  {
-    id: '1',
-    date: new Date('2023-11-15'),
-    type: 'Donation Received',
-    campaign: 'Clean Water for Barangay Malakas',
-    amount: 50000,
-    status: 'Held',
-    reference: 'DON-123456'
-  },
-  {
-    id: '2',
-    date: new Date('2023-11-13'),
-    type: 'Funds Released',
-    campaign: 'Clean Water for Barangay Malakas',
-    amount: 100000,
-    status: 'Released',
-    reference: 'REL-123456'
-  },
-  {
-    id: '3',
-    date: new Date('2023-11-10'),
-    type: 'Donation Received',
-    campaign: 'School Building Renovation Project',
-    amount: 75000,
-    status: 'Held',
-    reference: 'DON-234567'
-  },
-  {
-    id: '4',
-    date: new Date('2023-11-05'),
-    type: 'Donation Received',
-    campaign: 'Clean Water for Barangay Malakas',
-    amount: 25000,
-    status: 'Held',
-    reference: 'DON-345678'
-  },
-  {
-    id: '5',
-    date: new Date('2023-11-01'),
-    type: 'Funds Released',
-    campaign: 'School Building Renovation Project',
-    amount: 150000,
-    status: 'Released',
-    reference: 'REL-234567'
-  },
-];
+import { useAuth } from '@/hooks/useAuth';
+import * as charityService from '@/services/charityService';
+import * as donationService from '@/services/donationService';
+import * as campaignService from '@/services/campaignService';
+import { formatCurrency } from '@/utils/helpers';
+import { waitForAuthReady } from '@/utils/authHelper';
+import { toast } from 'sonner';
 
 // Bank account form schema
 const bankAccountSchema = z.object({
@@ -82,25 +39,35 @@ const bankAccountSchema = z.object({
   branchCode: z.string().optional(),
 });
 
+interface Transaction {
+  id: string;
+  date: Date;
+  type: string;
+  campaignTitle: string;
+  amount: number;
+  status: string;
+  reference: string;
+}
+
 const FundsManagement: React.FC = () => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [editingBankDetails, setEditingBankDetails] = useState(false);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [charityData, setCharityData] = useState<any>(null);
   const [bankDetails, setBankDetails] = useState({
-    bankName: 'BDO Unibank',
-    accountHolder: 'Water For All Foundation',
-    accountNumber: '1234567890',
-    branchCode: 'BDOPH12345',
-    status: 'Verified'
+    bankName: '',
+    accountHolder: '',
+    accountNumber: '',
+    branchCode: '',
+    status: 'Pending Verification'
   });
 
-  // Calculate totals
-  const totalRaised = SAMPLE_TRANSACTIONS.reduce((sum, tx) => 
-    tx.type === 'Donation Received' ? sum + tx.amount : sum, 0);
-  
-  const totalHeld = SAMPLE_TRANSACTIONS.reduce((sum, tx) => 
-    (tx.type === 'Donation Received' && tx.status === 'Held') ? sum + tx.amount : sum, 0);
-  
-  const totalReleased = SAMPLE_TRANSACTIONS.reduce((sum, tx) => 
-    tx.type === 'Funds Released' ? sum + tx.amount : sum, 0);
+  // Statistics
+  const [totalRaised, setTotalRaised] = useState(0);
+  const [totalHeld, setTotalHeld] = useState(0);
+  const [totalReleased, setTotalReleased] = useState(0);
 
   // Bank details form
   const form = useForm<z.infer<typeof bankAccountSchema>>({
@@ -113,14 +80,190 @@ const FundsManagement: React.FC = () => {
     },
   });
 
-  const handleSaveBankDetails = (values: z.infer<typeof bankAccountSchema>) => {
-    setBankDetails({
-      ...bankDetails,
-      ...values
-    });
-    setEditingBankDetails(false);
+  // Load funds management data
+  const loadFundsData = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Wait for auth to be ready
+      console.log('[FundsManagement] Waiting for auth to be ready...');
+      await waitForAuthReady(5000);
+
+      // Get charity data
+      console.log('[FundsManagement] Fetching charity data...');
+      const charityResult = await charityService.getCharityByUserId(user.id);
+
+      if (!charityResult.success || !charityResult.data) {
+        setError('No charity organization found');
+        return;
+      }
+
+      const charity = charityResult.data;
+      setCharityData(charity);
+
+      // Set bank details from charity profile
+      if (charity.bankName) {
+        const bankInfo = {
+          bankName: charity.bankName || '',
+          accountHolder: charity.bankAccountHolder || charity.organizationName,
+          accountNumber: charity.bankAccountNumber || '',
+          branchCode: charity.bankBranchCode || '',
+          status: charity.bankAccountVerified ? 'Verified' : 'Pending Verification'
+        };
+        setBankDetails(bankInfo);
+        form.reset(bankInfo);
+      }
+
+      // Get charity statistics for fund totals
+      console.log('[FundsManagement] Loading statistics...');
+      const statsResult = await charityService.getCharityStatistics(charity.id, user.id);
+      if (statsResult.success && statsResult.data) {
+        setTotalRaised(statsResult.data.totalFundsRaised || 0);
+        setTotalReleased(statsResult.data.totalFundsReleased || 0);
+        // Held = Raised - Released
+        setTotalHeld((statsResult.data.totalFundsRaised || 0) - (statsResult.data.totalFundsReleased || 0));
+      }
+
+      // Load campaigns to get transactions
+      console.log('[FundsManagement] Loading campaigns...');
+      const campaignsResult = await campaignService.getCharityCampaigns(
+        charity.id,
+        { page: 1, limit: 100 },
+        user.id
+      );
+
+      if (campaignsResult.success && campaignsResult.data) {
+        const campaigns = Array.isArray(campaignsResult.data) ? campaignsResult.data : [];
+        const allTransactions: Transaction[] = [];
+
+        // Get donations for each campaign
+        for (const campaign of campaigns) {
+          try {
+            const donationsResult = await donationService.getDonationsByCampaign(
+              campaign.id,
+              { page: 1, limit: 50 },
+              user.id
+            );
+
+            if (donationsResult.success && donationsResult.data) {
+              const donations = Array.isArray(donationsResult.data)
+                ? donationsResult.data
+                : donationsResult.data.donations || [];
+
+              donations.forEach((donation: any) => {
+                if (donation.status === 'completed') {
+                  allTransactions.push({
+                    id: donation.id,
+                    date: new Date(donation.createdAt),
+                    type: 'Donation Received',
+                    campaignTitle: campaign.title,
+                    amount: donation.amount,
+                    status: 'Held', // In real implementation, check if funds were released
+                    reference: `DON-${donation.id.substring(0, 8).toUpperCase()}`
+                  });
+                }
+              });
+            }
+          } catch (err) {
+            console.error('Error loading donations for campaign:', campaign.id, err);
+          }
+        }
+
+        // Sort by date (newest first)
+        allTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+        setTransactions(allTransactions.slice(0, 50)); // Limit to 50 most recent
+      }
+
+    } catch (err: any) {
+      console.error('[FundsManagement] Error loading funds data:', err);
+      setError(err.message || 'Failed to load funds management data');
+    } finally {
+      setLoading(false);
+    }
   };
-  
+
+  // Load data on mount
+  useEffect(() => {
+    if (user?.id) {
+      loadFundsData();
+    }
+  }, [user?.id]);
+
+  const handleSaveBankDetails = async (values: z.infer<typeof bankAccountSchema>) => {
+    if (!charityData) return;
+
+    try {
+      // TODO: Implement API call to update charity bank details
+      // For now, just update local state
+      const updatedBankDetails = {
+        ...bankDetails,
+        ...values,
+        status: 'Pending Verification' // Reset to pending when updated
+      };
+
+      setBankDetails(updatedBankDetails);
+      setEditingBankDetails(false);
+
+      toast.success('Bank details saved successfully');
+      toast.info('Your bank account will be verified by our team within 24-48 hours');
+
+      // TODO: Call actual API
+      // const result = await charityService.updateCharityBankDetails(charityData.id, values, user.id);
+
+    } catch (err: any) {
+      console.error('Error saving bank details:', err);
+      toast.error('Failed to save bank details');
+    }
+  };
+
+  // Handle export
+  const handleExport = () => {
+    toast.info('Export functionality coming soon!');
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <CharityLayout title="Funds Management">
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-6">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-1/2 mb-2" />
+                    <div className="h-8 bg-gray-200 rounded w-3/4" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </CharityLayout>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <CharityLayout title="Funds Management">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <AlertCircle className="mx-auto h-12 w-12 text-red-500" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">Error loading funds data</h3>
+            <p className="mt-1 text-sm text-gray-500">{error}</p>
+            <Button onClick={loadFundsData} className="mt-4">
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </CharityLayout>
+    );
+  }
+
   return (
     <CharityLayout title="Funds Management">
       <div className="space-y-8">
@@ -134,11 +277,11 @@ const FundsManagement: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">₱{totalRaised.toLocaleString()}</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalRaised)}</p>
               <p className="text-sm text-gray-500">Across all campaigns</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2">
@@ -147,11 +290,11 @@ const FundsManagement: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">₱{totalHeld.toLocaleString()}</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalHeld)}</p>
               <p className="text-sm text-gray-500">Awaiting milestone verification</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2">
@@ -160,12 +303,12 @@ const FundsManagement: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">₱{totalReleased.toLocaleString()}</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalReleased)}</p>
               <p className="text-sm text-gray-500">Total transferred to your account</p>
             </CardContent>
           </Card>
         </div>
-        
+
         {/* Bank Account Section */}
         <Card>
           <CardHeader>
@@ -175,9 +318,9 @@ const FundsManagement: React.FC = () => {
                 Payout Bank Account Details
               </span>
               {!editingBankDetails && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setEditingBankDetails(true)}
                 >
                   <PencilIcon className="h-4 w-4 mr-1" />
@@ -204,7 +347,7 @@ const FundsManagement: React.FC = () => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="accountHolder"
@@ -212,13 +355,13 @@ const FundsManagement: React.FC = () => {
                         <FormItem>
                           <FormLabel>Account Holder Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., Water For All Foundation" {...field} />
+                            <Input placeholder="e.g., Your Organization Name" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="accountNumber"
@@ -232,7 +375,7 @@ const FundsManagement: React.FC = () => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="branchCode"
@@ -247,11 +390,11 @@ const FundsManagement: React.FC = () => {
                       )}
                     />
                   </div>
-                  
+
                   <div className="flex justify-end gap-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
+                    <Button
+                      type="button"
+                      variant="outline"
                       onClick={() => setEditingBankDetails(false)}
                     >
                       Cancel
@@ -267,24 +410,24 @@ const FundsManagement: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm text-gray-500">Bank Name</Label>
-                  <p className="font-medium">{bankDetails.bankName}</p>
+                  <p className="font-medium">{bankDetails.bankName || '-'}</p>
                 </div>
-                
+
                 <div>
                   <Label className="text-sm text-gray-500">Account Holder Name</Label>
-                  <p className="font-medium">{bankDetails.accountHolder}</p>
+                  <p className="font-medium">{bankDetails.accountHolder || '-'}</p>
                 </div>
-                
+
                 <div>
                   <Label className="text-sm text-gray-500">Account Number</Label>
-                  <p className="font-medium">{bankDetails.accountNumber}</p>
+                  <p className="font-medium">{bankDetails.accountNumber || '-'}</p>
                 </div>
-                
+
                 <div>
                   <Label className="text-sm text-gray-500">Bank Branch / Code</Label>
                   <p className="font-medium">{bankDetails.branchCode || '-'}</p>
                 </div>
-                
+
                 <div>
                   <Label className="text-sm text-gray-500">Status</Label>
                   <div className="mt-1">
@@ -297,7 +440,7 @@ const FundsManagement: React.FC = () => {
             )}
           </CardContent>
         </Card>
-        
+
         {/* Transaction History Section */}
         <Card>
           <CardHeader>
@@ -307,11 +450,7 @@ const FundsManagement: React.FC = () => {
                 Transaction History
               </span>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <Filter className="h-4 w-4 mr-1" />
-                  Filter
-                </Button>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={handleExport}>
                   <Download className="h-4 w-4 mr-1" />
                   Export
                 </Button>
@@ -319,45 +458,45 @@ const FundsManagement: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Campaign</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Reference</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {SAMPLE_TRANSACTIONS.map((transaction) => (
-                  <TableRow key={transaction.id}>
-                    <TableCell>{format(transaction.date, 'MMM d, yyyy')}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={transaction.type === 'Donation Received' ? 'text-blue-600 border-blue-200 bg-blue-50' : 'text-green-600 border-green-200 bg-green-50'}>
-                        {transaction.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate">{transaction.campaign}</TableCell>
-                    <TableCell className="text-right font-medium">₱{transaction.amount.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={transaction.status === 'Held' ? 'text-amber-600 border-amber-200 bg-amber-50' : 'text-green-600 border-green-200 bg-green-50'}>
-                        {transaction.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{transaction.reference}</TableCell>
+            {transactions.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <FileText className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                <p>No transactions yet</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Campaign</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Reference</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            
-            {/* Pagination would go here */}
-            <div className="flex justify-center mt-4">
-              <Button variant="outline" size="sm" disabled>Previous</Button>
-              <Button variant="outline" size="sm" className="mx-1">1</Button>
-              <Button variant="outline" size="sm" disabled>Next</Button>
-            </div>
+                </TableHeader>
+                <TableBody>
+                  {transactions.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell>{format(transaction.date, 'MMM d, yyyy')}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={transaction.type === 'Donation Received' ? 'text-blue-600 border-blue-200 bg-blue-50' : 'text-green-600 border-green-200 bg-green-50'}>
+                          {transaction.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate">{transaction.campaignTitle}</TableCell>
+                      <TableCell className="text-right font-medium">{formatCurrency(transaction.amount)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={transaction.status === 'Held' ? 'text-amber-600 border-amber-200 bg-amber-50' : 'text-green-600 border-green-200 bg-green-50'}>
+                          {transaction.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{transaction.reference}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>

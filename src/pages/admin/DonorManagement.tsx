@@ -4,6 +4,7 @@ import { Users, Eye, Ban, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { searchUsers } from '@/services/userService';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -51,11 +52,12 @@ const DonorManagement = () => {
   const verifiedDonors = donors.filter(d => d.isVerified);
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Donor Management</h1>
-        <p className="text-muted-foreground">Manage donor accounts and activity</p>
-      </div>
+    <AdminLayout title="Donor Management">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Donor Management</h1>
+          <p className="text-muted-foreground">Manage donor accounts and activity</p>
+        </div>
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
@@ -149,7 +151,8 @@ const DonorManagement = () => {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 

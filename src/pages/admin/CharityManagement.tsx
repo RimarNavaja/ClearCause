@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { listCharities } from '@/services/charityService';
 import { toast } from 'sonner';
 import type { CharityOrganization } from '@/lib/types';
@@ -46,12 +47,13 @@ const CharityManagement = () => {
   }, []);
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Charity Management</h1>
-          <p className="text-muted-foreground">Manage registered charity organizations</p>
-        </div>
+    <AdminLayout title="Charity Management">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Charity Management</h1>
+            <p className="text-muted-foreground">Manage registered charity organizations</p>
+          </div>
         <Button asChild>
           <Link to="/admin/applications">View Applications</Link>
         </Button>
@@ -143,7 +145,8 @@ const CharityManagement = () => {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 

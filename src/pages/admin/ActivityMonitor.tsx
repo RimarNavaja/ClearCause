@@ -124,7 +124,9 @@ const ActivityMonitor: React.FC = () => {
       const today = new Date().toDateString();
       return new Date(a.timestamp).toDateString() === today;
     }).length,
-    successRate: ((activities.filter((a) => a.status === 'success').length / activities.length) * 100).toFixed(1),
+    successRate: activities.length > 0
+      ? ((activities.filter((a) => a.status === 'success').length / activities.length) * 100).toFixed(1)
+      : '0.0',
     pendingActions: activities.filter((a) => a.status === 'warning').length,
   };
 
@@ -352,25 +354,25 @@ const ActivityMonitor: React.FC = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Quick Stats</CardTitle>
+              <CardTitle>Activity Summary</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Active Users (24h)</span>
-                  <span className="font-semibold">1,234</span>
+                  <span className="text-sm">Total Activities</span>
+                  <span className="font-semibold">{stats.totalActivities}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Total Campaigns</span>
-                  <span className="font-semibold">156</span>
+                  <span className="text-sm">Today's Activities</span>
+                  <span className="font-semibold">{stats.todayActivities}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Pending Verifications</span>
-                  <span className="font-semibold">8</span>
+                  <span className="text-sm">Pending Actions</span>
+                  <span className="font-semibold">{stats.pendingActions}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Total Raised (Today)</span>
-                  <span className="font-semibold">{formatCurrency(125000)}</span>
+                  <span className="text-sm">Success Rate</span>
+                  <span className="font-semibold">{stats.successRate}%</span>
                 </div>
               </div>
             </CardContent>

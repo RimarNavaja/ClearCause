@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { 
   getPendingCharityVerifications, 
@@ -68,27 +69,30 @@ const CharityApplicationReview = () => {
 
   if (loading) {
     return (
-      <div className="space-y-6 p-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2 mb-6"></div>
-          <div className="grid gap-4 md:grid-cols-3 mb-6">
-            <div className="h-24 bg-gray-200 rounded"></div>
-            <div className="h-24 bg-gray-200 rounded"></div>
-            <div className="h-24 bg-gray-200 rounded"></div>
+      <AdminLayout title="Charity Application Review">
+        <div className="space-y-6">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2 mb-6"></div>
+            <div className="grid gap-4 md:grid-cols-3 mb-6">
+              <div className="h-24 bg-gray-200 rounded"></div>
+              <div className="h-24 bg-gray-200 rounded"></div>
+              <div className="h-24 bg-gray-200 rounded"></div>
+            </div>
+            <div className="h-96 bg-gray-200 rounded"></div>
           </div>
-          <div className="h-96 bg-gray-200 rounded"></div>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Charity Application Review</h1>
-        <p className="text-muted-foreground">Review and approve new charity registrations</p>
-      </div>
+    <AdminLayout title="Charity Application Review">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Charity Application Review</h1>
+          <p className="text-muted-foreground">Review and approve new charity registrations</p>
+        </div>
 
       {error && (
         <Alert variant="destructive">
@@ -192,7 +196,8 @@ const CharityApplicationReview = () => {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 

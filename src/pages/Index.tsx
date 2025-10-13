@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Clock, Shield, Search, BarChart4, CreditCard, Check, Users } from 'lucide-react';
+import { ChevronRight, Clock, Shield, Search, BarChart4, CreditCard, Check, Users, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Navbar from '@/components/layout/Navbar';
@@ -189,8 +189,9 @@ const HomeCampaignCard: React.FC<{ campaign: Campaign }> = ({ campaign }) => {
           </div>
 
           <Link to={`/donate/${campaign.id}`}>
-            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg">
-              Donate
+            <Button className="w-full bg-clearcause-accent hover:bg-clearcause-accent/90 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2">
+              <Heart className="h-4 w-4" />
+              Donate Now
             </Button>
           </Link>
         </div>

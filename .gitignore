@@ -1,3 +1,15 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+dist
+dist-ssr
+build
+.vite
+*.local
+
 # Logs
 logs
 *.log
@@ -7,10 +19,19 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Testing
+coverage
+*.coverage
+.nyc_output
+test-results
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
 
 # Editor directories and files
 .vscode/*
@@ -22,25 +43,56 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Environment files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Development files
-*.md.backup
-*_backup.*
-debug_*.sql
-fix_*.sql
-manual_*.sql
+*.swp
+*.swo
+*~
 
 # OS generated files
 Thumbs.db
 ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*_backup.*
+*.md.backup
+
+# Development files
+debug_*.sql
+fix_*.sql
+manual_*.sql
+scratch.*
+TODO.local.md
+NOTES.local.md
 
 # Claude Code directory
 .claude/
 .mcp.json
+
+# Package manager
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# TypeScript
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Misc
+.vercel
+.turbo
+*.pem

@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import {
@@ -276,15 +277,16 @@ const FundReleaseManagement = () => {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Fund Release Management</h1>
-          <p className="text-muted-foreground">
-            Authorize and track approved fund releases to verified organizations
-          </p>
-        </div>
+    <AdminLayout title="Fund Release Management">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Fund Release Management</h1>
+            <p className="text-muted-foreground">
+              Authorize and track approved fund releases to verified organizations
+            </p>
+          </div>
         <Button
           onClick={handleRefresh}
           disabled={refreshing}
@@ -576,7 +578,8 @@ const FundReleaseManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 

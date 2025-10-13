@@ -4,6 +4,7 @@ import { Trophy, TrendingUp, Clock, CheckCircle, AlertTriangle, RefreshCw } from
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { useToast } from '@/hooks/use-toast';
 import ScorecardMetrics from '@/components/admin/ScorecardMetrics';
 import ScorecardList from '@/components/admin/ScorecardList';
@@ -25,14 +26,15 @@ const ScorecardManagement = () => {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Scorecard Management</h1>
-          <p className="text-muted-foreground">
-            Monitor and update charity performance scorecards
-          </p>
-        </div>
+    <AdminLayout title="Scorecard Management">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Scorecard Management</h1>
+            <p className="text-muted-foreground">
+              Monitor and update charity performance scorecards
+            </p>
+          </div>
         <Button 
           onClick={handleUpdateAllScores}
           disabled={isUpdating}
@@ -48,7 +50,8 @@ const ScorecardManagement = () => {
 
       {/* Scorecard List */}
       <ScorecardList />
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 

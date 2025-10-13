@@ -368,10 +368,10 @@ export const listDonations = withErrorHandling(async (
       )
     `, { count: 'exact' });
 
-  // Apply user-based filtering
-  if (!isAdmin) {
-    // Non-admin users can only see their own donations or donations to their campaigns
-    query = query.or(`user_id.eq.${currentUserId},campaigns.charity_organizations.user_id.eq.${currentUserId}`);
+  // Apply user-based filtering (skip if campaignId is provided, as caller handles permissions)
+  if (!isAdmin && !validatedFilters.campaignId) {
+    // Non-admin users can only see their own donations
+    query = query.eq('user_id', currentUserId);
   }
 
   // Apply filters
@@ -728,9 +728,9 @@ export const getDonationStatistics = withErrorHandling(async (
     .from('donations')
     .select('amount, status, donated_at, campaign_id, campaigns:campaign_id(charity_organizations:charity_id(user_id))');
 
-  // Apply user-based filtering for non-admins
-  if (!isAdmin) {
-    query = query.or(`user_id.eq.${currentUserId},campaigns.charity_organizations.user_id.eq.${currentUserId}`);
+  // Apply user-based filtering for non-admins (skip if campaignId is provided)
+  if (!isAdmin && !filters.campaignId) {
+    query = query.eq('user_id', currentUserId);
   }
 
   // Apply filters

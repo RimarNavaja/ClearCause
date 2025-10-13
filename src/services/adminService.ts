@@ -1387,6 +1387,64 @@ export const getMilestoneProofStats = withErrorHandling(async (
 });
 
 /**
+ * Get milestone proof by ID with detailed information
+ */
+export const getMilestoneProofById = withErrorHandling(async (
+  proofId: string,
+  currentUserId: string
+): Promise<ApiResponse<any>> => {
+  // Check if current user is admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can access milestone proofs', 403);
+  }
+
+  const { data, error } = await supabase
+    .from('milestone_proofs')
+    .select(`
+      *,
+      milestone:milestone_id (
+        id,
+        milestone_number,
+        title,
+        description,
+        target_amount,
+        campaign:campaign_id (
+          id,
+          title,
+          description,
+          charity:charity_id (
+            id,
+            organization_name,
+            contact_email,
+            user_id,
+            profile:user_id (
+              full_name,
+              email
+            )
+          )
+        )
+      )
+    `)
+    .eq('id', proofId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      throw new ClearCauseError('NOT_FOUND', 'Milestone proof not found', 404);
+    }
+    throw handleSupabaseError(error);
+  }
+
+  return createSuccessResponse(data, 'Milestone proof retrieved successfully');
+});
+
+/**
  * Get approved milestone proofs ready for fund release
  * NOTE: Disabled until fund_releases table is created
  */

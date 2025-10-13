@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BarChart3,
   TrendingUp,
@@ -8,6 +8,7 @@ import {
   Heart,
   Calendar,
   Download,
+  AlertCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,39 +21,159 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CharityLayout from '@/components/layout/CharityLayout';
-import { formatCurrency } from '@/utils/helpers';
+import { formatCurrency, getRelativeTime } from '@/utils/helpers';
+import { useAuth } from '@/hooks/useAuth';
+import * as charityService from '@/services/charityService';
+import * as campaignService from '@/services/campaignService';
+import * as donationService from '@/services/donationService';
+import { waitForAuthReady } from '@/utils/authHelper';
 
 const CharityAnalytics: React.FC = () => {
+  const { user } = useAuth();
   const [timeRange, setTimeRange] = useState('30d');
   const [selectedCampaign, setSelectedCampaign] = useState('all');
 
-  // Mock data
-  const campaigns = [
-    { id: '1', title: 'Clean Water Project' },
-    { id: '2', title: 'School Rebuilding' },
-  ];
+  // State for data
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [recentDonations, setRecentDonations] = useState<any[]>([]);
+  const [charityId, setCharityId] = useState<string | null>(null);
 
-  const stats = {
-    totalRaised: 125000,
-    totalDonors: 450,
-    totalViews: 12500,
-    conversionRate: 3.6,
-    avgDonation: 278,
-    repeatDonors: 85,
-    campaignsActive: 2,
-    milestonesCompleted: 5,
+  // Load analytics data
+  const loadAnalyticsData = async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Wait for auth to be ready
+      console.log('[CharityAnalytics] Waiting for auth to be ready...');
+      await waitForAuthReady(5000);
+
+      // Get charity ID
+      console.log('[CharityAnalytics] Fetching charity data...');
+      const charityResult = await charityService.getCharityByUserId(user.id);
+
+      if (!charityResult.success || !charityResult.data) {
+        setError('No charity organization found');
+        return;
+      }
+
+      const currentCharityId = charityResult.data.id;
+      setCharityId(currentCharityId);
+
+      // Load statistics
+      console.log('[CharityAnalytics] Loading statistics...');
+      const statsResult = await charityService.getCharityStatistics(currentCharityId, user.id);
+      if (statsResult.success && statsResult.data) {
+        setStats(statsResult.data);
+      } else {
+        // Set default stats if loading fails
+        setStats({
+          totalFundsRaised: 0,
+          totalDonors: 0,
+          totalDonations: 0,
+          averageDonation: 0,
+          activeCampaigns: 0,
+          totalCampaigns: 0,
+          pendingMilestones: 0,
+        });
+      }
+
+      // Load campaigns
+      console.log('[CharityAnalytics] Loading campaigns...');
+      const campaignsResult = await campaignService.getCharityCampaigns(
+        currentCharityId,
+        { page: 1, limit: 10 },
+        user.id
+      );
+      if (campaignsResult.success && campaignsResult.data) {
+        const campaignsData = Array.isArray(campaignsResult.data) ? campaignsResult.data : [];
+        setCampaigns(campaignsData);
+      } else {
+        setCampaigns([]);
+      }
+
+      // Load recent donations
+      console.log('[CharityAnalytics] Loading recent donations...');
+      const activityResult = await charityService.getCharityActivity(currentCharityId, user.id, { limit: 10 });
+      if (activityResult.success && activityResult.data) {
+        // Filter for donation activities
+        const donations = activityResult.data.filter((activity: any) => activity.type === 'donation');
+        setRecentDonations(donations.slice(0, 5));
+      } else {
+        setRecentDonations([]);
+      }
+
+    } catch (err: any) {
+      console.error('[CharityAnalytics] Error loading analytics:', err);
+      setError(err.message || 'Failed to load analytics data');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const recentDonations = [
-    { id: '1', amount: 500, donor: 'Anonymous', campaign: 'Clean Water Project', date: '2025-01-20' },
-    { id: '2', amount: 1000, donor: 'John D.', campaign: 'School Rebuilding', date: '2025-01-19' },
-    { id: '3', amount: 250, donor: 'Anonymous', campaign: 'Clean Water Project', date: '2025-01-19' },
-  ];
+  // Load data on mount
+  useEffect(() => {
+    if (user?.id) {
+      loadAnalyticsData();
+    }
+  }, [user?.id]);
 
-  const topCampaigns = [
-    { title: 'Clean Water Project', raised: 75000, goal: 100000, donors: 280 },
-    { title: 'School Rebuilding', raised: 50000, goal: 75000, donors: 170 },
-  ];
+  // Export report handler
+  const handleExportReport = () => {
+    // TODO: Implement export functionality
+    console.log('Exporting report for time range:', timeRange);
+    alert('Export functionality coming soon!');
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <CharityLayout title="Analytics">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-6">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-1/2 mb-2" />
+                    <div className="h-8 bg-gray-200 rounded w-3/4" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </CharityLayout>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <CharityLayout title="Analytics">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <AlertCircle className="mx-auto h-12 w-12 text-red-500" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">Error loading analytics</h3>
+            <p className="mt-1 text-sm text-gray-500">{error}</p>
+            <Button onClick={loadAnalyticsData} className="mt-4">
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </CharityLayout>
+    );
+  }
+
+  // Get top performing campaigns
+  const topCampaigns = campaigns
+    .sort((a, b) => (b.currentAmount || 0) - (a.currentAmount || 0))
+    .slice(0, 3);
 
   return (
     <CharityLayout title="Analytics">
@@ -76,7 +197,7 @@ const CharityAnalytics: React.FC = () => {
                 <SelectItem value="all">All time</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleExportReport}>
               <Download className="w-4 h-4 mr-2" />
               Export Report
             </Button>
@@ -90,8 +211,8 @@ const CharityAnalytics: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Total Raised</p>
-                  <p className="text-2xl font-bold">{formatCurrency(stats.totalRaised)}</p>
-                  <p className="text-xs text-green-600 mt-1">+12% from last month</p>
+                  <p className="text-2xl font-bold">{formatCurrency(stats?.totalFundsRaised || 0)}</p>
+                  <p className="text-xs text-gray-400 mt-1">All time</p>
                 </div>
                 <DollarSign className="h-8 w-8 text-green-600" />
               </div>
@@ -103,8 +224,8 @@ const CharityAnalytics: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Total Donors</p>
-                  <p className="text-2xl font-bold">{stats.totalDonors}</p>
-                  <p className="text-xs text-blue-600 mt-1">+8% from last month</p>
+                  <p className="text-2xl font-bold">{stats?.totalDonors || 0}</p>
+                  <p className="text-xs text-gray-400 mt-1">Unique supporters</p>
                 </div>
                 <Users className="h-8 w-8 text-blue-600" />
               </div>
@@ -115,11 +236,11 @@ const CharityAnalytics: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Campaign Views</p>
-                  <p className="text-2xl font-bold">{stats.totalViews.toLocaleString()}</p>
-                  <p className="text-xs text-purple-600 mt-1">+15% from last month</p>
+                  <p className="text-sm font-medium text-gray-500">Total Donations</p>
+                  <p className="text-2xl font-bold">{stats?.totalDonations || 0}</p>
+                  <p className="text-xs text-gray-400 mt-1">Contributions</p>
                 </div>
-                <Eye className="h-8 w-8 text-purple-600" />
+                <Heart className="h-8 w-8 text-purple-600" />
               </div>
             </CardContent>
           </Card>
@@ -128,9 +249,9 @@ const CharityAnalytics: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Conversion Rate</p>
-                  <p className="text-2xl font-bold">{stats.conversionRate}%</p>
-                  <p className="text-xs text-orange-600 mt-1">+0.5% from last month</p>
+                  <p className="text-sm font-medium text-gray-500">Avg. Donation</p>
+                  <p className="text-2xl font-bold">{formatCurrency(stats?.averageDonation || 0)}</p>
+                  <p className="text-xs text-gray-400 mt-1">Per donation</p>
                 </div>
                 <TrendingUp className="h-8 w-8 text-orange-600" />
               </div>
@@ -144,32 +265,8 @@ const CharityAnalytics: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Avg. Donation</p>
-                  <p className="text-2xl font-bold">{formatCurrency(stats.avgDonation)}</p>
-                </div>
-                <Heart className="h-6 w-6 text-pink-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Repeat Donors</p>
-                  <p className="text-2xl font-bold">{stats.repeatDonors}</p>
-                </div>
-                <Users className="h-6 w-6 text-indigo-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
                   <p className="text-sm font-medium text-gray-500">Active Campaigns</p>
-                  <p className="text-2xl font-bold">{stats.campaignsActive}</p>
+                  <p className="text-2xl font-bold">{stats?.activeCampaigns || 0}</p>
                 </div>
                 <BarChart3 className="h-6 w-6 text-teal-600" />
               </div>
@@ -180,8 +277,32 @@ const CharityAnalytics: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Milestones Done</p>
-                  <p className="text-2xl font-bold">{stats.milestonesCompleted}</p>
+                  <p className="text-sm font-medium text-gray-500">Total Campaigns</p>
+                  <p className="text-2xl font-bold">{stats?.totalCampaigns || 0}</p>
+                </div>
+                <BarChart3 className="h-6 w-6 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Funds Released</p>
+                  <p className="text-2xl font-bold">{formatCurrency(stats?.totalFundsReleased || 0)}</p>
+                </div>
+                <DollarSign className="h-6 w-6 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Pending Milestones</p>
+                  <p className="text-2xl font-bold">{stats?.pendingMilestones || 0}</p>
                 </div>
                 <Calendar className="h-6 w-6 text-cyan-600" />
               </div>
@@ -198,52 +319,69 @@ const CharityAnalytics: React.FC = () => {
               <CardDescription>Campaigns ranked by funds raised</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {topCampaigns.map((campaign, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="font-medium">{campaign.title}</p>
-                        <p className="text-sm text-gray-500">{campaign.donors} donors</p>
+              {topCampaigns.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <BarChart3 className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                  <p>No campaigns yet</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {topCampaigns.map((campaign) => (
+                    <div key={campaign.id} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium">{campaign.title}</p>
+                          <p className="text-sm text-gray-500">{campaign.donorsCount || 0} donors</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold">{formatCurrency(campaign.currentAmount || 0)}</p>
+                          <p className="text-sm text-gray-500">
+                            of {formatCurrency(campaign.goalAmount || 0)}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold">{formatCurrency(campaign.raised)}</p>
-                        <p className="text-sm text-gray-500">
-                          of {formatCurrency(campaign.goal)}
-                        </p>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full"
+                          style={{
+                            width: `${Math.min(((campaign.currentAmount || 0) / (campaign.goalAmount || 1)) * 100, 100)}%`
+                          }}
+                        />
                       </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full"
-                        style={{ width: `${(campaign.raised / campaign.goal) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Recent Donations */}
+          {/* Recent Activity */}
           <Card>
             <CardHeader>
-              <CardTitle>Recent Donations</CardTitle>
-              <CardDescription>Latest contributions to your campaigns</CardDescription>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>Latest donations and updates</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {recentDonations.map((donation) => (
-                  <div key={donation.id} className="flex items-center justify-between border-b pb-3 last:border-0">
-                    <div>
-                      <p className="font-medium">{donation.donor}</p>
-                      <p className="text-sm text-gray-500">{donation.campaign}</p>
-                      <p className="text-xs text-gray-400">{new Date(donation.date).toLocaleDateString()}</p>
+              {recentDonations.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Heart className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                  <p>No recent donations</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentDonations.map((activity) => (
+                    <div key={activity.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+                      <div>
+                        <p className="font-medium">{activity.title}</p>
+                        {activity.description && (
+                          <p className="text-sm text-gray-500">{activity.description}</p>
+                        )}
+                        <p className="text-xs text-gray-400">{getRelativeTime(activity.timestamp)}</p>
+                      </div>
                     </div>
-                    <p className="font-semibold text-green-600">{formatCurrency(donation.amount)}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -258,65 +396,12 @@ const CharityAnalytics: React.FC = () => {
             <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed">
               <div className="text-center">
                 <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-500">Chart visualization will be integrated here</p>
-                <p className="text-sm text-gray-400">Using Chart.js or Recharts</p>
+                <p className="text-gray-500">Chart visualization coming soon</p>
+                <p className="text-sm text-gray-400">Advanced analytics with charting libraries</p>
               </div>
             </div>
           </CardContent>
         </Card>
-
-        {/* Engagement Metrics */}
-        <Tabs defaultValue="overview">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="donors">Donor Insights</TabsTrigger>
-            <TabsTrigger value="campaigns">Campaign Performance</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-4">
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-semibold mb-4">Engagement Summary</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Page Views</p>
-                    <p className="text-2xl font-bold">12.5K</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Unique Visitors</p>
-                    <p className="text-2xl font-bold">8.2K</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Avg. Time on Page</p>
-                    <p className="text-2xl font-bold">3:45</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Bounce Rate</p>
-                    <p className="text-2xl font-bold">32%</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="donors">
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-semibold mb-4">Donor Demographics</h3>
-                <p className="text-gray-500">Detailed donor insights coming soon...</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="campaigns">
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-semibold mb-4">Campaign Breakdown</h3>
-                <p className="text-gray-500">Individual campaign analytics coming soon...</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
       </div>
     </CharityLayout>
   );

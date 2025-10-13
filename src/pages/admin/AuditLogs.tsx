@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Clock, User, Activity, RefreshCw, Filter, Search } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { getAuditLogs } from '@/services/adminService';
 import { toast } from 'sonner';
@@ -55,13 +56,14 @@ const AuditLogs = () => {
   });
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Audit Logs</h1>
-          <p className="text-muted-foreground">System activity and administrative actions</p>
+    <AdminLayout title="Audit Logs">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Audit Logs</h1>
+            <p className="text-muted-foreground">System activity and administrative actions</p>
+          </div>
         </div>
-      </div>
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
@@ -156,7 +158,8 @@ const AuditLogs = () => {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 

@@ -207,12 +207,15 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           </div>
 
           {/* Action Button */}
-          <Button 
+          <Button
             className="w-full bg-clearcause-accent hover:bg-clearcause-accent/90 disabled:opacity-50"
             disabled={isExpired || realtimeData.status !== 'active'}
             asChild
           >
-            <Link to={`/donate/${realtimeData.id}`}>
+            <Link to={`/donate/${realtimeData.id}`} className="flex items-center justify-center">
+              {!isExpired && realtimeData.status === 'active' && (
+                <Heart className="h-4 w-4 mr-2" />
+              )}
               {isExpired ? 'Campaign Ended' : progressPercentage >= 100 ? 'Goal Reached!' : 'Donate Now'}
             </Link>
           </Button>
