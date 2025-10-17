@@ -20,8 +20,9 @@ const DonateSuccess: React.FC = () => {
   const { user } = useAuth();
   const state = location.state as LocationState;
 
-  // Get donation details from navigation state
-  const donationId = state?.donationId;
+  // Get donation details from navigation state or URL query params (from PayMongo redirect)
+  const searchParams = new URLSearchParams(location.search);
+  const donationId = state?.donationId || searchParams.get('donation_id') || '';
   const donationAmount = state?.amount || 0;
   const campaignTitle = state?.campaignTitle || 'Campaign';
   const campaignId = state?.campaignId;

@@ -9,6 +9,8 @@ export type CampaignStatus = 'draft' | 'pending' | 'active' | 'paused' | 'comple
 export type DonationStatus = 'pending' | 'completed' | 'failed' | 'refunded';
 export type VerificationStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'resubmission_required';
 export type MilestoneStatus = 'pending' | 'in_progress' | 'completed' | 'verified';
+export type PaymentProvider = 'paymongo' | 'xendit' | 'maya';
+export type PaymentSessionStatus = 'created' | 'pending' | 'succeeded' | 'failed' | 'expired' | 'cancelled';
 
 // ===== DATABASE TYPES =====
 export interface Database {
@@ -171,6 +173,14 @@ export interface Database {
           transaction_id: string | null;
           status: DonationStatus;
           donated_at: string;
+          message: string | null;
+          is_anonymous: boolean;
+          updated_at: string | null;
+          provider: string | null;
+          provider_payment_id: string | null;
+          payment_session_id: string | null;
+          failure_reason: string | null;
+          metadata: Record<string, any> | null;
         };
         Insert: {
           id?: string;
@@ -181,6 +191,14 @@ export interface Database {
           transaction_id?: string | null;
           status?: DonationStatus;
           donated_at?: string;
+          message?: string | null;
+          is_anonymous?: boolean;
+          updated_at?: string | null;
+          provider?: string | null;
+          provider_payment_id?: string | null;
+          payment_session_id?: string | null;
+          failure_reason?: string | null;
+          metadata?: Record<string, any> | null;
         };
         Update: {
           id?: string;
@@ -191,6 +209,123 @@ export interface Database {
           transaction_id?: string | null;
           status?: DonationStatus;
           donated_at?: string;
+          message?: string | null;
+          is_anonymous?: boolean;
+          updated_at?: string | null;
+          provider?: string | null;
+          provider_payment_id?: string | null;
+          payment_session_id?: string | null;
+          failure_reason?: string | null;
+          metadata?: Record<string, any> | null;
+        };
+      };
+      payment_sessions: {
+        Row: {
+          id: string;
+          donation_id: string;
+          user_id: string;
+          provider: PaymentProvider;
+          provider_session_id: string;
+          provider_source_id: string | null;
+          amount: number;
+          currency: string;
+          payment_method: string;
+          checkout_url: string | null;
+          success_url: string | null;
+          cancel_url: string | null;
+          status: PaymentSessionStatus;
+          metadata: Record<string, any> | null;
+          expires_at: string | null;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          donation_id: string;
+          user_id: string;
+          provider: PaymentProvider;
+          provider_session_id: string;
+          provider_source_id?: string | null;
+          amount: number;
+          currency?: string;
+          payment_method: string;
+          checkout_url?: string | null;
+          success_url?: string | null;
+          cancel_url?: string | null;
+          status?: PaymentSessionStatus;
+          metadata?: Record<string, any> | null;
+          expires_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          donation_id?: string;
+          user_id?: string;
+          provider?: PaymentProvider;
+          provider_session_id?: string;
+          provider_source_id?: string | null;
+          amount?: number;
+          currency?: string;
+          payment_method?: string;
+          checkout_url?: string | null;
+          success_url?: string | null;
+          cancel_url?: string | null;
+          status?: PaymentSessionStatus;
+          metadata?: Record<string, any> | null;
+          expires_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      webhook_events: {
+        Row: {
+          id: string;
+          provider: PaymentProvider;
+          event_id: string;
+          event_type: string;
+          payment_session_id: string | null;
+          donation_id: string | null;
+          payload: Record<string, any>;
+          processed: boolean;
+          processed_at: string | null;
+          error_message: string | null;
+          retry_count: number;
+          received_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          provider: PaymentProvider;
+          event_id: string;
+          event_type: string;
+          payment_session_id?: string | null;
+          donation_id?: string | null;
+          payload: Record<string, any>;
+          processed?: boolean;
+          processed_at?: string | null;
+          error_message?: string | null;
+          retry_count?: number;
+          received_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          provider?: PaymentProvider;
+          event_id?: string;
+          event_type?: string;
+          payment_session_id?: string | null;
+          donation_id?: string | null;
+          payload?: Record<string, any>;
+          processed?: boolean;
+          processed_at?: string | null;
+          error_message?: string | null;
+          retry_count?: number;
+          received_at?: string;
+          created_at?: string;
         };
       };
       milestones: {
@@ -401,8 +536,54 @@ export interface Donation {
   transactionId: string | null;
   status: DonationStatus;
   donatedAt: string;
+  message: string | null;
+  isAnonymous: boolean;
+  updatedAt: string | null;
+  provider: string | null;
+  providerPaymentId: string | null;
+  paymentSessionId: string | null;
+  failureReason: string | null;
+  metadata: Record<string, any> | null;
   donor?: User;
   campaign?: Campaign;
+  paymentSession?: PaymentSession;
+}
+
+export interface PaymentSession {
+  id: string;
+  donationId: string;
+  userId: string;
+  provider: PaymentProvider;
+  providerSessionId: string;
+  providerSourceId: string | null;
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  checkoutUrl: string | null;
+  successUrl: string | null;
+  cancelUrl: string | null;
+  status: PaymentSessionStatus;
+  metadata: Record<string, any> | null;
+  expiresAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WebhookEvent {
+  id: string;
+  provider: PaymentProvider;
+  eventId: string;
+  eventType: string;
+  paymentSessionId: string | null;
+  donationId: string | null;
+  payload: Record<string, any>;
+  processed: boolean;
+  processedAt: string | null;
+  errorMessage: string | null;
+  retryCount: number;
+  receivedAt: string;
+  createdAt: string;
 }
 
 export interface Milestone {
