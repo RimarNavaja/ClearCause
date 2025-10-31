@@ -11,7 +11,7 @@ serve(async (req)=>{
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
       headers: corsHeaders
-    });
+    }); 
   }
   try {
     // 1. Get webhook signature (TODO: Implement signature verification for production)

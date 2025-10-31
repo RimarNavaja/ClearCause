@@ -1,10 +1,9 @@
-
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/useAuth';
-import AuthenticatedNavbar from './AuthenticatedNavbar';
+import React, { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Menu, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import AuthenticatedNavbar from "./AuthenticatedNavbar";
 
 const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -16,7 +15,7 @@ const Navbar: React.FC = () => {
   React.useEffect(() => {
     if (loading) {
       const timeout = setTimeout(() => {
-        console.warn('[Navbar] Loading timeout - forcing navbar to show');
+        console.warn("[Navbar] Loading timeout - forcing navbar to show");
         setLoadingTimeout(true);
       }, 3000); // 3 second timeout for navbar
 
@@ -33,20 +32,29 @@ const Navbar: React.FC = () => {
 
   // Get link classes with active state
   const getLinkClasses = (path: string) => {
-    const baseClasses = "inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors";
+    const baseClasses =
+      "inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors";
     const activeClasses = "border-clearcause-primary text-clearcause-primary";
-    const inactiveClasses = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300";
+    const inactiveClasses =
+      "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300";
 
-    return `${baseClasses} ${isActiveLink(path) ? activeClasses : inactiveClasses}`;
+    return `${baseClasses} ${
+      isActiveLink(path) ? activeClasses : inactiveClasses
+    }`;
   };
 
   // Get mobile link classes with active state
   const getMobileLinkClasses = (path: string) => {
-    const baseClasses = "block pl-3 pr-4 py-2 text-base font-medium transition-colors";
-    const activeClasses = "text-clearcause-primary bg-blue-50 border-l-4 border-clearcause-primary";
-    const inactiveClasses = "text-gray-500 hover:text-gray-800 hover:bg-gray-50";
+    const baseClasses =
+      "block pl-3 pr-4 py-2 text-base font-medium transition-colors";
+    const activeClasses =
+      "text-clearcause-primary bg-blue-50 border-l-4 border-clearcause-primary";
+    const inactiveClasses =
+      "text-gray-500 hover:text-gray-800 hover:bg-gray-50";
 
-    return `${baseClasses} ${isActiveLink(path) ? activeClasses : inactiveClasses}`;
+    return `${baseClasses} ${
+      isActiveLink(path) ? activeClasses : inactiveClasses
+    }`;
   };
 
   // Show loading skeleton while auth is loading (with timeout protection)
@@ -57,11 +65,7 @@ const Navbar: React.FC = () => {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link to="/" className="flex items-center">
-                <img
-                  src="/logo.png"
-                  alt="ClearCause"
-                  className="h-8 w-auto"
-                />
+                <img src="/logo.png" alt="ClearCause" className="h-8 w-auto" />
               </Link>
             </div>
             <div className="flex items-center space-x-4">
@@ -88,33 +92,32 @@ const Navbar: React.FC = () => {
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
               <Link to="/" className="flex items-center">
-                <img
-                  src="/logo.png"
-                  alt="ClearCause"
-                  className="h-8 w-auto"
-                />
+                <img src="/logo.png" alt="ClearCause" className="h-8 w-auto" />
               </Link>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <Link to="/campaigns" className={getLinkClasses('/campaigns')}>
+              <Link to="/campaigns" className={getLinkClasses("/campaigns")}>
                 Browse Campaigns
               </Link>
-              <Link to="/how-it-works" className={getLinkClasses('/how-it-works')}>
+              <Link
+                to="/how-it-works"
+                className={getLinkClasses("/how-it-works")}
+              >
                 How It Works
               </Link>
-              <Link to="/about" className={getLinkClasses('/about')}>
+              <Link to="/about" className={getLinkClasses("/about")}>
                 About Us
               </Link>
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-3">
             <Link to="/login">
-              <Button variant="ghost" className="text-gray-700 hover:text-clearcause-primary">
+              <Button className="bg-clearcause-primary hover:text-white rounded-full px-10 font-redhatbold text-xs">
                 Log In
               </Button>
             </Link>
             <Link to="/signup">
-              <Button className="bg-clearcause-primary hover:bg-clearcause-secondary">
+              <Button className="bg-clearcause-primary hover:bg-clearcause-secondary rounded-full  px-10 font-redhatbold text-xs">
                 Sign Up
               </Button>
             </Link>
@@ -141,21 +144,21 @@ const Navbar: React.FC = () => {
           <div className="pt-2 pb-3 space-y-1">
             <Link
               to="/campaigns"
-              className={getMobileLinkClasses('/campaigns')}
+              className={getMobileLinkClasses("/campaigns")}
               onClick={() => setIsMenuOpen(false)}
             >
               Browse Campaigns
             </Link>
             <Link
               to="/how-it-works"
-              className={getMobileLinkClasses('/how-it-works')}
+              className={getMobileLinkClasses("/how-it-works")}
               onClick={() => setIsMenuOpen(false)}
             >
               How It Works
             </Link>
             <Link
               to="/about"
-              className={getMobileLinkClasses('/about')}
+              className={getMobileLinkClasses("/about")}
               onClick={() => setIsMenuOpen(false)}
             >
               About Us
@@ -163,12 +166,20 @@ const Navbar: React.FC = () => {
           </div>
           <div className="pt-3 pb-4 border-t border-gray-200">
             <div className="px-4 space-y-2">
-              <Link to="/login" className="block w-full" onClick={() => setIsMenuOpen(false)}>
+              <Link
+                to="/login"
+                className="block w-full"
+                onClick={() => setIsMenuOpen(false)}
+              >
                 <Button variant="outline" className="w-full">
                   Log In
                 </Button>
               </Link>
-              <Link to="/signup" className="block w-full" onClick={() => setIsMenuOpen(false)}>
+              <Link
+                to="/signup"
+                className="block w-full"
+                onClick={() => setIsMenuOpen(false)}
+              >
                 <Button className="w-full bg-clearcause-primary hover:bg-clearcause-secondary">
                   Sign Up
                 </Button>

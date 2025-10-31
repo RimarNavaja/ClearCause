@@ -115,7 +115,8 @@ export default {
 			},
 			fontFamily: {
 				sans: ['Inter var', 'Inter', 'sans-serif'],
-				display: ['Montserrat', 'sans-serif']
+				display: ['Montserrat', 'sans-serif'],
+				redhatbold:['RedHatBold', 'sans-serif']
 			}
 		}
 	},
