@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, Clock, XCircle, AlertTriangle } from 'lucide-react';
+import { Clock, XCircle, AlertTriangle, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export type VerificationStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'resubmission_required';
@@ -23,50 +23,50 @@ const VerificationBadge: React.FC<VerificationBadgeProps> = ({
       return (
         <Badge
           variant="secondary"
-          className={`bg-green-100 text-green-800 ${textSize}`}
+          className={`bg-blue-700/75 px-4 py-1 text-white font-redhatregular ${textSize}`}
         >
-          {showIcon && <CheckCircle className={`${iconSize} mr-1`} />}
-          ✅ Verified
+          {showIcon && <Check className={`${iconSize} mr-1`} />}
+           Verified
         </Badge>
       );
     case 'pending':
       return (
         <Badge
           variant="secondary"
-          className={`bg-blue-100 text-blue-800 ${textSize}`}
+          className={`bg-blue-100 px-4 py-1 text-blue-800 font-redhatregular${textSize}`}
         >
           {showIcon && <Clock className={`${iconSize} mr-1`} />}
-          ⏳ Pending
+          Pending
         </Badge>
       );
     case 'under_review':
       return (
         <Badge
           variant="secondary"
-          className={`bg-yellow-100 text-yellow-800 ${textSize}`}
+          className={`bg-yellow-100 px-4 py-1 text-yellow-800 font-redhatregular ${textSize}`}
         >
           {showIcon && <AlertTriangle className={`${iconSize} mr-1`} />}
-          ⏳ Under Review
+          Under Review
         </Badge>
       );
     case 'rejected':
       return (
         <Badge
           variant="secondary"
-          className={`bg-red-100 text-red-800 ${textSize}`}
+          className={`bg-red-100 px-4 py-1 text-red-800 font-redhatregular ${textSize}`}
         >
           {showIcon && <XCircle className={`${iconSize} mr-1`} />}
-          ❌ Rejected
+          Rejected
         </Badge>
       );
     case 'resubmission_required':
       return (
         <Badge
           variant="secondary"
-          className={`bg-orange-100 text-orange-800 ${textSize}`}
+          className={`bg-orange-100 px-4 py-1 text-orange-800 ${textSize}`}
         >
           {showIcon && <AlertTriangle className={`${iconSize} mr-1`} />}
-          ⚠️ Resubmission Required
+          Resubmission Required
         </Badge>
       );
     default:

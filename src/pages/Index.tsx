@@ -162,13 +162,13 @@ const HomeCampaignCard: React.FC<{ campaign: Campaign }> = ({ campaign }) => {
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
         <div className="absolute top-4 left-4">
-          <Badge className="bg-blue-600 text-white text-xs font-medium px-3 py-1">
+          <Badge className="text-black bg-white text-xs font-redhatbold px-3 py-1">
             {campaign.category}
           </Badge>
         </div>
         {campaign.charity?.verificationStatus === "approved" && (
           <div className="absolute top-4 right-4">
-            <Badge className="bg-green-600 text-white text-xs font-medium px-3 py-1">
+            <Badge className="bg-blue-700 font-redhatregular hover:bg-blue-600 text-white text-xs font-medium px-3 py-1 opacity-90">
               <Check className="w-3 h-3 mr-1" />
               Verified
             </Badge>
@@ -190,7 +190,7 @@ const HomeCampaignCard: React.FC<{ campaign: Campaign }> = ({ campaign }) => {
         <div className="space-y-4">
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
-              className="bg-green-500 h-2 rounded-full transition-all duration-500"
+              className="bg-blue-500 h-2 rounded-full transition-all duration-500"
               style={{ width: `${progressPercentage}%` }}
             />
           </div>
@@ -213,8 +213,7 @@ const HomeCampaignCard: React.FC<{ campaign: Campaign }> = ({ campaign }) => {
           </div>
 
           <Link to={`/donate/${campaign.id}`}>
-            <Button className="w-full bg-clearcause-accent hover:bg-clearcause-accent/90 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2">
-              <Heart className="h-4 w-4" />
+            <Button className="w-full bg-clearcause-primary hover:bg-clearcause-primary/90 text-white font-semibold py-3 rounded-full flex items-center justify-center gap-2 mt-2">
               Donate Now
             </Button>
           </Link>
@@ -313,15 +312,23 @@ const Index: React.FC = () => {
 
         {/* How It Works Section */}
         <section className="py-20 bg-white relative">
-          {/* Decorative Elements */}
-          {/* <div className="absolute top-10 left-10 opacity-10">
-            <img src="/decoration-6.png" alt="" className="w-28 h-28" />
-          </div> */}
-          {/* <div className="absolute bottom-10 right-10 opacity-20">
-            <img src="/decoration.png" alt="" className="w-36 h-36" />
-          </div> */}
-
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            {/* Decorative Elements */}
+            <div className="absolute top-10 left-10">
+              <img src="/Decoration-Circle.svg" alt="" className="w-6 h-6" />
+            </div>
+
+            <div className="absolute bottom-10 right-10 ">
+              <img src="/Decoration-2.svg" alt="" className="w-6 h-6" />
+            </div>
+            <div className="absolute top-8 right-2 opacity-50 rotate-12">
+              <img
+                src="/Decoration-1.svg"
+                alt=""
+                className="w-[145px] h-[30px]"
+              />
+            </div>
+            {/* Decorative Elements */}
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
                 How ClearCause Works
@@ -333,7 +340,7 @@ const Index: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="bg-blue-50 rounded-2xl p-8 text-center hover:shadow-lg transition-all duration-300">
+              <div className="border-2 border-gray-300  rounded-2xl p-8 text-center hover:shadow-lg transition-all duration-300">
                 <div className="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
                   <Shield className="h-8 w-8 text-white" />
                 </div>
@@ -346,7 +353,7 @@ const Index: React.FC = () => {
                 </p>
               </div>
 
-              <div className="bg-blue-50 rounded-2xl p-8 text-center hover:shadow-lg transition-all duration-300">
+              <div className="border-2 border-gray-300 rounded-2xl p-8 text-center hover:shadow-lg transition-all duration-300">
                 <div className="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
                   <BarChart4 className="h-8 w-8 text-white" />
                 </div>
@@ -359,7 +366,7 @@ const Index: React.FC = () => {
                 </p>
               </div>
 
-              <div className="bg-blue-50 rounded-2xl p-8 text-center hover:shadow-lg transition-all duration-300">
+              <div className="border-2 border-gray-300 rounded-2xl p-8 text-center hover:shadow-lg transition-all duration-300">
                 <div className="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
                   <CreditCard className="h-8 w-8 text-white" />
                 </div>
@@ -415,9 +422,20 @@ const Index: React.FC = () => {
         </section>
 
         {/* Transparency Promise Section */}
-        <section className="py-20 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-700 rounded-3xl overflow-hidden shadow-2xl">
+        <section className="py-20 bg-white relative">
+          <div className="absolute bottom-20 left-12 rotate-12  ">
+            <img src="/Decoration-11.svg" alt="" className="w-36 h-[30px]" />
+          </div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            {/* Decoration */}
+            <div className="absolute -top-5 left-1 -rotate-90 ">
+              <img src="/Decoration-7.svg" alt="" className="w-6 h-6" />
+            </div>
+            <div className="absolute top-48 -right-6  ">
+              <img src="/DecorationCross.svg" alt="" className="w-7 h-7" />
+            </div>
+
+            <div className="bg-gradient-to-r from-blue-700 to-purple-700 rounded-3xl overflow-hidden shadow-2xl">
               <div className="grid grid-cols-1 lg:grid-cols-2">
                 <div className="p-8 md:p-12 lg:p-16">
                   <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
@@ -468,7 +486,7 @@ const Index: React.FC = () => {
                   <img
                     src="https://images.unsplash.com/photo-1579208570378-8c970854bc23?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
                     alt="Transparency in action"
-                    className="absolute inset-0 h-full w-full object-cover"
+                    className="absolute inset-0 h-full w-full object-cover bg-blue-700 bg-blend-multiply ..."
                   />
                 </div>
               </div>
@@ -477,7 +495,17 @@ const Index: React.FC = () => {
         </section>
 
         {/* CTA Section */}
-        <section className="py-20 bg-gradient-to-br from-blue-50 to-purple-50">
+        <section className="py-20 bg-gradient-to-br from-blue-100 to-white-50 relative">
+          {/* Decoration */}
+          <div className="absolute bottom-40 left-56  ">
+            <img src="/DecorationCircle-2.svg" alt="" className="w-4 h-4" />
+          </div>
+          <div className="absolute bottom-10 right-[570px]  ">
+            <img src="/DecorationCircle.svg" alt="" className="w-7 h-7" />
+          </div>
+          <div className="absolute top-10 right-72  ">
+            <img src="/DecorationPink.svg" alt="" className="w-44 h-30" />
+          </div>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
               Ready to make a transparent impact?

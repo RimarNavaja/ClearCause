@@ -124,7 +124,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
 
           {/* Category and Donation Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-2">
-            <span className="bg-white/90 backdrop-blur-sm text-xs font-medium px-2.5 py-1 rounded-full">
+            <span className="bg-white font-redhatbold capitalize shadow-md backdrop-blur-sm text-xs font-medium px-2.5 py-1 rounded-full">
               {realtimeData.category}
             </span>
             {isDonated && (
@@ -231,13 +231,13 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
 
           {/* Action Button */}
           <Button
-            className="w-full bg-clearcause-primary hover:bg-clearcause-primary/80 disabled:opacity-50"
+            className="w-full rounded-full bg-clearcause-primary hover:bg-clearcause-primary/80 disabled:opacity-50"
             disabled={isExpired || realtimeData.status !== "active"}
             asChild
           >
             <Link
               to={`/donate/${realtimeData.id}`}
-              className="flex items-center justify-center"
+              className="flex items-center justify-center "
             >
               {!isExpired && realtimeData.status === "active" && <></>}
               {isExpired
