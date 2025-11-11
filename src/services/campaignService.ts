@@ -1,7 +1,7 @@
-/**
- * Campaign Service
- * Handles campaign creation, management, and operations
- */
+
+//  * Campaign Service
+//  * Handles campaign creation, management, and operations
+
 
 import { supabase, uploadFile } from '../lib/supabase';
 import { 
@@ -150,6 +150,7 @@ export const createCampaign = withErrorHandling(async (
     description: campaign.description,
     goalAmount: campaign.goal_amount,
     currentAmount: campaign.current_amount,
+    donorsCount: campaign.donors_count || 0,
     imageUrl: campaign.image_url,
     status: campaign.status,
     startDate: campaign.start_date,
@@ -243,6 +244,7 @@ export const getCampaignById = withErrorHandling(async (
     description: campaign.description,
     goalAmount: campaign.goal_amount,
     currentAmount: campaign.current_amount,
+    donorsCount: campaign.donors_count || 0,
     imageUrl: campaign.image_url,
     status: campaign.status,
     startDate: campaign.start_date,
@@ -553,6 +555,7 @@ export const getCampaignsByCharity = withErrorHandling(async (
     description: campaign.description,
     goalAmount: campaign.goal_amount,
     currentAmount: campaign.current_amount,
+    donorsCount: campaign.donors_count || 0,
     imageUrl: campaign.image_url,
     status: campaign.status,
     startDate: campaign.start_date,
