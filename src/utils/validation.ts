@@ -24,7 +24,7 @@ export const passwordSchema = z
 
 export const phoneSchema = z
   .string()
-  .regex(/^[+]?[1-9][\d]{0,15}$/, 'Please enter a valid phone number')
+  .regex(/^(\+63|0)?\s?9\d{2}\s?\d{3}\s?\d{4}$/, 'Please enter a valid Philippine phone number (e.g., 09171234567 or +63 917 123 4567)')
   .optional();
 
 export const urlSchema = z
