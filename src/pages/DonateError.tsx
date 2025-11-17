@@ -17,9 +17,10 @@ const DonateError: React.FC = () => {
   const navigate = useNavigate();
   const state = location.state as LocationState;
 
-  // Get error details from navigation state
-  const errorMessage = state?.error || 'An unexpected error occurred during the donation process';
-  const campaignId = state?.campaignId;
+  // Get error details from navigation state or URL query params (from PayMongo redirect)
+  const searchParams = new URLSearchParams(location.search);
+  const errorMessage = state?.error || searchParams.get('error') || 'An unexpected error occurred during the donation process';
+  const campaignId = state?.campaignId || searchParams.get('campaign_id') || undefined;
   const campaignTitle = state?.campaignTitle;
 
   // Categorize error type for better user guidance

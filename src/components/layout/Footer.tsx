@@ -1,7 +1,6 @@
-
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Facebook, Twitter, Instagram, Youtube } from 'lucide-react';
+import React from "react";
+import { Link } from "react-router-dom";
+import { Facebook, Twitter, Instagram, Youtube } from "lucide-react";
 
 const Footer: React.FC = () => {
   return (
@@ -10,51 +9,74 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-1">
             <Link to="/" className="flex items-center">
-              <img
-                src="/logo.png"
-                alt="ClearCause"
-                className="h-8 w-auto"
-              />
+              <img src="/logo.png" alt="ClearCause" className="h-14 w-auto" />
             </Link>
             <p className="mt-4 text-sm text-gray-500">
-              Donate with confidence. Track every dollar, see the impact, in real time.
+              Donate with confidence. Track every dollar, see the impact, in
+              real time.
             </p>
             <div className="flex space-x-4 mt-6">
-              <a href="#" className="text-gray-400 hover:text-clearcause-primary">
+              <a
+                href="#"
+                className="text-gray-400 hover:text-clearcause-primary"
+              >
                 <Facebook size={20} />
               </a>
-              <a href="#" className="text-gray-400 hover:text-clearcause-primary">
+              <a
+                href="#"
+                className="text-gray-400 hover:text-clearcause-primary"
+              >
                 <Twitter size={20} />
               </a>
-              <a href="#" className="text-gray-400 hover:text-clearcause-primary">
+              <a
+                href="#"
+                className="text-gray-400 hover:text-clearcause-primary"
+              >
                 <Instagram size={20} />
               </a>
-              <a href="#" className="text-gray-400 hover:text-clearcause-primary">
+              <a
+                href="#"
+                className="text-gray-400 hover:text-clearcause-primary"
+              >
                 <Youtube size={20} />
               </a>
             </div>
           </div>
-          
+
           <div className="col-span-1">
-            <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">Platform</h3>
+            <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">
+              Platform
+            </h3>
             <ul className="mt-4 space-y-2">
               <li>
-                <Link to="/campaigns" className="text-base text-gray-500 hover:text-clearcause-primary">
+                <Link
+                  to="/campaigns"
+                  className="text-base text-gray-500 hover:text-clearcause-primary"
+                >
                   Browse Campaigns
                 </Link>
               </li>
               <li>
-                <Link to="/how-it-works" className="text-base text-gray-500 hover:text-clearcause-primary">
+                <Link
+                  to="/how-it-works"
+                  className="text-base text-gray-500 hover:text-clearcause-primary"
+                >
                   How It Works
                 </Link>
               </li>
               <li>
-                <Link to="/for-charities" className="text-base text-gray-500 hover:text-clearcause-primary">
+                <Link
+                  to="/for-charities"
+                  className="text-base text-gray-500 hover:text-clearcause-primary"
+                >
                   For Charities
                 </Link>
               </li>
               <li>
-                <Link to="/about" className="text-base text-gray-500 hover:text-clearcause-primary">
+                <Link
+                  to="/about"
+                  className="text-base text-gray-500 hover:text-clearcause-primary"
+                >
                   About Us
                 </Link>
               </li>
@@ -62,25 +84,39 @@ const Footer: React.FC = () => {
           </div>
 
           <div className="col-span-1">
-            <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">Support</h3>
+            <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">
+              Support
+            </h3>
             <ul className="mt-4 space-y-2">
               <li>
-                <Link to="/faq" className="text-base text-gray-500 hover:text-clearcause-primary">
+                <Link
+                  to="/faq"
+                  className="text-base text-gray-500 hover:text-clearcause-primary"
+                >
                   FAQ
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="text-base text-gray-500 hover:text-clearcause-primary">
+                <Link
+                  to="/contact"
+                  className="text-base text-gray-500 hover:text-clearcause-primary"
+                >
                   Contact Us
                 </Link>
               </li>
               <li>
-                <Link to="/privacy" className="text-base text-gray-500 hover:text-clearcause-primary">
+                <Link
+                  to="/privacy"
+                  className="text-base text-gray-500 hover:text-clearcause-primary"
+                >
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link to="/terms" className="text-base text-gray-500 hover:text-clearcause-primary">
+                <Link
+                  to="/terms"
+                  className="text-base text-gray-500 hover:text-clearcause-primary"
+                >
                   Terms of Service
                 </Link>
               </li>
@@ -88,7 +124,9 @@ const Footer: React.FC = () => {
           </div>
 
           <div className="col-span-1">
-            <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">Subscribe</h3>
+            <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">
+              Subscribe
+            </h3>
             <p className="mt-4 text-sm text-gray-500">
               Stay updated with our newsletter
             </p>
@@ -102,7 +140,7 @@ const Footer: React.FC = () => {
                 <div className="mt-3 sm:mt-0 sm:ml-3">
                   <button
                     type="submit"
-                    className="w-full bg-clearcause-primary hover:bg-clearcause-secondary flex items-center justify-center border border-transparent rounded-md py-2 px-4 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-clearcause-primary"
+                    className="w-full bg-clearcause-primary hover:bg-clearcause-secondary flex items-center justify-center font-redhatregular border border-transparent rounded-md py-2 px-4 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-clearcause-primary"
                   >
                     Subscribe
                   </button>

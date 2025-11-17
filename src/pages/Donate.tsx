@@ -132,20 +132,32 @@ const Donate: React.FC = () => {
         isAnonymous,
       };
 
+      // Step 1: Create donation record
       const result = await donationService.createDonation(donationData, user.id);
 
-      if (result.success && result.data) {
-        // Navigate to success page with donation details
-        navigate('/donate/success', {
-          state: {
-            donationId: result.data.id,
-            amount: result.data.amount,
-            campaignTitle: campaign.title,
-            campaignId: campaign.id,
-          },
-        });
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to create donation');
+      }
+
+      const donation = result.data;
+
+      // Step 2: Create payment session based on payment method
+      if (paymentMethod === 'gcash') {
+        const paymentResult = await donationService.createGCashPayment(
+          donation.id,
+          amount,
+          user.id
+        );
+
+        if (paymentResult.success && paymentResult.data?.checkoutUrl) {
+          // Redirect to GCash payment page
+          window.location.href = paymentResult.data.checkoutUrl;
+        } else {
+          throw new Error(paymentResult.error || 'Failed to create payment session');
+        }
       } else {
-        setError(result.error || 'Failed to process donation');
+        // Other payment methods not yet implemented
+        throw new Error(`Payment method "${paymentMethod}" is not yet supported. Please use GCash.`);
       }
     } catch (err: any) {
       console.error('Donation error:', err);

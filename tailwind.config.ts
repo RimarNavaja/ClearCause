@@ -65,7 +65,7 @@ export default {
 				},
 				// ClearCause brand colors
 				clearcause: {
-					primary: '#0891B2', // Teal
+					primary: '#2B7FFF', // Teal
 					secondary: '#0E7490', // Darker Teal
 					accent: '#F97316', // Orange for CTAs
 					muted: '#E0F2FE', // Light blue
@@ -115,7 +115,9 @@ export default {
 			},
 			fontFamily: {
 				sans: ['Inter var', 'Inter', 'sans-serif'],
-				display: ['Montserrat', 'sans-serif']
+				display: ['Montserrat', 'sans-serif'],
+				redhatbold:['RedHatBold', 'sans-serif'],
+				redhatregular:['RedHatRegular', 'sans-serif']
 			}
 		}
 	},

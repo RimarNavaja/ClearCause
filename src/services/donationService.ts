@@ -106,16 +106,8 @@ export const createDonation = withErrorHandling(async (
     paymentMethod: validatedData.paymentMethod,
   });
 
-  // In a real application, here you would:
-  // 1. Process payment with payment gateway (Stripe, PayPal, etc.)
-  // 2. Update donation status based on payment result
-  // 3. Update campaign current amount if payment successful
-  // 4. Send confirmation emails
-
-  // For demo purposes, simulate payment processing
-  setTimeout(() => {
-    processDonationPayment(donation.id, 'completed');
-  }, 2000);
+  // Note: Payment processing happens in the Edge Function after this returns
+  // The donation starts as 'pending' and will be updated via webhook when payment completes
 
   return createSuccessResponse({
     id: donation.id,
@@ -900,7 +892,7 @@ export const getDonorStatistics = withErrorHandling(async (
       )
     `)
     .eq('user_id', userId)
-    .eq('status', 'completed')
+    // Include all donation statuses, not just completed
     .order('donated_at', { ascending: false });
 
   if (error) {
@@ -948,3 +940,51 @@ export const getDonorImpactUpdates = withErrorHandling(async (
 
 // Alias for backward compatibility
 export const getDonorDonations = getDonationsByDonor;
+
+/**
+ * Create GCash payment session
+ */
+export const createGCashPayment = withErrorHandling(async (
+  donationId: string,
+  amount: number,
+  userId: string
+): Promise<ApiResponse<{ checkoutUrl: string; sessionId: string }>> => {
+  try {
+    // Get current session
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new ClearCauseError('UNAUTHORIZED', 'No active session', 401);
+    }
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/create-gcash-payment`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          donationId,
+          amount,
+          userId,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new ClearCauseError('PAYMENT_ERROR', data.error || 'Failed to create payment', response.status);
+    }
+
+    return createSuccessResponse(data, 'Payment session created successfully');
+  } catch (error) {
+    console.error('Create GCash payment error:', error);
+    if (error instanceof ClearCauseError) {
+      throw error;
+    }
+    throw new ClearCauseError('PAYMENT_ERROR', 'Failed to create payment session', 500);
+  }
+});
