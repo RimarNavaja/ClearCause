@@ -127,8 +127,17 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             <span className="bg-white font-redhatbold capitalize shadow-md backdrop-blur-sm text-xs font-medium px-2.5 py-1 rounded-full">
               {realtimeData.category}
             </span>
-            {isDonated && (
+            {/* {isDonated && (
               <span className="bg-green-500 text-white text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1">
+                <Heart className="w-3 h-3 fill-current" />
+                You Donated
+              </span>
+            )} */}
+          </div>
+          <div className="absolute bottom-3 left-3 flex flex-col gap-2">
+            {" "}
+            {isDonated && (
+              <span className="bg-green-600/90 text-white text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1">
                 <Heart className="w-3 h-3 fill-current" />
                 You Donated
               </span>
@@ -200,7 +209,9 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           {/* Amount and Goal */}
           <div className="flex justify-between text-sm">
             <span
-              className={`font-interregular font-semibold tracking-wide ${isAnimating ? "text-green-600" : ""}`}
+              className={`font-interregular font-semibold tracking-wide ${
+                isAnimating ? "text-green-600" : ""
+              }`}
             >
               {formatCurrency(realtimeData.currentAmount)}
             </span>

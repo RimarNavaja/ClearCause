@@ -1,8 +1,8 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Filter, X } from 'lucide-react';
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Filter, X } from "lucide-react";
 
 export interface FilterOptions {
   categories: string[];
@@ -10,7 +10,13 @@ export interface FilterOptions {
 }
 
 interface CampaignFiltersProps {
-  categories: Array<{ id: string; name: string; slug: string; icon?: string; color?: string }>;
+  categories: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    icon?: string;
+    color?: string;
+  }>;
   selectedCategories: string[];
   selectedStatuses: string[];
   onCategoryToggle: (categorySlug: string) => void;
@@ -20,10 +26,10 @@ interface CampaignFiltersProps {
 }
 
 const STATUS_OPTIONS = [
-  { value: 'active', label: 'Active', color: 'bg-green-500' },
-  { value: 'pending', label: 'Pending', color: 'bg-yellow-500' },
-  { value: 'completed', label: 'Completed', color: 'bg-blue-500' },
-  { value: 'paused', label: 'Paused', color: 'bg-gray-500' },
+  { value: "active", label: "Active", color: "text-green-500" },
+  { value: "pending", label: "Pending", color: "text-yellow-500" },
+  { value: "completed", label: "Completed", color: "text-blue-500" },
+  { value: "paused", label: "Paused", color: "text-gray-500" },
 ];
 
 export const CampaignFilters: React.FC<CampaignFiltersProps> = ({
@@ -101,8 +107,9 @@ export const CampaignFilters: React.FC<CampaignFiltersProps> = ({
                   onChange={() => onStatusToggle(status.value)}
                   className="rounded border-gray-300 text-clearcause-primary focus:ring-clearcause-primary"
                 />
-                <span className="text-sm flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${status.color}`} />
+                <span
+                  className={`text-sm flex items-center gap-2 ${status.color}`}
+                >
                   {status.label}
                 </span>
               </label>

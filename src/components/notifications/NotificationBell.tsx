@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Bell } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/hooks/useAuth';
-import * as notificationService from '@/services/notificationService';
-import NotificationCenter from './NotificationCenter';
+import React, { useState, useEffect } from "react";
+import { Bell } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import * as notificationService from "@/services/notificationService";
+import NotificationCenter from "./NotificationCenter";
 
 export const NotificationBell: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -18,21 +18,25 @@ export const NotificationBell: React.FC = () => {
     const loadUnreadCount = async () => {
       try {
         const result = await notificationService.getUnreadCount(user.id);
-        if (result.success && typeof result.data === 'number') {
+        if (result.success && typeof result.data === "number") {
           setUnreadCount(result.data);
         }
       } catch (error) {
-        console.error('Error loading unread count:', error);
+        console.error("Error loading unread count:", error);
       }
     };
 
     // Delay initial load by 2 seconds to let auth stabilize
     // This prevents race conditions with database connections during login
-    console.log('[NotificationBell] Delaying notification load by 2s for auth stabilization');
+    console.log(
+      "[NotificationBell] Delaying notification load by 2s for auth stabilization"
+    );
     let intervalId: NodeJS.Timeout;
 
     const delayTimer = setTimeout(() => {
-      console.log('[NotificationBell] Loading unread count after auth stabilization');
+      console.log(
+        "[NotificationBell] Loading unread count after auth stabilization"
+      );
       loadUnreadCount();
 
       // Start polling after initial load
@@ -54,16 +58,16 @@ export const NotificationBell: React.FC = () => {
       <Button
         variant="ghost"
         size="icon"
-        className="relative"
+        className="relative hover:bg-blue-600/90"
         onClick={() => setOpen(true)}
       >
-        <Bell className="h-5 w-5" />
+        <Bell className="h-6 w-6" />
         {unreadCount > 0 && (
           <Badge
             variant="destructive"
-            className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+            className="absolute -top-1 -right-1 h-6 w-6 flex items-center justify-center p-0 text-xs"
           >
-            {unreadCount > 9 ? '9+' : unreadCount}
+            {unreadCount > 9 ? "9+" : unreadCount}
           </Badge>
         )}
       </Button>
