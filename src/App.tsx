@@ -71,6 +71,7 @@ import AuditLogs from "./pages/admin/AuditLogs";
 import AdminProfile from "./pages/admin/AdminProfile";
 import ActivityMonitor from "./pages/admin/ActivityMonitor";
 import UserManagement from "./pages/admin/UserManagement";
+import ReviewModeration from "./pages/admin/ReviewModeration";
 
 const queryClient = new QueryClient();
 
@@ -312,6 +313,11 @@ const App = () => (
           <Route path="/admin/scorecards" element={
             <AdminRoute>
               <ScorecardManagement />
+            </AdminRoute>
+          } />
+          <Route path="/admin/reviews" element={
+            <AdminRoute>
+              <ReviewModeration />
             </AdminRoute>
           } />
           <Route path="/admin/settings" element={

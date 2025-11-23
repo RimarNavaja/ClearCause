@@ -19,6 +19,7 @@ import { formatCurrency } from '@/utils/helpers';
 import { useAuth } from '@/hooks/useAuth';
 import * as charityService from '@/services/charityService';
 import * as campaignService from '@/services/campaignService';
+import * as milestoneService from '@/services/milestoneService';
 import { waitForAuthReady } from '@/utils/authHelper';
 
 interface Milestone {
@@ -86,7 +87,7 @@ const CharityMilestones: React.FC = () => {
       console.log('[CharityMilestones] Loading milestones for each campaign...');
       for (const campaign of campaigns) {
         try {
-          const milestonesResult = await campaignService.getCampaignMilestones(campaign.id);
+          const milestonesResult = await milestoneService.getMilestones(campaign.id);
 
           if (milestonesResult.success && milestonesResult.data) {
             const campaignMilestones = milestonesResult.data.map((m: any) => ({

@@ -3,58 +3,52 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import CampaignGrid from '@/components/ui/campaign/CampaignGrid';
+import { CampaignSearch } from '@/components/campaign/CampaignSearch';
+import { CampaignFilters } from '@/components/campaign/CampaignFilters';
+import { CampaignSort, SortOption } from '@/components/campaign/CampaignSort';
 import { Search, Filter, Check, X, SlidersHorizontal, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import * as campaignService from '@/services/campaignService';
+import * as categoryService from '@/services/categoryService';
 import { Campaign } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { debounce } from '@/utils/helpers';
-
-const CATEGORIES = [
-  "All Categories",
-  "Clean Water",
-  "Education", 
-  "Food Security",
-  "Healthcare",
-  "Environment",
-  "Disaster Relief",
-  "Animal Welfare",
-];
-
-const SORT_OPTIONS = [
-  { value: 'newest', label: 'Newest First' },
-  { value: 'oldest', label: 'Oldest First' },
-  { value: 'most_raised', label: 'Most Raised' },
-  { value: 'least_raised', label: 'Least Raised' },
-  { value: 'ending_soon', label: 'Ending Soon' },
-  { value: 'most_popular', label: 'Most Popular' },
-];
 
 const Campaigns: React.FC = () => {
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState("All Categories");
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; slug: string; icon?: string; color?: string }>>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['active']);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchInput, setSearchInput] = useState("");
-  const [verifiedOnly, setVerifiedOnly] = useState(false);
-  const [sortBy, setSortBy] = useState("newest");
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const { user } = useAuth();
 
-  // Debounced search function
-  const debouncedSearch = debounce((query: string) => {
-    setSearchQuery(query);
-    setCurrentPage(1); // Reset to first page when searching
-  }, 500);
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const result = await categoryService.getActiveCategories();
+        if (result.success && result.data) {
+          setCategories(result.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   // Load campaigns from backend
   const loadCampaigns = async () => {
@@ -63,9 +57,9 @@ const Campaigns: React.FC = () => {
       setError(null);
 
       const filters = {
-        category: selectedCategory !== "All Categories" ? [selectedCategory] : undefined,
+        category: selectedCategories.length > 0 ? selectedCategories : undefined,
         search: searchQuery || undefined,
-        status: ['active'],
+        status: selectedStatuses.length > 0 ? selectedStatuses : undefined,
       };
 
       const params = {
@@ -73,9 +67,11 @@ const Campaigns: React.FC = () => {
         limit: 12,
         sortBy: sortBy === 'newest' ? 'created_at' :
                 sortBy === 'oldest' ? 'created_at' :
-                sortBy === 'most_raised' ? 'current_amount' :
-                sortBy === 'least_raised' ? 'current_amount' : 'created_at',
-        sortOrder: sortBy === 'oldest' || sortBy === 'least_raised' ? 'asc' : 'desc',
+                sortBy === 'most-funded' ? 'current_amount' :
+                sortBy === 'ending-soon' ? 'end_date' :
+                sortBy === 'alphabetical' ? 'title' : 'created_at',
+        sortOrder: sortBy === 'oldest' ? 'asc' :
+                   sortBy === 'alphabetical' ? 'asc' : 'desc',
       };
 
       const result = await campaignService.getAllCampaigns(filters, params);
@@ -98,21 +94,45 @@ const Campaigns: React.FC = () => {
   // Load campaigns when filters change
   useEffect(() => {
     loadCampaigns();
-  }, [selectedCategory, searchQuery, verifiedOnly, sortBy, currentPage]);
+  }, [selectedCategories, selectedStatuses, searchQuery, sortBy, currentPage]);
 
-  // Handle search input
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchInput(value);
-    debouncedSearch(value);
+  // Handle category filter toggle
+  const handleCategoryToggle = (categorySlug: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(categorySlug)
+        ? prev.filter(c => c !== categorySlug)
+        : [...prev, categorySlug]
+    );
+    setCurrentPage(1);
+  };
+
+  // Handle status filter toggle
+  const handleStatusToggle = (status: string) => {
+    setSelectedStatuses(prev =>
+      prev.includes(status)
+        ? prev.filter(s => s !== status)
+        : [...prev, status]
+    );
+    setCurrentPage(1);
+  };
+
+  // Handle search change
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
+
+  // Clear search
+  const handleSearchClear = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
   };
 
   // Clear all filters
   const clearFilters = () => {
-    setSelectedCategory("All Categories");
+    setSelectedCategories([]);
+    setSelectedStatuses(['active']);
     setSearchQuery("");
-    setSearchInput("");
-    setVerifiedOnly(false);
     setSortBy("newest");
     setCurrentPage(1);
   };
@@ -120,9 +140,11 @@ const Campaigns: React.FC = () => {
   // Get active filter count
   const getActiveFilterCount = () => {
     let count = 0;
-    if (selectedCategory !== "All Categories") count++;
+    count += selectedCategories.length;
+    if (selectedStatuses.length !== 1 || !selectedStatuses.includes('active')) {
+      count += selectedStatuses.length;
+    }
     if (searchQuery) count++;
-    if (verifiedOnly) count++;
     if (sortBy !== "newest") count++;
     return count;
   };
@@ -159,30 +181,25 @@ const Campaigns: React.FC = () => {
           </div>
         </section>
 
-        {/* Search and Filters */}
+        {/* Search and Sort */}
         <section className="bg-gray-50 border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               {/* Search Bar */}
-              <div className="flex-1 max-w-lg">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  <Input
-                    type="text"
-                    placeholder="Search campaigns..."
-                    value={searchInput}
-                    onChange={handleSearchChange}
-                    className="pl-10 pr-4 py-2 w-full"
-                  />
-                </div>
+              <div className="flex-1 max-w-2xl">
+                <CampaignSearch
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  onClear={handleSearchClear}
+                />
               </div>
 
-              {/* Filter Controls */}
+              {/* Sort and Mobile Filter Toggle */}
               <div className="flex items-center gap-4">
                 {/* Mobile Filter Toggle */}
                 <Button
                   variant="outline"
-                  onClick={() => setShowFilters(!showFilters)}
+                  onClick={() => setShowMobileFilters(!showMobileFilters)}
                   className="lg:hidden"
                 >
                   <SlidersHorizontal className="h-4 w-4 mr-2" />
@@ -194,168 +211,115 @@ const Campaigns: React.FC = () => {
                   )}
                 </Button>
 
-                {/* Desktop Filters */}
-                <div className="hidden lg:flex items-center gap-4">
-                  {/* Category Filter */}
-                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Sort By */}
-                  <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SORT_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Verified Only Toggle */}
-                  <Button
-                    variant={verifiedOnly ? "default" : "outline"}
-                    onClick={() => setVerifiedOnly(!verifiedOnly)}
-                    className="whitespace-nowrap"
-                  >
-                    <Check className="h-4 w-4 mr-2" />
-                    Verified Only
-                  </Button>
-
-                  {/* Clear Filters */}
-                  {getActiveFilterCount() > 0 && (
-                    <Button variant="ghost" onClick={clearFilters}>
-                      <X className="h-4 w-4 mr-2" />
-                      Clear All
-                    </Button>
-                  )}
+                {/* Sort Dropdown */}
+                <div className="hidden sm:block">
+                  <CampaignSort value={sortBy} onChange={setSortBy} />
                 </div>
+
+                {/* Clear All Filters Button */}
+                {getActiveFilterCount() > 0 && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters} className="hidden lg:flex">
+                    <X className="h-4 w-4 mr-2" />
+                    Clear All
+                  </Button>
+                )}
               </div>
             </div>
 
-            {/* Mobile Filters Panel */}
-            {showFilters && (
-              <div className="lg:hidden mt-4 p-4 bg-white rounded-lg border space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category
-                  </label>
-                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sort By
-                  </label>
-                  <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SORT_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <Button
-                    variant={verifiedOnly ? "default" : "outline"}
-                    onClick={() => setVerifiedOnly(!verifiedOnly)}
-                    className="flex-1 mr-2"
-                  >
-                    <Check className="h-4 w-4 mr-2" />
-                    Verified Only
-                  </Button>
-                  
-                  {getActiveFilterCount() > 0 && (
-                    <Button variant="ghost" onClick={clearFilters} className="flex-1 ml-2">
-                      <X className="h-4 w-4 mr-2" />
-                      Clear All
-                    </Button>
-                  )}
-                </div>
+            {/* Mobile Sort */}
+            {showMobileFilters && (
+              <div className="sm:hidden mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Sort By
+                </label>
+                <CampaignSort value={sortBy} onChange={setSortBy} />
               </div>
             )}
           </div>
         </section>
 
-        {/* Results Summary */}
-        {!loading && (
-          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">
-                {totalCount > 0 ? (
-                  <>
-                    Showing {((currentPage - 1) * 12) + 1}-{Math.min(currentPage * 12, totalCount)} of {totalCount} campaigns
-                    {searchQuery && (
-                      <span className="ml-2">
-                        for "<strong>{searchQuery}</strong>"
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  'No campaigns found'
-                )}
-              </p>
+        {/* Campaign Grid with Sidebar Filters */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Desktop Filter Sidebar */}
+            <aside className="hidden lg:block">
+              <CampaignFilters
+                categories={categories}
+                selectedCategories={selectedCategories}
+                selectedStatuses={selectedStatuses}
+                onCategoryToggle={handleCategoryToggle}
+                onStatusToggle={handleStatusToggle}
+                onClearFilters={clearFilters}
+                activeFilterCount={getActiveFilterCount()}
+              />
+            </aside>
 
-              {/* Active Filters Display */}
-              {getActiveFilterCount() > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">Active filters:</span>
-                  <div className="flex gap-1">
-                    {selectedCategory !== "All Categories" && (
-                      <Badge variant="secondary">{selectedCategory}</Badge>
+            {/* Mobile Filter Panel */}
+            {showMobileFilters && (
+              <div className="lg:hidden col-span-1">
+                <CampaignFilters
+                  categories={categories}
+                  selectedCategories={selectedCategories}
+                  selectedStatuses={selectedStatuses}
+                  onCategoryToggle={handleCategoryToggle}
+                  onStatusToggle={handleStatusToggle}
+                  onClearFilters={clearFilters}
+                  activeFilterCount={getActiveFilterCount()}
+                />
+              </div>
+            )}
+
+            {/* Main Content */}
+            <div className="lg:col-span-3">
+              {/* Results Summary */}
+              {!loading && (
+                <div className="mb-6">
+                  <p className="text-sm text-gray-600">
+                    {totalCount > 0 ? (
+                      <>
+                        Showing {((currentPage - 1) * 12) + 1}-{Math.min(currentPage * 12, totalCount)} of {totalCount} campaigns
+                        {searchQuery && (
+                          <span className="ml-2">
+                            for "<strong>{searchQuery}</strong>"
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      'No campaigns found'
                     )}
-                    {verifiedOnly && (
-                      <Badge variant="secondary">Verified</Badge>
-                    )}
-                    {sortBy !== "newest" && (
-                      <Badge variant="secondary">
-                        {SORT_OPTIONS.find(opt => opt.value === sortBy)?.label}
-                      </Badge>
-                    )}
-                  </div>
+                  </p>
+
+                  {/* Active Filters Display */}
+                  {getActiveFilterCount() > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <span className="text-sm text-gray-500">Active filters:</span>
+                      {selectedCategories.map(slug => {
+                        const category = categories.find(c => c.slug === slug);
+                        return category ? (
+                          <Badge key={slug} variant="secondary">
+                            {category.icon && `${category.icon} `}{category.name}
+                          </Badge>
+                        ) : null;
+                      })}
+                      {selectedStatuses.map(status => (
+                        <Badge key={status} variant="secondary">
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          </section>
-        )}
 
-        {/* Campaign Grid */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <CampaignGrid 
-            campaigns={campaigns}
-            loading={loading}
-            error={error}
-            showRealTimeUpdates={true}
-          />
+              {/* Campaign Grid */}
+              <CampaignGrid
+                campaigns={campaigns}
+                loading={loading}
+                error={error}
+                showRealTimeUpdates={true}
+              />
+            </div>
+          </div>
         </section>
 
         {/* Pagination */}

@@ -28,6 +28,7 @@ import {
 import { withErrorHandling, handleSupabaseError, createSuccessResponse } from '../utils/errors';
 import { createPaginatedResponse, calculatePercentage } from '../utils/helpers';
 import { logAuditEvent } from './adminService';
+import * as milestoneService from './milestoneService';
 import { getUserProfile } from './userService';
 import { getCharityByUserId } from './charityService';
 
@@ -107,37 +108,14 @@ export const createCampaign = withErrorHandling(async (
     throw handleSupabaseError(campaignError);
   }
 
-  // Create milestones if provided
+  // Create milestones if provided using milestone service
   let milestones: Milestone[] = [];
   if (validatedData.milestones && validatedData.milestones.length > 0) {
-    const milestoneInserts = validatedData.milestones.map(milestone => ({
-      campaign_id: campaign.id,
-      title: milestone.title,
-      description: milestone.description,
-      target_amount: milestone.targetAmount,
-      status: 'pending' as const,
-    }));
-
-    const { data: createdMilestones, error: milestoneError } = await supabase
-      .from('milestones')
-      .insert(milestoneInserts)
-      .select();
-
-    if (milestoneError) {
-      throw handleSupabaseError(milestoneError);
-    }
-
-    milestones = createdMilestones.map(m => ({
-      id: m.id,
-      campaignId: m.campaign_id,
-      title: m.title,
-      description: m.description,
-      targetAmount: m.target_amount,
-      status: m.status,
-      dueDate: m.due_date,
-      createdAt: m.created_at,
-      updatedAt: m.updated_at,
-    }));
+    const milestonesResult = await milestoneService.createMilestones(
+      campaign.id,
+      validatedData.milestones
+    );
+    milestones = milestonesResult.data;
   }
 
   // Log audit event
@@ -1605,35 +1583,6 @@ export const getCampaignUpdateById = withErrorHandling(async (
 
 /**
  * Get campaign milestones
+ * @deprecated Use milestoneService.getMilestones instead
  */
-export const getCampaignMilestones = withErrorHandling(async (
-  campaignId: string
-): Promise<ApiResponse<Milestone[]>> => {
-  const { data: milestonesData, error } = await supabase
-    .from('milestones')
-    .select('*')
-    .eq('campaign_id', campaignId)
-    .order('target_amount', { ascending: true });
-
-  if (error) {
-    throw handleSupabaseError(error);
-  }
-
-  const milestones: Milestone[] = milestonesData.map(m => ({
-    id: m.id,
-    campaignId: m.campaign_id,
-    title: m.title,
-    description: m.description,
-    targetAmount: m.target_amount,
-    evidenceDescription: m.evidence_description,
-    status: m.status,
-    proofDocuments: m.proof_documents,
-    verificationNotes: m.verification_notes,
-    verifiedAt: m.verified_at,
-    verifiedBy: m.verified_by,
-    createdAt: m.created_at,
-    updatedAt: m.updated_at,
-  }));
-
-  return createSuccessResponse(milestones);
-});
+export const getCampaignMilestones = milestoneService.getMilestones;

@@ -418,35 +418,58 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
     console.log('[getCurrentUser] Step 1 success: Auth user found:', user.id);
 
-    // Try simple profile query first
+    // Try simple profile query first with timeout protection
     try {
-      console.log('[getCurrentUser] Step 2: Simple profile query...');
+      console.log('[getCurrentUser] Step 2: Simple profile query with 2s timeout...');
 
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
+      // Create AbortController to cancel the request if it times out
+      const abortController = new AbortController();
 
-      if (!profileError && profileData) {
-        console.log('[getCurrentUser] Step 2 success: Profile found in database');
-        return {
-          id: profileData.id,
-          email: profileData.email,
-          fullName: profileData.full_name,
-          avatarUrl: profileData.avatar_url,
-          phone: profileData.phone,
-          role: profileData.role,
-          isVerified: profileData.is_verified,
-          isActive: profileData.is_active,
-          createdAt: profileData.created_at,
-          updatedAt: profileData.updated_at,
-        };
+      // Shorter timeout (2 seconds) to fail faster
+      const timeoutMs = 2000;
+
+      // Set timeout to abort the request
+      const timeoutId = setTimeout(() => {
+        console.warn('[getCurrentUser] Database query timeout - aborting request');
+        abortController.abort();
+      }, timeoutMs);
+
+      try {
+        // Make the query with abort signal
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .abortSignal(abortController.signal)
+          .maybeSingle();
+
+        // Clear timeout if query completes
+        clearTimeout(timeoutId);
+
+        if (!profileError && profileData) {
+          console.log('[getCurrentUser] Step 2 success: Profile found in database');
+          return {
+            id: profileData.id,
+            email: profileData.email,
+            fullName: profileData.full_name,
+            avatarUrl: profileData.avatar_url,
+            phone: profileData.phone,
+            role: profileData.role,
+            isVerified: profileData.is_verified,
+            isActive: profileData.is_active,
+            createdAt: profileData.created_at,
+            updatedAt: profileData.updated_at,
+          };
+        }
+
+        console.warn('[getCurrentUser] Step 2 failed or no profile found:', profileError);
+      } catch (abortError) {
+        // Query was aborted due to timeout
+        clearTimeout(timeoutId);
+        console.warn('[getCurrentUser] Database query aborted:', abortError);
       }
-
-      console.warn('[getCurrentUser] Step 2 failed or no profile found:', profileError);
     } catch (queryError) {
-      console.warn('[getCurrentUser] Profile query exception:', queryError);
+      console.warn('[getCurrentUser] Profile query failed (timeout or error):', queryError);
     }
 
     // If database query fails or returns no profile, use auth data as fallback

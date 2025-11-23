@@ -950,15 +950,30 @@ export const createGCashPayment = withErrorHandling(async (
   userId: string
 ): Promise<ApiResponse<{ checkoutUrl: string; sessionId: string }>> => {
   try {
+    console.log('========== FRONTEND: CREATE GCASH PAYMENT ==========');
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('Request params:', {
+      donationId,
+      amount,
+      userId
+    });
+
     // Get current session
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
+      console.error('❌ No active session found');
       throw new ClearCauseError('UNAUTHORIZED', 'No active session', 401);
     }
 
+    console.log('✅ Session validated');
+
+    const apiUrl = `${import.meta.env.VITE_API_URL}/create-gcash-payment`;
+    console.log('Calling Edge Function:', apiUrl);
+    console.log('Request body:', { donationId, amount, userId });
+
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/create-gcash-payment`,
+      apiUrl,
       {
         method: 'POST',
         headers: {
@@ -973,15 +988,25 @@ export const createGCashPayment = withErrorHandling(async (
       }
     );
 
+    console.log('Edge Function response status:', response.status);
+
     const data = await response.json();
+    console.log('Edge Function response data:', data);
 
     if (!response.ok) {
+      console.error('❌ Payment creation failed:', data);
       throw new ClearCauseError('PAYMENT_ERROR', data.error || 'Failed to create payment', response.status);
     }
 
+    console.log('✅ Payment session created:', {
+      checkoutUrl: data.checkoutUrl,
+      sessionId: data.sessionId
+    });
+    console.log('========== FRONTEND: PAYMENT CREATION COMPLETE ==========\n');
+
     return createSuccessResponse(data, 'Payment session created successfully');
   } catch (error) {
-    console.error('Create GCash payment error:', error);
+    console.error('❌ Create GCash payment error:', error);
     if (error instanceof ClearCauseError) {
       throw error;
     }

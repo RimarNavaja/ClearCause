@@ -124,16 +124,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Add timeout for loading state to prevent infinite loading
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    
+
     if (loading) {
       timeoutId = setTimeout(() => {
-        console.warn('ProtectedRoute: Loading timeout exceeded, forcing render');
+        console.warn('ProtectedRoute: Loading timeout exceeded (8s), forcing render');
         setLoadingTimeout(true);
-      }, 12000); // 12 second timeout - higher than getCurrentUser timeout
+      }, 8000); // 8 second timeout - aligned with useAuth emergency timeout
     } else {
       setLoadingTimeout(false);
     }
-    
+
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };

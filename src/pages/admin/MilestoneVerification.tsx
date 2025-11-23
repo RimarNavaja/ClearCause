@@ -42,7 +42,7 @@ import {
   rejectMilestoneProof,
   getMilestoneProofsForVerification,
   getMilestoneProofStats
-} from '@/services/adminService';
+} from '@/services/milestoneService';
 import { toast } from 'sonner';
 
 interface MilestoneProof {

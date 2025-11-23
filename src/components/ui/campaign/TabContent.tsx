@@ -1,8 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import MilestoneTracker from './MilestoneTracker';
 import ImpactDashboard from './ImpactDashboard';
 import AuditTrail from './AuditTrail';
+import ReviewForm from '@/components/campaign/ReviewForm';
+import ReviewsList from '@/components/campaign/ReviewsList';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Milestone {
   id: string;
@@ -50,6 +53,17 @@ const TabContent: React.FC<TabContentProps> = ({
   campaignId,
   campaignStatus
 }) => {
+  const { user } = useAuth();
+  const [refreshReviews, setRefreshReviews] = useState(0);
+
+  // Check if user has donated to this campaign (simplified - you may want to fetch this from the backend)
+  const [hasDonated, setHasDonated] = useState(false);
+
+  const handleReviewSuccess = () => {
+    // Refresh the reviews list
+    setRefreshReviews(prev => prev + 1);
+  };
+
   switch (activeTab) {
     case 'about':
       return (
@@ -65,6 +79,27 @@ const TabContent: React.FC<TabContentProps> = ({
       return <MilestoneTracker milestones={milestones} />;
     case 'audit':
       return <AuditTrail campaignId={campaignId} />;
+    case 'reviews':
+      return (
+        <div className="space-y-8">
+          {/* Review Form - Only show to logged in donors */}
+          {user && user.role === 'donor' && (
+            <ReviewForm
+              campaignId={campaignId}
+              onSuccess={handleReviewSuccess}
+            />
+          )}
+
+          {/* Reviews List */}
+          <div>
+            <h3 className="text-xl font-semibold mb-4">Campaign Reviews</h3>
+            <ReviewsList
+              campaignId={campaignId}
+              refreshTrigger={refreshReviews}
+            />
+          </div>
+        </div>
+      );
     default:
       return null;
   }

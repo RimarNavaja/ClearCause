@@ -32,6 +32,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { User as UserType } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
 import { performCompleteLogout } from '@/utils/sessionManager';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 interface AuthenticatedNavbarProps {
   user: UserType;
@@ -266,8 +267,10 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
 
           {/* Desktop Right Side */}
           <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-4">
-            
-            
+
+            {/* Notification Bell */}
+            <NotificationBell />
+
             {/* User Menu */}
             <div className="relative" ref={userMenuRef}>
               <button

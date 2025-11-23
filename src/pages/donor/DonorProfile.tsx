@@ -184,7 +184,6 @@ const DonorProfile: React.FC = () => {
                 fallbackText={profile?.fullName ? profile.fullName.charAt(0).toUpperCase() : 'D'}
                 imageType="avatar"
                 size="lg"
-                isUploading={uploadAvatarMutation.isPending}
               />
             </CardHeader>
             <CardContent className="text-center">
