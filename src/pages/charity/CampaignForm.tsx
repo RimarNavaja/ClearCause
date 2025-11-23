@@ -333,6 +333,17 @@ const CampaignForm: React.FC = () => {
 
   // Handle form submission
   const handleSubmit = async (isDraft: boolean = false) => {
+    // Validate image requirement (unless editing with existing image)
+    if (!imagePreview && !existingImageUrl) {
+      toast({
+        title: "Image Required",
+        description: "Please upload a campaign image before submitting",
+        variant: "destructive",
+      });
+      setCurrentStep(1); // Go back to step 1 where image upload is
+      return;
+    }
+
     // Validate custom proof requirement
     const invalidMilestones = milestones.filter(
       (m) =>
@@ -483,6 +494,51 @@ const CampaignForm: React.FC = () => {
 
   // Navigate between form steps
   const goToNextStep = () => {
+    // Validate Step 1 before proceeding
+    if (currentStep === 1) {
+      if (!campaignDetails.title.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter a campaign title",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (campaignDetails.description.length < 10) {
+        toast({
+          title: "Validation Error",
+          description: "Campaign description must be at least 10 characters",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!campaignDetails.category) {
+        toast({
+          title: "Validation Error",
+          description: "Please select a category",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!campaignDetails.location.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter a project location",
+          variant: "destructive",
+        });
+        return;
+      }
+      // Validate image requirement
+      if (!imagePreview && !existingImageUrl) {
+        toast({
+          title: "Image Required",
+          description: "Please upload a campaign image to continue",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
       window.scrollTo(0, 0);
@@ -800,7 +856,11 @@ const CampaignForm: React.FC = () => {
                   >
                     Campaign Image*
                   </label>
-                  <div className="mt-1 border-2 border-dashed border-gray-300 rounded-md px-6 pt-5 pb-6">
+                  <div className={`mt-1 border-2 border-dashed rounded-md px-6 pt-5 pb-6 transition-colors ${
+                    !imagePreview && !existingImageUrl
+                      ? 'border-red-300 bg-red-50/30'
+                      : 'border-gray-300 bg-white'
+                  }`}>
                     <div className="space-y-1 text-center">
                       {imagePreview ? (
                         <div className="mb-4">
@@ -857,6 +917,11 @@ const CampaignForm: React.FC = () => {
                       <p className="text-xs text-gray-500">
                         PNG, JPG, WEBP up to 5MB (1200x800px recommended)
                       </p>
+                      {!imagePreview && !existingImageUrl && (
+                        <p className="text-xs text-red-600 mt-2 font-medium">
+                          ⚠️ Campaign image is required to proceed to the next step
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

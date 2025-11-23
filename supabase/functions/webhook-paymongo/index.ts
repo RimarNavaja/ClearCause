@@ -1,31 +1,91 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createHmac } from 'https://deno.land/std@0.192.0/node/crypto.ts';
+
 const PAYMONGO_SECRET_KEY = Deno.env.get('PAYMONGO_SECRET_KEY');
+const PAYMONGO_WEBHOOK_SECRET = Deno.env.get('PAYMONGO_WEBHOOK_SECRET');
 const PAYMONGO_API_URL = 'https://api.paymongo.com/v1';
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+
+// More secure CORS - only allow your app domain
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'http://localhost:8081',
+  Deno.env.get('VITE_APP_URL'),
+].filter(Boolean);
+
+const getCorsHeaders = (origin: string | null) => {
+  const corsOrigin = origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  return {
+    'Access-Control-Allow-Origin': corsOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
 };
+
+// Verify webhook signature for security
+function verifyWebhookSignature(payload: string, signature: string | null, secret: string): boolean {
+  if (!signature || !secret) {
+    console.warn('⚠️ Webhook signature verification skipped - missing signature or secret');
+    return true; // Allow for now if not configured
+  }
+
+  try {
+    // PayMongo uses HMAC SHA256 for webhook signatures
+    const hmac = createHmac('sha256', secret);
+    hmac.update(payload);
+    const expectedSignature = hmac.digest('hex');
+
+    // Compare signatures
+    const isValid = signature === expectedSignature;
+
+    if (!isValid) {
+      console.error('❌ Invalid webhook signature!');
+      console.error('Expected:', expectedSignature);
+      console.error('Received:', signature);
+    }
+
+    return isValid;
+  } catch (error) {
+    console.error('Error verifying webhook signature:', error);
+    return false;
+  }
+}
+
 serve(async (req)=>{
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
       headers: corsHeaders
-    }); 
+    });
   }
   try {
-    // 1. Get webhook signature (TODO: Implement signature verification for production)
+    // 1. Get webhook signature and verify it
     const signature = req.headers.get('paymongo-signature');
     const body = await req.text();
+
+    // Verify webhook signature for security
+    if (PAYMONGO_WEBHOOK_SECRET) {
+      const isValid = verifyWebhookSignature(body, signature, PAYMONGO_WEBHOOK_SECRET);
+      if (!isValid) {
+        console.error('❌ Webhook signature verification failed');
+        return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      console.log('✅ Webhook signature verified');
+    } else {
+      console.warn('⚠️ Webhook signature verification disabled - PAYMONGO_WEBHOOK_SECRET not set');
+    }
 
     // DEBUG: Log webhook arrival details
     console.log('========== WEBHOOK RECEIVED ==========');
     console.log('Timestamp:', new Date().toISOString());
-    console.log('Headers:', {
-      signature: signature,
-      contentType: req.headers.get('content-type'),
-      userAgent: req.headers.get('user-agent')
-    });
+    console.log('Content-Type:', req.headers.get('content-type'));
 
     // Parse webhook event
     const event = JSON.parse(body);
@@ -197,7 +257,7 @@ serve(async (req)=>{
               // Verify the campaign was updated
               const { data: updatedCampaign, error: campaignError } = await supabase
                 .from('campaigns')
-                .select('id, title, current_amount, donor_count, updated_at')
+                .select('id, title, current_amount, donors_count, updated_at')
                 .eq('id', donation.campaign_id)
                 .single();
 
@@ -208,7 +268,7 @@ serve(async (req)=>{
                   id: updatedCampaign.id,
                   title: updatedCampaign.title,
                   currentAmount: updatedCampaign.current_amount,
-                  donorCount: updatedCampaign.donor_count,
+                  donorCount: updatedCampaign.donors_count,
                   updatedAt: updatedCampaign.updated_at
                 });
               }

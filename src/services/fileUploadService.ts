@@ -8,6 +8,7 @@ import { ApiResponse, ClearCauseError } from '../lib/types';
 import { withErrorHandling, handleSupabaseError, createSuccessResponse } from '../utils/errors';
 
 // Storage bucket names
+// NOTE: These must match the actual bucket names in Supabase Storage
 export const STORAGE_BUCKETS = {
   CAMPAIGN_IMAGES: 'Campaigns',
   MILESTONE_PROOFS: 'milestone-proofs',
@@ -274,7 +275,7 @@ export const uploadCampaignImage = (
   campaignId?: string
 ): Promise<ApiResponse<{ path: string; publicUrl: string }>> => {
   return uploadImage(STORAGE_BUCKETS.CAMPAIGN_IMAGES, file, {
-    folder: campaignId ? `campaigns/${campaignId}` : 'campaigns',
+    folder: 'campaign-images', // Upload to Campaigns/campaign-images/ folder
   });
 };
 
@@ -287,7 +288,7 @@ export const uploadMilestoneProof = (
   milestoneId: string
 ): Promise<ApiResponse<{ path: string; publicUrl: string }>> => {
   return uploadFile(STORAGE_BUCKETS.MILESTONE_PROOFS, file, {
-    folder: `milestones/${milestoneId}`,
+    folder: `milestone-proofs/${milestoneId}`, // Upload to Campaigns/milestone-proofs/{milestoneId}/
   });
 };
 
@@ -301,7 +302,7 @@ export const uploadCharityDocument = (
   documentType: string
 ): Promise<ApiResponse<{ path: string; publicUrl: string }>> => {
   return uploadFile(STORAGE_BUCKETS.CHARITY_DOCUMENTS, file, {
-    folder: `charities/${charityId}/${documentType}`,
+    folder: `charity-documents/${charityId}/${documentType}`, // Upload to Campaigns/charity-documents/{charityId}/{type}/
   });
 };
 
@@ -313,7 +314,7 @@ export const uploadProfileAvatar = (
   file: File
 ): Promise<ApiResponse<{ path: string; publicUrl: string }>> => {
   return uploadImage(STORAGE_BUCKETS.PROFILE_AVATARS, file, {
-    folder: 'avatars',
+    folder: 'profile-avatars', // Upload to Campaigns/profile-avatars/
   });
 };
 
