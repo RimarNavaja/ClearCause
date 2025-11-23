@@ -10,10 +10,10 @@ import { withErrorHandling, handleSupabaseError, createSuccessResponse } from '.
 // Storage bucket names
 // NOTE: These must match the actual bucket names in Supabase Storage
 export const STORAGE_BUCKETS = {
-  CAMPAIGN_IMAGES: 'Campaigns', // Main bucket for all campaign-related files
-  MILESTONE_PROOFS: 'Campaigns', // Using same bucket with different folders
-  CHARITY_DOCUMENTS: 'Campaigns', // Using same bucket with different folders
-  PROFILE_AVATARS: 'Campaigns', // Using same bucket with different folders
+  CAMPAIGN_IMAGES: 'Campaigns',
+  MILESTONE_PROOFS: 'milestone-proofs',
+  CHARITY_DOCUMENTS: 'charity-documents',
+  PROFILE_AVATARS: 'profile-avatars',
 } as const;
 
 export type StorageBucket = typeof STORAGE_BUCKETS[keyof typeof STORAGE_BUCKETS];
