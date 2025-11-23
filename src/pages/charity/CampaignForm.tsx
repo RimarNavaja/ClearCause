@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import CharityLayout from '@/components/layout/CharityLayout';
@@ -15,6 +16,23 @@ import * as charityService from '@/services/charityService';
 import { CampaignCreateData } from '@/lib/types';
 import { getRelativeTime } from '@/utils/helpers';
 import { waitForAuthReady } from '@/utils/authHelper';
+import { uploadCampaignImage, validateFile, STORAGE_BUCKETS } from '@/services/fileUploadService';
+import * as categoryService from '@/services/categoryService';
+
+// Proof type options for milestone evidence
+const PROOF_TYPE_OPTIONS = [
+  { value: 'receipts', label: 'Official Receipts' },
+  { value: 'photos', label: 'Photographs/Images' },
+  { value: 'videos', label: 'Video Documentation' },
+  { value: 'certificates', label: 'Certificates/Permits' },
+  { value: 'bank_statements', label: 'Bank Statements' },
+  { value: 'invoices', label: 'Invoices' },
+  { value: 'contracts', label: 'Contracts/Agreements' },
+  { value: 'medical_records', label: 'Medical Records' },
+  { value: 'progress_reports', label: 'Progress Reports' },
+  { value: 'beneficiary_list', label: 'Beneficiary List/Documentation' },
+  { value: 'other', label: 'Other (Specify)' }
+];
 
 // TypeScript interfaces
 interface Milestone {
@@ -22,6 +40,7 @@ interface Milestone {
   title: string;
   amount: number;
   evidenceDescription: string;
+  customProof?: string; // For custom description when "other" is selected
 }
 
 const CampaignForm: React.FC = () => {
@@ -33,10 +52,14 @@ const CampaignForm: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [campaignImage, setCampaignImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
   const [checkingVerification, setCheckingVerification] = useState(true);
   const [approvalFeedback, setApprovalFeedback] = useState<any>(null);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; slug: string; icon?: string; color?: string }>>([]);
 
   // Form state
   const [campaignDetails, setCampaignDetails] = useState({
@@ -51,6 +74,31 @@ const CampaignForm: React.FC = () => {
   const [milestones, setMilestones] = useState<Milestone[]>([
     { id: '1', title: '', amount: 0, evidenceDescription: '' }
   ]);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const result = await categoryService.getActiveCategories();
+        if (result.success && result.data) {
+          setCategories(result.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+        // Use fallback categories if fetch fails
+        setCategories([
+          { id: '1', name: 'Education', slug: 'education', icon: '📚' },
+          { id: '2', name: 'Healthcare', slug: 'health', icon: '🏥' },
+          { id: '3', name: 'Environment', slug: 'environment', icon: '🌱' },
+          { id: '4', name: 'Disaster Relief', slug: 'disaster', icon: '🆘' },
+          { id: '5', name: 'Community Development', slug: 'community', icon: '🏘️' },
+          { id: '6', name: 'Other', slug: 'other', icon: '🤝' },
+        ]);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   // Check charity verification status
   useEffect(() => {
@@ -126,6 +174,7 @@ const CampaignForm: React.FC = () => {
 
             if (campaign.imageUrl) {
               setImagePreview(campaign.imageUrl);
+              setExistingImageUrl(campaign.imageUrl);
             }
 
             // Load approval feedback if campaign is in draft status
@@ -184,8 +233,21 @@ const CampaignForm: React.FC = () => {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+
+      // Validate file before setting
+      const validation = validateFile(file, STORAGE_BUCKETS.CAMPAIGN_IMAGES);
+      if (!validation.valid) {
+        toast({
+          title: "Invalid File",
+          description: validation.error,
+          variant: "destructive",
+        });
+        e.target.value = ''; // Reset file input
+        return;
+      }
+
       setCampaignImage(file);
-      
+
       // Create a preview URL
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -197,11 +259,45 @@ const CampaignForm: React.FC = () => {
 
   // Handle form submission
   const handleSubmit = async (isDraft: boolean = false) => {
+    // Validate custom proof requirement
+    const invalidMilestones = milestones.filter(
+      m => m.evidenceDescription === 'other' && (!m.customProof || m.customProof.trim() === '')
+    );
+
+    if (invalidMilestones.length > 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please provide a custom proof description for milestones with 'Other' evidence type.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
       if (!user) {
         throw new Error('User not authenticated');
+      }
+
+      // Upload campaign image if a new one was selected
+      let imageUrl = existingImageUrl; // Keep existing URL by default
+      if (campaignImage) {
+        setUploading(true);
+        setUploadProgress(30);
+
+        const uploadResult = await uploadCampaignImage(campaignImage, campaignId);
+
+        setUploadProgress(70);
+
+        if (uploadResult.success && uploadResult.data) {
+          imageUrl = uploadResult.data.publicUrl;
+          setUploadProgress(100);
+        } else {
+          throw new Error('Failed to upload campaign image');
+        }
+
+        setUploading(false);
       }
 
       // Convert date to ISO datetime string if provided
@@ -218,17 +314,24 @@ const CampaignForm: React.FC = () => {
         title: campaignDetails.title,
         description: campaignDetails.description,
         goalAmount: Number(campaignDetails.goal),
-        imageFile: campaignImage || undefined,
+        imageUrl: imageUrl,
         endDate: endDateISO,
         category: campaignDetails.category || undefined,
         location: campaignDetails.location || undefined,
         status: isDraft ? 'draft' : 'pending',
-        milestones: milestones.map(milestone => ({
-          title: milestone.title,
-          description: milestone.evidenceDescription,
-          targetAmount: Number(milestone.amount),
-          evidenceDescription: milestone.evidenceDescription,
-        })),
+        milestones: milestones.map(milestone => {
+          // Use custom proof description if "other" is selected, otherwise use the selected option label
+          const evidenceDesc = milestone.evidenceDescription === 'other'
+            ? milestone.customProof || 'Other'
+            : PROOF_TYPE_OPTIONS.find(opt => opt.value === milestone.evidenceDescription)?.label || milestone.evidenceDescription;
+
+          return {
+            title: milestone.title,
+            description: evidenceDesc,
+            targetAmount: Number(milestone.amount),
+            evidenceDescription: evidenceDesc,
+          };
+        }),
       };
 
       if (isEditMode) {
@@ -530,12 +633,11 @@ const CampaignForm: React.FC = () => {
                     required
                   >
                     <option value="">Select a category</option>
-                    <option value="education">Education</option>
-                    <option value="health">Healthcare</option>
-                    <option value="environment">Environment</option>
-                    <option value="disaster">Disaster Relief</option>
-                    <option value="community">Community Development</option>
-                    <option value="other">Other</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.slug}>
+                        {category.icon && `${category.icon} `}{category.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -565,11 +667,22 @@ const CampaignForm: React.FC = () => {
                     <div className="space-y-1 text-center">
                       {imagePreview ? (
                         <div className="mb-4">
-                          <img 
-                            src={imagePreview} 
-                            alt="Campaign preview" 
+                          <img
+                            src={imagePreview}
+                            alt="Campaign preview"
                             className="mx-auto h-64 object-cover rounded-md"
                           />
+                          {uploading && (
+                            <div className="mt-3">
+                              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-clearcause-primary transition-all duration-300"
+                                  style={{ width: `${uploadProgress}%` }}
+                                />
+                              </div>
+                              <p className="text-sm text-gray-600 mt-1">Uploading... {uploadProgress}%</p>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="flex justify-center">
@@ -579,7 +692,11 @@ const CampaignForm: React.FC = () => {
                       <div className="flex text-sm text-gray-600 justify-center">
                         <label
                           htmlFor="file-upload"
-                          className="relative cursor-pointer rounded-md bg-white font-medium text-clearcause-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-clearcause-primary focus-within:ring-offset-2 hover:text-clearcause-secondary"
+                          className={`relative cursor-pointer rounded-md bg-white font-medium focus-within:outline-none focus-within:ring-2 focus-within:ring-clearcause-primary focus-within:ring-offset-2 ${
+                            uploading
+                              ? 'text-gray-400 pointer-events-none'
+                              : 'text-clearcause-primary hover:text-clearcause-secondary'
+                          }`}
                         >
                           <span>{imagePreview ? 'Replace image' : 'Upload an image'}</span>
                           <input
@@ -589,11 +706,12 @@ const CampaignForm: React.FC = () => {
                             className="sr-only"
                             accept="image/*"
                             onChange={handleImageUpload}
+                            disabled={uploading}
                           />
                         </label>
                       </div>
                       <p className="text-xs text-gray-500">
-                        PNG, JPG, GIF up to 5MB (1200x800px recommended)
+                        PNG, JPG, WEBP up to 5MB (1200x800px recommended)
                       </p>
                     </div>
                   </div>
@@ -765,18 +883,44 @@ const CampaignForm: React.FC = () => {
                 {milestones.map((milestone, index) => (
                   <div key={milestone.id} className="border rounded-md p-4">
                     <h3 className="font-medium mb-3">Milestone {index + 1}: {milestone.title || 'Untitled'}</h3>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Required Evidence Description*
-                      </label>
-                      <Textarea
-                        value={milestone.evidenceDescription}
-                        onChange={(e) => handleMilestoneChange(index, 'evidenceDescription', e.target.value)}
-                        placeholder="Describe what evidence you will provide to verify this milestone was completed (e.g., receipts, photos, documents)"
-                        rows={3}
-                        required
-                      />
+
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Required Evidence Type*
+                        </label>
+                        <Select
+                          value={milestone.evidenceDescription}
+                          onValueChange={(value) => handleMilestoneChange(index, 'evidenceDescription', value)}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select required proof type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PROOF_TYPE_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Show custom input if "other" is selected */}
+                      {milestone.evidenceDescription === 'other' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Custom Proof Description*
+                          </label>
+                          <Textarea
+                            value={milestone.customProof || ''}
+                            onChange={(e) => handleMilestoneChange(index, 'customProof', e.target.value)}
+                            placeholder="Describe the specific evidence you will provide"
+                            rows={3}
+                            required
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -810,17 +954,23 @@ const CampaignForm: React.FC = () => {
                     type="button"
                     variant="outline"
                     onClick={() => handleSubmit(true)}
-                    disabled={loading}
+                    disabled={loading || uploading}
                   >
                     Save as Draft
                   </Button>
                   <Button
                     type="button"
                     onClick={() => handleSubmit(false)}
-                    disabled={loading || milestoneAmountError}
+                    disabled={loading || uploading || milestoneAmountError}
                     className="bg-clearcause-accent hover:bg-clearcause-accent/90"
                   >
-                    {loading ? 'Submitting...' : isEditMode ? 'Update Campaign' : 'Submit Campaign for Review'}
+                    {uploading
+                      ? `Uploading... ${uploadProgress}%`
+                      : loading
+                      ? 'Submitting...'
+                      : isEditMode
+                      ? 'Update Campaign'
+                      : 'Submit Campaign for Review'}
                   </Button>
                 </>
               )}

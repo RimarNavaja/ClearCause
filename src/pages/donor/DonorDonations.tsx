@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import VerificationBadge from '@/components/ui/VerificationBadge';
 import DonorLayout from '@/components/layout/DonorLayout';
+import ReceiptButton from '@/components/donor/ReceiptButton';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtime } from '@/hooks/useRealtime';
 import * as donationService from '@/services/donationService';
@@ -130,15 +131,6 @@ const DonorDonations: React.FC = () => {
     debouncedSearch(value);
   };
 
-  // Download receipt
-  const handleDownloadReceipt = async (donationId: string) => {
-    try {
-      // Mock receipt download for now
-      alert('Receipt download feature will be implemented with payment integration');
-    } catch (err) {
-      alert('An error occurred while downloading the receipt');
-    }
-  };
 
   // Get status badge
   const getStatusBadge = (status: string) => {
@@ -392,16 +384,7 @@ const DonorDonations: React.FC = () => {
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        {donation.status === 'completed' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDownloadReceipt(donation.id)}
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            Receipt
-                          </Button>
-                        )}
+                        <ReceiptButton donation={donation} />
                         <Button variant="ghost" size="sm" asChild>
                           <Link to={`/donor/donations/${donation.id}`}>
                             <Eye className="h-4 w-4" />

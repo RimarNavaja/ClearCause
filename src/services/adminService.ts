@@ -19,6 +19,7 @@ import {
 import { validateData, paginationSchema } from '../utils/validation';
 import { withErrorHandling, handleSupabaseError, createSuccessResponse } from '../utils/errors';
 import { createPaginatedResponse } from '../utils/helpers';
+import * as milestoneService from './milestoneService';
 
 /**
  * Log audit event
@@ -1047,98 +1048,15 @@ export const getCharityVerificationStats = withErrorHandling(async (
 
 /**
  * Approve milestone proof submission
+ * @deprecated Moved to milestoneService.approveMilestoneProof
  */
-export const approveMilestoneProof = withErrorHandling(async (
-  proofId: string,
-  adminNotes: string | null,
-  currentUserId: string
-): Promise<ApiResponse<any>> => {
-  // Check if current user is admin
-  const { data: currentUser, error: userError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', currentUserId)
-    .single();
-
-  if (userError || currentUser?.role !== 'admin') {
-    throw new ClearCauseError('FORBIDDEN', 'Only administrators can approve milestone proofs', 403);
-  }
-
-  // Update milestone proof status
-  const { data, error } = await supabase
-    .from('milestone_proofs')
-    .update({
-      verification_status: 'approved',
-      verified_by: currentUserId,
-      verification_notes: adminNotes,
-    })
-    .eq('id', proofId)
-    .select('*, milestones(*)')
-    .single();
-
-  if (error) {
-    throw handleSupabaseError(error);
-  }
-
-  // Log audit event
-  await logAuditEvent(
-    currentUserId,
-    'approve_milestone_proof',
-    'milestone_proof',
-    proofId,
-    { admin_notes: adminNotes }
-  );
-
-  return createSuccessResponse(data);
-});
+export const approveMilestoneProof = milestoneService.approveMilestoneProof;
 
 /**
  * Reject milestone proof submission
+ * @deprecated Moved to milestoneService.rejectMilestoneProof
  */
-export const rejectMilestoneProof = withErrorHandling(async (
-  proofId: string,
-  rejectionReason: string,
-  adminNotes: string | null,
-  currentUserId: string
-): Promise<ApiResponse<any>> => {
-  // Check if current user is admin
-  const { data: currentUser, error: userError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', currentUserId)
-    .single();
-
-  if (userError || currentUser?.role !== 'admin') {
-    throw new ClearCauseError('FORBIDDEN', 'Only administrators can reject milestone proofs', 403);
-  }
-
-  // Update milestone proof status
-  const { data, error } = await supabase
-    .from('milestone_proofs')
-    .update({
-      verification_status: 'rejected',
-      verified_by: currentUserId,
-      verification_notes: `REJECTED: ${rejectionReason}${adminNotes ? `\n\nAdmin Notes: ${adminNotes}` : ''}`,
-    })
-    .eq('id', proofId)
-    .select('*, milestones(*)')
-    .single();
-
-  if (error) {
-    throw handleSupabaseError(error);
-  }
-
-  // Log audit event
-  await logAuditEvent(
-    currentUserId,
-    'reject_milestone_proof',
-    'milestone_proof',
-    proofId,
-    { rejection_reason: rejectionReason, admin_notes: adminNotes }
-  );
-
-  return createSuccessResponse(data);
-});
+export const rejectMilestoneProof = milestoneService.rejectMilestoneProof;
 
 /**
  * Approve general submission (for verification detail page)
@@ -1207,116 +1125,9 @@ export const rejectSubmission = withErrorHandling(async (
 
 /**
  * Get milestone proofs for verification
+ * @deprecated Moved to milestoneService.getMilestoneProofsForVerification
  */
-export const getMilestoneProofsForVerification = withErrorHandling(async (
-  filters: {
-    status?: string;
-    search?: string;
-    dateFrom?: string;
-    dateTo?: string;
-  } = {},
-  params: PaginationParams,
-  currentUserId: string
-): Promise<PaginatedResponse<any>> => {
-  // Check if current user is admin
-  const { data: currentUser, error: userError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', currentUserId)
-    .single();
-
-  if (userError || currentUser?.role !== 'admin') {
-    throw new ClearCauseError('FORBIDDEN', 'Only administrators can access milestone proofs', 403);
-  }
-
-  const validatedParams = validateData(paginationSchema, params);
-  const { page, limit, sortBy = 'submitted_at', sortOrder = 'desc' } = validatedParams;
-  const offset = (page - 1) * limit;
-
-  let query = supabase
-    .from('milestone_proofs')
-    .select(`
-      *,
-      milestones:milestone_id (
-        id,
-        title,
-        description,
-        target_amount,
-        campaigns:campaign_id (
-          id,
-          title,
-          charities:charity_id (
-            id,
-            organization_name,
-            user_id,
-            profiles:user_id (
-              full_name,
-              email
-            )
-          )
-        )
-      )
-    `, { count: 'exact' });
-
-  // Apply filters
-  if (filters.status) {
-    query = query.eq('verification_status', filters.status);
-  }
-
-  if (filters.search) {
-    // Search in milestone title or campaign title
-    query = query.or(`milestones.title.ilike.%${filters.search}%,milestones.campaigns.title.ilike.%${filters.search}%`);
-  }
-
-  if (filters.dateFrom) {
-    query = query.gte('submitted_at', filters.dateFrom);
-  }
-
-  if (filters.dateTo) {
-    query = query.lte('submitted_at', filters.dateTo);
-  }
-
-  // Apply pagination and sorting
-  query = query
-    .order(sortBy, { ascending: sortOrder === 'asc' })
-    .range(offset, offset + limit - 1);
-
-  const { data, count, error } = await query;
-
-  if (error) {
-    throw handleSupabaseError(error);
-  }
-
-  // Transform data for easier consumption
-  const transformedData = (data || []).map(proof => ({
-    id: proof.id,
-    proofUrl: proof.proof_url,
-    description: proof.description,
-    submittedAt: proof.submitted_at,
-    verificationStatus: proof.verification_status,
-    verificationNotes: proof.verification_notes,
-    verifiedBy: proof.verified_by,
-    milestone: {
-      id: proof.milestones?.id,
-      title: proof.milestones?.title,
-      description: proof.milestones?.description,
-      targetAmount: proof.milestones?.target_amount,
-      campaign: {
-        id: proof.milestones?.campaigns?.id,
-        title: proof.milestones?.campaigns?.title,
-        charity: {
-          id: proof.milestones?.campaigns?.charities?.id,
-          organizationName: proof.milestones?.campaigns?.charities?.organization_name,
-          userId: proof.milestones?.campaigns?.charities?.user_id,
-          contactName: proof.milestones?.campaigns?.charities?.profiles?.full_name,
-          contactEmail: proof.milestones?.campaigns?.charities?.profiles?.email,
-        }
-      }
-    }
-  }));
-
-  return createPaginatedResponse(transformedData, count || 0, validatedParams);
-});
+export const getMilestoneProofsForVerification = milestoneService.getMilestoneProofsForVerification;
 
 /**
  * Get milestone proof statistics

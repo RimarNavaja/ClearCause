@@ -42,12 +42,12 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import {
-  getApprovedMilestonesForFundRelease,
   initiateFundRelease,
   updateFundReleaseStatus,
   getFundReleaseStats,
   getFundReleaseHistory
 } from '@/services/adminService';
+import { getApprovedMilestonesForFundRelease } from '@/services/milestoneService';
 
 interface FundReleaseItem {
   id: string;

@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
-import { getMilestoneProofsForVerification, getMilestoneProofStats } from '@/services/adminService';
+import { getMilestoneProofsForVerification, getMilestoneProofStats } from '@/services/milestoneService';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/utils/helpers';
 

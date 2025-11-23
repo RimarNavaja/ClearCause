@@ -3,7 +3,7 @@
  * Handles user profile management and user-related operations
  */
 
-import { supabase, uploadFile } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { config } from '../lib/config';
 import { User, ApiResponse, PaginatedResponse, PaginationParams, UserRole, ClearCauseError } from '../lib/types';
@@ -11,6 +11,7 @@ import { validateData, updateProfileSchema, paginationSchema } from '../utils/va
 import { withErrorHandling, handleSupabaseError, createSuccessResponse } from '../utils/errors';
 import { calculatePagination, createPaginatedResponse } from '../utils/helpers';
 import { logAuditEvent } from './adminService';
+import { uploadProfileAvatar } from './fileUploadService';
 
 /**
  * Get user profile by ID
@@ -146,37 +147,18 @@ export const uploadUserAvatar = withErrorHandling(async (
     throw new ClearCauseError('FORBIDDEN', 'You can only update your own avatar', 403);
   }
 
-  console.log('[uploadUserAvatar] Validating file...');
-
-  // Validate file
-  const maxSize = 2 * 1024 * 1024; // 2MB
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-
-  if (avatarFile.size > maxSize) {
-    throw new ClearCauseError('FILE_TOO_LARGE', 'Avatar file size cannot exceed 2MB', 413);
-  }
-
-  if (!allowedTypes.includes(avatarFile.type)) {
-    throw new ClearCauseError('INVALID_FILE_TYPE', 'Avatar must be a JPEG, PNG, or WebP image', 400);
-  }
-
-  console.log('[uploadUserAvatar] File validation passed, uploading to storage...');
-  console.log('[uploadUserAvatar] User ID:', userId);
-  console.log('[uploadUserAvatar] File type:', avatarFile.type);
-  console.log('[uploadUserAvatar] File size:', avatarFile.size);
-
-  // Upload file
-  const filePath = `${userId}-${Date.now()}`;
-  console.log('[uploadUserAvatar] Upload path:', filePath);
+  console.log('[uploadUserAvatar] Uploading to storage using fileUploadService...');
 
   try {
-    const { url: avatarUrl, error: uploadError } = await uploadFile('avatars', filePath, avatarFile);
+    // Upload file using the new fileUploadService
+    const uploadResult = await uploadProfileAvatar(avatarFile);
 
-    if (uploadError || !avatarUrl) {
-      console.error('[uploadUserAvatar] File upload failed:', uploadError);
-      throw new ClearCauseError('UPLOAD_FAILED', uploadError || 'Avatar upload failed', 500);
+    if (!uploadResult.success || !uploadResult.data) {
+      console.error('[uploadUserAvatar] File upload failed:', uploadResult.error);
+      throw new ClearCauseError('UPLOAD_FAILED', uploadResult.error || 'Avatar upload failed', 500);
     }
 
+    const avatarUrl = uploadResult.data.publicUrl;
     console.log('[uploadUserAvatar] File uploaded successfully, updating profile...');
 
     // Update user profile with new avatar URL

@@ -9,6 +9,11 @@ dist-ssr
 build
 .vite
 *.local
+.mcp.settings
+CLAUDE.md
+GEMINI.md
+mcp.json
+
 
 # Logs
 logs

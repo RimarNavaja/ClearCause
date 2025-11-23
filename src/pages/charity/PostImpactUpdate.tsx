@@ -18,8 +18,8 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import CharityLayout from '@/components/layout/CharityLayout';
-import { createCampaignUpdate } from '@/services/campaignService';
-import { getCampaignById, getCampaignMilestones } from '@/services/campaignService';
+import { createCampaignUpdate, getCampaignById } from '@/services/campaignService';
+import { getMilestones } from '@/services/milestoneService';
 
 interface Campaign {
   id: string;
@@ -75,7 +75,7 @@ const PostImpactUpdate: React.FC = () => {
         }
 
         // Load milestones
-        const milestonesResult = await getCampaignMilestones(campaignId);
+        const milestonesResult = await getMilestones(campaignId);
         if (milestonesResult.success && milestonesResult.data) {
           setMilestones(milestonesResult.data.map((m: any) => ({
             id: m.id,

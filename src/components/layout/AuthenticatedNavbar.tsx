@@ -15,7 +15,7 @@ import {
   TrendingUp,
   Heart,
   PlusCircle,
-  BarChart3
+  BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,6 +32,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { User as UserType } from '@/lib/types';
 import { toast } from '@/hooks/use-toast';
 import { performCompleteLogout } from '@/utils/sessionManager';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 interface AuthenticatedNavbarProps {
   user: UserType;
@@ -103,7 +104,8 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
         return [
           { to: '/donor/campaigns', label: 'Browse Campaigns' },
           { to: '/donor/track-campaigns', label: 'Track Impact' },
-          { to: '/donor/donations', label: 'My Donations' },
+          { to: '/donor/donations', label: 'My Donations' }
+        
         ];
       case 'charity':
         return [
@@ -131,6 +133,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
         return [
           { to: '/donor/donations', label: 'My Donations', icon: <CreditCard className="h-4 w-4" /> },
           { to: '/donor/track-campaigns', label: 'Track Campaigns', icon: <TrendingUp className="h-4 w-4" /> },
+          { to: '/donor/[profile', label: 'Donor Profile', icon: <User className='h-4 w-4'/>}
         ];
       case 'charity':
         return [
@@ -263,17 +266,11 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
           </div>
 
           {/* Desktop Right Side */}
-          <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-3">
-            {/* Quick Action Button */}
-            {quickAction && (
-              <Link to={quickAction.to}>
-                <Button className={quickAction.className}>
-                  {quickAction.icon}
-                  {quickAction.label}
-                </Button>
-              </Link>
-            )}
-            
+          <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-4">
+
+            {/* Notification Bell */}
+            <NotificationBell />
+
             {/* User Menu */}
             <div className="relative" ref={userMenuRef}>
               <button

@@ -25,7 +25,14 @@ serve(async (req) => {
     // 1. Parse request
     const { donationId, amount, userId }: CreatePaymentRequest = await req.json();
 
-    console.log('Creating GCash payment:', { donationId, amount, userId });
+    console.log('========== CREATE GCASH PAYMENT REQUEST ==========');
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('Request details:', {
+      donationId,
+      amount,
+      userId,
+      appUrl: Deno.env.get('VITE_APP_URL')
+    });
 
     // 2. Initialize Supabase client
     const supabase = createClient(
@@ -34,6 +41,7 @@ serve(async (req) => {
     );
 
     // 3. Validate donation exists and is pending
+    console.log('Validating donation...');
     const { data: donation, error: donationError } = await supabase
       .from('donations')
       .select('*')
@@ -43,7 +51,7 @@ serve(async (req) => {
       .single();
 
     if (donationError || !donation) {
-      console.error('Donation validation error:', donationError);
+      console.error('❌ Donation validation failed:', donationError);
       return new Response(
         JSON.stringify({ error: 'Invalid donation or donation not found' }),
         {
@@ -53,10 +61,22 @@ serve(async (req) => {
       );
     }
 
+    console.log('✅ Donation validated:', {
+      donationId: donation.id,
+      amount: donation.amount,
+      status: donation.status,
+      campaignId: donation.campaign_id
+    });
+
     // 4. Create PayMongo Source for GCash
     const amountInCentavos = Math.round(amount * 100); // Convert PHP to centavos
+    const successUrl = `${Deno.env.get('VITE_APP_URL')}/donate/success?donation_id=${donationId}`;
+    const failedUrl = `${Deno.env.get('VITE_APP_URL')}/donate/error?donation_id=${donationId}`;
 
-    console.log('Creating PayMongo source for amount:', amountInCentavos);
+    console.log('Creating PayMongo source...');
+    console.log('Amount:', amountInCentavos, 'centavos (', amount, 'PHP)');
+    console.log('Success URL:', successUrl);
+    console.log('Failed URL:', failedUrl);
 
     const sourceResponse = await fetch(`${PAYMONGO_API_URL}/sources`, {
       method: 'POST',
@@ -71,8 +91,8 @@ serve(async (req) => {
             amount: amountInCentavos,
             currency: 'PHP',
             redirect: {
-              success: `${Deno.env.get('VITE_APP_URL')}/donate/success?donation_id=${donationId}`,
-              failed: `${Deno.env.get('VITE_APP_URL')}/donate/error?donation_id=${donationId}`,
+              success: successUrl,
+              failed: failedUrl,
             },
           },
         },
@@ -82,45 +102,62 @@ serve(async (req) => {
     const sourceData = await sourceResponse.json();
 
     if (!sourceResponse.ok) {
-      console.error('PayMongo source creation error:', sourceData);
+      console.error('❌ PayMongo source creation failed');
+      console.error('Status code:', sourceResponse.status);
+      console.error('Error response:', sourceData);
       throw new Error(sourceData.errors?.[0]?.detail || 'Failed to create payment source');
     }
 
     const source = sourceData.data;
-    console.log('PayMongo source created:', source.id);
+    console.log('✅ PayMongo source created successfully:', {
+      sourceId: source.id,
+      status: source.attributes.status,
+      type: source.attributes.type,
+      amount: source.attributes.amount / 100,
+      checkoutUrl: source.attributes.redirect.checkout_url
+    });
 
     // 5. Save payment session
+    console.log('Saving payment session to database...');
+    const sessionData = {
+      donation_id: donationId,
+      user_id: userId,
+      provider: 'paymongo',
+      provider_session_id: source.id,
+      provider_source_id: source.id,
+      amount: amount,
+      currency: 'PHP',
+      payment_method: 'gcash',
+      checkout_url: source.attributes.redirect.checkout_url,
+      success_url: source.attributes.redirect.success,
+      cancel_url: source.attributes.redirect.failed,
+      status: 'created',
+      expires_at: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hour expiry
+      metadata: {
+        source_status: source.attributes.status,
+      },
+    };
+    console.log('Session data:', sessionData);
+
     const { data: session, error: sessionError } = await supabase
       .from('payment_sessions')
-      .insert({
-        donation_id: donationId,
-        user_id: userId,
-        provider: 'paymongo',
-        provider_session_id: source.id,
-        provider_source_id: source.id,
-        amount: amount,
-        currency: 'PHP',
-        payment_method: 'gcash',
-        checkout_url: source.attributes.redirect.checkout_url,
-        success_url: source.attributes.redirect.success,
-        cancel_url: source.attributes.redirect.failed,
-        status: 'created',
-        expires_at: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hour expiry
-        metadata: {
-          source_status: source.attributes.status,
-        },
-      })
+      .insert(sessionData)
       .select()
       .single();
 
     if (sessionError) {
-      console.error('Failed to save payment session:', sessionError);
+      console.error('❌ Failed to save payment session:', sessionError);
       // Continue anyway, don't block user
     } else {
-      console.log('Payment session saved:', session.id);
+      console.log('✅ Payment session saved:', {
+        sessionId: session.id,
+        sourceId: source.id,
+        status: session.status
+      });
     }
 
     // 6. Update donation with session reference
+    console.log('Updating donation with payment session reference...');
     const { error: updateError } = await supabase
       .from('donations')
       .update({
@@ -133,10 +170,16 @@ serve(async (req) => {
       .eq('id', donationId);
 
     if (updateError) {
-      console.error('Failed to update donation:', updateError);
+      console.error('❌ Failed to update donation:', updateError);
+    } else {
+      console.log('✅ Donation updated with session reference');
     }
 
     // 7. Return checkout URL
+    console.log('Returning checkout URL to client...');
+    console.log('Checkout URL:', source.attributes.redirect.checkout_url);
+    console.log('========== PAYMENT CREATION COMPLETE ==========\n');
+
     return new Response(
       JSON.stringify({
         success: true,

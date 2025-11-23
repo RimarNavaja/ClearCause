@@ -79,6 +79,11 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
       icon: <LayoutDashboard className="w-5 h-5" />
     },
     {
+      path: '/donor/profile',
+      label: 'My Profile',
+      icon: <UserRound className="w-5 h-5" />
+    },
+    {
       path: '/donor/campaigns',
       label: 'Browse Campaigns',
       icon: <Search className="w-5 h-5" />

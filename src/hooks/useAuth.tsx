@@ -45,6 +45,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [lastProcessedUserId, setLastProcessedUserId] = useState<string | null>(null);
   const maxRetries = 3;
 
+  console.log('[AuthProvider] 🔄 COMPONENT RENDERING', {
+    hasUser: !!user,
+    userEmail: user?.email,
+    loading,
+    processingAuthChange,
+    authError
+  });
+
   // Use ref to track current user ID to avoid closure issues in auth listener
   const currentUserIdRef = useRef<string | null>(null);
 
@@ -53,20 +61,36 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     currentUserIdRef.current = user?.id || null;
   }, [user]);
 
+  // Debug: Monitor all state changes to track what's happening
+  useEffect(() => {
+    console.log('[AUTH] 📊 STATE CHANGED:', {
+      hasUser: !!user,
+      userEmail: user?.email,
+      userRole: user?.role,
+      userId: user?.id,
+      loading,
+      processingAuthChange,
+      authError,
+      hasSession: !!session,
+      sessionUserId: session?.user?.id
+    });
+  }, [user, loading, processingAuthChange, authError, session]);
+
   // Emergency timeout to prevent infinite loading
   useEffect(() => {
     if (!loading) return;
 
     const emergencyTimeout = setTimeout(() => {
-      if (loading && !processingAuthChange) {
-        console.warn('[AUTH] Emergency timeout: forcing loading to false after 15 seconds');
+      if (loading) {
+        console.warn('[AUTH] Emergency timeout: forcing loading to false after 8 seconds');
         setLoading(false);
+        setProcessingAuthChange(false); // Also clear processing flag
         setAuthError('Authentication timeout - please refresh the page');
       }
-    }, 15000);
+    }, 8000); // Reduced from 15s to 8s
 
     return () => clearTimeout(emergencyTimeout);
-  }, [loading, processingAuthChange]);
+  }, [loading]); // Removed processingAuthChange dependency
 
   useEffect(() => {
     // Get initial session with comprehensive validation
@@ -121,38 +145,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             return;
           }
 
+          console.log('[AUTH] getInitialSession: Found valid session, setting session only');
           setSession(session);
-
-          // Try to load profile with timeout protection
-          try {
-            const profilePromise = authService.getCurrentUser();
-            const timeoutPromise = new Promise<null>((_, reject) =>
-              setTimeout(() => reject(new Error('Profile loading timeout')), 3000)
-            );
-
-            const currentUser = await Promise.race([profilePromise, timeoutPromise]);
-
-            if (currentUser) {
-              setUser(currentUser);
-              setAuthError(null);
-              setRetryCount(0); // Reset retry count on success
-            } else {
-              await clearInvalidSession('No profile found');
-            }
-          } catch (profileError) {
-            console.error('[AUTH] Profile loading failed:', profileError);
-            setRetryCount(prev => prev + 1);
-
-            if (retryCount < maxRetries - 1) {
-              // Retry after a delay
-              setTimeout(() => {
-                getInitialSession();
-              }, 2000 * (retryCount + 1)); // Exponential backoff
-              return;
-            } else {
-              await clearInvalidSession('Profile verification failed after retries');
-            }
-          }
+          // Don't load profile here - let the auth listener handle it
+          // This prevents race condition between getInitialSession and onAuthStateChange
         } else {
           // No session - clear everything
           await clearAllAuthStorage();
@@ -207,6 +203,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
           console.log('[AUTH] Auth state change:', event, session?.user?.id);
+
+          // Skip INITIAL_SESSION - it's handled by getInitialSession()
+          // This prevents duplicate processing and race conditions
+          if (event === 'INITIAL_SESSION') {
+            console.log('[AUTH] Ignoring INITIAL_SESSION - handled by getInitialSession');
+            return;
+          }
+
+          // Skip USER_UPDATED - prevents redundant profile reloads right after login
+          // USER_UPDATED fires when user metadata changes, but we just loaded the profile
+          if (event === 'USER_UPDATED' && session?.user?.id === currentUserIdRef.current) {
+            console.log('[AUTH] Ignoring USER_UPDATED - user already loaded:', currentUserIdRef.current);
+            return;
+          }
 
           // Prevent processing the same user multiple times
           if (processingAuthChange) {
@@ -290,75 +300,59 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               setLoading(true);
 
               try {
-                console.log('[AUTH] Calling debounced getCurrentUser...');
+                console.log('[AUTH] 🔍 Calling getCurrentUser with timeout protection...');
 
-                // Use debounced auth call to prevent concurrent calls
-                const currentUser = await debounceAuthCall(
-                  async () => {
-                    const getCurrentUserPromise = authService.getCurrentUser();
-                    const timeoutPromise = new Promise<null>((_, reject) =>
-                      setTimeout(() => reject(new Error('getCurrentUser timeout after 3 seconds')), 3000)
-                    );
-                    return await Promise.race([getCurrentUserPromise, timeoutPromise]);
-                  },
-                  1000
-                );
+                // Create timeout promise that rejects after 5 seconds
+                let timeoutId: NodeJS.Timeout;
+                const timeoutPromise = new Promise<never>((_, reject) => {
+                  timeoutId = setTimeout(() => {
+                    console.log('[AUTH] ⏱️ 5-second timeout fired, rejecting promise...');
+                    reject(new Error('getCurrentUser timeout after 5 seconds'));
+                  }, 5000);
+                });
+
+                console.log('[AUTH] 🔍 Starting Promise.race for getCurrentUser...');
+
+                // Race between getCurrentUser and timeout
+                const currentUser = await Promise.race([
+                  authService.getCurrentUser(),
+                  timeoutPromise
+                ]).finally(() => {
+                  // Always clear the timeout
+                  console.log('[AUTH] 🔍 Promise.race finally block executing...');
+                  clearTimeout(timeoutId);
+                  console.log('[AUTH] ✅ Timeout cleared');
+                });
+
+                console.log('[AUTH] 🔍 Promise.race completed, result:', currentUser ? `User: ${currentUser.email}` : 'null/undefined');
 
                 if (currentUser) {
-                  console.log('[AUTH] Profile loaded successfully:', currentUser.email);
+                  console.log('[AUTH] ✅ Profile loaded successfully:', currentUser.email);
+                  console.log('[AUTH] 🔍 Profile object:', currentUser);
+                  console.log('[AUTH] 🔍 About to call setUser()...');
                   setUser(currentUser);
+                  console.log('[AUTH] ✅ setUser() completed');
+                  console.log('[AUTH] 🔍 About to call setAuthError(null)...');
                   setAuthError(null);
+                  console.log('[AUTH] ✅ setAuthError(null) completed');
+                  console.log('[AUTH] 🔍 About to call setRetryCount(0)...');
                   setRetryCount(0);
-                } else if (currentUser === null) {
-                  console.warn('[AUTH] getCurrentUser call was debounced, skipping this iteration');
-                  setLoading(false);
-                  return;
+                  console.log('[AUTH] ✅ setRetryCount(0) completed');
+                  console.log('[AUTH] ✅ All state updates completed successfully');
                 } else {
-                  console.warn('[AUTH] No profile found for authenticated user');
-
-                  // Try to create a fallback profile from session data
-                  if (session?.user) {
-                    console.log('[AUTH] Creating fallback profile from session data...');
-
-                    // Determine role from email pattern or metadata
-                    let userRole = session.user.user_metadata?.role || 'donor';
-
-                    // Special handling for admin emails
-                    if (session.user.email?.includes('admin@') ||
-                        session.user.email === 'admin@clearcause.com') {
-                      userRole = 'admin';
-                    }
-
-                    const fallbackUser = {
-                      id: session.user.id,
-                      email: session.user.email || '',
-                      fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-                      avatarUrl: session.user.user_metadata?.avatar_url || null,
-                      phone: session.user.user_metadata?.phone || null,
-                      role: userRole as 'donor' | 'charity' | 'admin',
-                      isVerified: !!session.user.email_confirmed_at,
-                      isActive: true,
-                      createdAt: session.user.created_at || new Date().toISOString(),
-                      updatedAt: new Date().toISOString(),
-                    };
-
-                    console.log('[AUTH] Using fallback profile:', fallbackUser.email);
-                    console.log('[AUTH] Fallback user metadata:', session.user.user_metadata);
-                    console.log('[AUTH] Fallback phone from metadata:', session.user.user_metadata?.phone);
-                    setUser(fallbackUser);
-                    setAuthError(null);
-                    setRetryCount(0);
-                  } else {
-                    setUser(null);
-                    setAuthError('Profile not found');
-                  }
+                  console.warn('[AUTH] ⚠️ No profile found for authenticated user - creating fallback from session');
+                  // Create fallback profile from session (will be handled in catch block if needed)
+                  throw new Error('No profile found in database');
                 }
               } catch (error) {
-                console.error('[AUTH] Profile loading failed:', error);
+                console.error('[AUTH] ❌ Profile loading failed:', error);
+                console.log('[AUTH] 🔍 Error type:', error?.constructor?.name);
+                console.log('[AUTH] 🔍 Error message:', error?.message);
 
-                // If getCurrentUser fails completely, create fallback from session
+                // ALWAYS create fallback from session on any error (timeout or database failure)
                 if (session?.user) {
-                  console.log('[AUTH] getCurrentUser failed, using session data as fallback...');
+                  console.log('[AUTH] 🔄 Creating fallback profile from session after error...');
+
                   // Determine role from email pattern or metadata
                   let userRole = session.user.user_metadata?.role || 'donor';
 
@@ -381,19 +375,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     updatedAt: new Date().toISOString(),
                   };
 
-                  console.log('[AUTH] Using fallback profile after error:', fallbackUser.email);
-                  console.log('[AUTH] Error fallback user metadata:', session.user.user_metadata);
-                  console.log('[AUTH] Error fallback phone from metadata:', session.user.user_metadata?.phone);
+                  console.log('[AUTH] ✅ Using fallback profile:', fallbackUser.email, 'Role:', fallbackUser.role);
                   setUser(fallbackUser);
-                  setAuthError('Profile loaded from session (database unavailable)');
+                  setAuthError(null); // Clear error since we have a working fallback
                   setRetryCount(0);
                 } else {
+                  console.error('[AUTH] ❌ No session available for fallback, clearing user state');
                   setUser(null);
                   setAuthError('Failed to load user profile');
                 }
               } finally {
+                // ALWAYS set loading to false to prevent infinite loading
+                console.log('[AUTH] 🔍 FINALLY BLOCK EXECUTING');
+                console.log('[AUTH] 🔍 Current loading state before update:', loading);
+                console.log('[AUTH] 🔍 Current processingAuthChange before update:', processingAuthChange);
+                console.log('[AUTH] 🔍 About to call setLoading(false)...');
                 setLoading(false);
-                console.log('[AUTH] SIGNED_IN processing completed');
+                console.log('[AUTH] ✅ setLoading(false) completed');
+                console.log('[AUTH] ✅ SIGNED_IN processing completed');
               }
               return;
             }
@@ -787,6 +786,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     hasAnyRole,
     isVerified,
   };
+
+  console.log('[AuthProvider] 🔍 About to render children with context:', {
+    hasUser: !!user,
+    userEmail: user?.email,
+    userRole: user?.role,
+    loading,
+    processingAuthChange
+  });
 
   return (
     <AuthContext.Provider value={value}>

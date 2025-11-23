@@ -17,9 +17,20 @@ serve(async (req)=>{
     // 1. Get webhook signature (TODO: Implement signature verification for production)
     const signature = req.headers.get('paymongo-signature');
     const body = await req.text();
-    console.log('Received webhook event');
+
+    // DEBUG: Log webhook arrival details
+    console.log('========== WEBHOOK RECEIVED ==========');
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('Headers:', {
+      signature: signature,
+      contentType: req.headers.get('content-type'),
+      userAgent: req.headers.get('user-agent')
+    });
+
     // Parse webhook event
     const event = JSON.parse(body);
+    console.log('Event ID:', event.data?.id);
+    console.log('Event Type:', event.data?.attributes?.type);
     // 2. Initialize Supabase client
     const supabase = createClient(Deno.env.get('SUPABASE_URL'), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
     // 3. Log webhook event
@@ -40,9 +51,14 @@ serve(async (req)=>{
         {
           // Source is ready to be charged (user completed GCash authorization)
           const sourceId = resource.id;
-          console.log('Source chargeable:', sourceId);
+          console.log('\n===== PROCESSING SOURCE.CHARGEABLE =====');
+          console.log('Source ID:', sourceId);
+          console.log('Source Status:', resource.attributes?.status);
+          console.log('Amount:', resource.attributes?.amount / 100, 'PHP');
 
           // Find the payment session by source ID first
+          console.log('Searching for payment session with source_id:', sourceId);
+
           // Use explicit foreign key to avoid ambiguity (payment_sessions.donation_id -> donations.id)
           const { data: paymentSession, error: sessionError } = await supabase
             .from('payment_sessions')
@@ -50,8 +66,23 @@ serve(async (req)=>{
             .eq('provider_source_id', sourceId)
             .single();
 
+          console.log('Payment session lookup result:', {
+            found: !!paymentSession,
+            error: sessionError?.message,
+            sessionId: paymentSession?.id
+          });
+
           if (sessionError || !paymentSession || !paymentSession.donations) {
-            console.error('Payment session or donation not found for source:', sourceId, sessionError);
+            console.error('❌ Payment session or donation not found for source:', sourceId);
+            console.error('Error details:', sessionError);
+
+            // DEBUG: Query all recent payment sessions to help diagnose
+            const { data: recentSessions } = await supabase
+              .from('payment_sessions')
+              .select('id, provider_source_id, status, created_at')
+              .order('created_at', { ascending: false })
+              .limit(10);
+            console.log('Recent payment sessions in database:', recentSessions);
             await supabase.from('webhook_events').update({
               processed: true,
               processed_at: new Date().toISOString(),
@@ -67,7 +98,8 @@ serve(async (req)=>{
             : paymentSession.donations;
 
           if (!donation) {
-            console.error('Donation not found in payment session for source:', sourceId);
+            console.error('❌ Donation not found in payment session for source:', sourceId);
+            console.error('Payment session data:', paymentSession);
             await supabase.from('webhook_events').update({
               processed: true,
               processed_at: new Date().toISOString(),
@@ -76,8 +108,16 @@ serve(async (req)=>{
             }).eq('id', loggedEvent?.id);
             break;
           }
-          console.log('Found donation:', donation.id);
+          console.log('✅ Found donation:', {
+            donationId: donation.id,
+            amount: donation.amount,
+            status: donation.status,
+            campaignId: donation.campaign_id,
+            paymentSessionId: paymentSession.id
+          });
+
           // Create a Payment to actually charge the source
+          console.log('Creating PayMongo payment to charge source...');
           const paymentResponse = await fetch(`${PAYMONGO_API_URL}/payments`, {
             method: 'POST',
             headers: {
@@ -100,15 +140,29 @@ serve(async (req)=>{
           const paymentData = await paymentResponse.json();
           if (paymentResponse.ok) {
             const payment = paymentData.data;
-            console.log('Payment created:', payment.id);
+            console.log('✅ Payment created successfully:', {
+              paymentId: payment.id,
+              status: payment.attributes.status,
+              amount: payment.attributes.amount / 100
+            });
+
             // Update donation status
-            await supabase.from('donations').update({
+            console.log('Updating donation status to completed...');
+            const { error: donationUpdateError } = await supabase.from('donations').update({
               status: 'completed',
               provider_payment_id: payment.id,
               updated_at: new Date().toISOString()
             }).eq('id', donation.id);
+
+            if (donationUpdateError) {
+              console.error('❌ Failed to update donation:', donationUpdateError);
+            } else {
+              console.log('✅ Donation updated to completed');
+            }
+
             // Update payment session
-            await supabase.from('payment_sessions').update({
+            console.log('Updating payment session status...');
+            const { error: sessionUpdateError } = await supabase.from('payment_sessions').update({
               status: 'succeeded',
               completed_at: new Date().toISOString(),
               metadata: {
@@ -116,24 +170,63 @@ serve(async (req)=>{
                 payment_status: payment.attributes.status
               }
             }).eq('id', paymentSession.id);
+
+            if (sessionUpdateError) {
+              console.error('❌ Failed to update payment session:', sessionUpdateError);
+            } else {
+              console.log('✅ Payment session updated to succeeded');
+            }
+
             // Update campaign amount using RPC function
+            console.log('Incrementing campaign amount...');
+            console.log('RPC params:', {
+              p_campaign_id: donation.campaign_id,
+              p_amount: donation.amount
+            });
+
             const { error: rpcError } = await supabase.rpc('increment_campaign_amount', {
               p_campaign_id: donation.campaign_id,
               p_amount: donation.amount
             });
+
             if (rpcError) {
-              console.error('Failed to increment campaign amount:', rpcError);
+              console.error('❌ Failed to increment campaign amount:', rpcError);
+            } else {
+              console.log('✅ Campaign RPC called successfully');
+
+              // Verify the campaign was updated
+              const { data: updatedCampaign, error: campaignError } = await supabase
+                .from('campaigns')
+                .select('id, title, current_amount, donor_count, updated_at')
+                .eq('id', donation.campaign_id)
+                .single();
+
+              if (campaignError) {
+                console.error('❌ Failed to verify campaign update:', campaignError);
+              } else {
+                console.log('✅ Campaign after increment:', {
+                  id: updatedCampaign.id,
+                  title: updatedCampaign.title,
+                  currentAmount: updatedCampaign.current_amount,
+                  donorCount: updatedCampaign.donor_count,
+                  updatedAt: updatedCampaign.updated_at
+                });
+              }
             }
-            console.log('Campaign amount incremented for campaign:', donation.campaign_id);
             // Mark webhook as processed
+            console.log('Marking webhook as processed...');
             await supabase.from('webhook_events').update({
               processed: true,
               processed_at: new Date().toISOString(),
               donation_id: donation.id,
               payment_session_id: paymentSession.id
             }).eq('id', loggedEvent?.id);
+
+            console.log('========== WEBHOOK PROCESSING COMPLETE ==========\n');
           } else {
-            console.error('Failed to create payment:', paymentData);
+            console.error('❌ Failed to create payment');
+            console.error('PayMongo response:', paymentData);
+            console.error('Status code:', paymentResponse.status);
             // Update donation as failed
             await supabase.from('donations').update({
               status: 'failed',
