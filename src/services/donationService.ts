@@ -1013,3 +1013,62 @@ export const createGCashPayment = withErrorHandling(async (
     throw new ClearCauseError('PAYMENT_ERROR', 'Failed to create payment session', 500);
   }
 });
+
+export const verifyPayment = withErrorHandling(async (
+  donationId: string
+): Promise<ApiResponse<{ status: string; message: string }>> => {
+  try {
+    console.log('========== FRONTEND: VERIFY PAYMENT ==========');
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('Donation ID:', donationId);
+
+    // Get current session
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      console.error('❌ No active session found');
+      throw new ClearCauseError('UNAUTHORIZED', 'No active session', 401);
+    }
+
+    const apiUrl = `${import.meta.env.VITE_API_URL}/verify-payment`;
+    console.log('Calling Edge Function:', apiUrl);
+
+    const response = await fetch(
+      apiUrl,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          donationId,
+        }),
+      }
+    );
+
+    console.log('Edge Function response status:', response.status);
+
+    const data = await response.json();
+    console.log('Edge Function response data:', data);
+
+    if (!response.ok && response.status !== 400) {
+      console.error('❌ Payment verification failed:', data);
+      throw new ClearCauseError('PAYMENT_ERROR', data.error || 'Failed to verify payment', response.status);
+    }
+
+    console.log('✅ Payment verification complete:', {
+      status: data.status,
+      message: data.message
+    });
+    console.log('========== FRONTEND: PAYMENT VERIFICATION COMPLETE ==========\n');
+
+    return createSuccessResponse(data, data.message || 'Payment verified');
+  } catch (error) {
+    console.error('❌ Verify payment error:', error);
+    if (error instanceof ClearCauseError) {
+      throw error;
+    }
+    throw new ClearCauseError('PAYMENT_ERROR', 'Failed to verify payment', 500);
+  }
+});

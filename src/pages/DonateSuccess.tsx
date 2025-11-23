@@ -1,11 +1,11 @@
-
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle, ArrowRight, Share2, Heart, TrendingUp, Calendar } from 'lucide-react';
+import { CheckCircle, ArrowRight, Share2, Heart, TrendingUp, Calendar, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { useAuth } from '@/hooks/useAuth';
+import { verifyPayment } from '@/services/donationService';
 
 interface LocationState {
   donationId?: string;
@@ -20,12 +20,50 @@ const DonateSuccess: React.FC = () => {
   const { user } = useAuth();
   const state = location.state as LocationState;
 
+  const [isVerifying, setIsVerifying] = useState(true);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+
   // Get donation details from navigation state or URL query params (from PayMongo redirect)
   const searchParams = new URLSearchParams(location.search);
   const donationId = state?.donationId || searchParams.get('donation_id') || '';
   const donationAmount = state?.amount || 0;
   const campaignTitle = state?.campaignTitle || 'Campaign';
   const campaignId = state?.campaignId;
+
+  // Verify payment when component mounts
+  useEffect(() => {
+    const verifyDonationPayment = async () => {
+      if (!donationId) {
+        setIsVerifying(false);
+        return;
+      }
+
+      try {
+        console.log('Verifying payment for donation:', donationId);
+        const result = await verifyPayment(donationId);
+
+        if (result.success) {
+          console.log('Payment verification successful:', result.data);
+          setIsVerifying(false);
+        } else {
+          console.error('Payment verification failed:', result);
+          setVerificationError('Payment verification failed. Please contact support if the issue persists.');
+          setIsVerifying(false);
+        }
+      } catch (error) {
+        console.error('Error verifying payment:', error);
+        // Don't show error to user if verification fails - it might already be processed by webhook
+        setIsVerifying(false);
+      }
+    };
+
+    // Add a small delay to ensure the PayMongo redirect completed
+    const timer = setTimeout(() => {
+      verifyDonationPayment();
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [donationId]);
 
   // Redirect if no donation data
   useEffect(() => {
@@ -65,6 +103,23 @@ const DonateSuccess: React.FC = () => {
     }
   };
 
+  // If verifying payment, show loading state
+  if (isVerifying) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-grow bg-clearcause-background flex items-center justify-center">
+          <div className="max-w-md mx-auto px-4 text-center">
+            <Loader2 className="h-16 w-16 text-clearcause-primary mx-auto mb-4 animate-spin" />
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Verifying Your Payment</h1>
+            <p className="text-gray-600">Please wait while we confirm your donation...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   // If no donation data, show a message
   if (!donationId || !campaignId) {
     return (
@@ -88,6 +143,22 @@ const DonateSuccess: React.FC = () => {
 
       <main className="flex-grow bg-clearcause-background">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+          {/* Verification Error Alert */}
+          {verificationError && (
+            <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">{verificationError}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Success Card */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             {/* Header with gradient */}

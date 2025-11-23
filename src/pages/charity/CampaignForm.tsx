@@ -798,7 +798,7 @@ const CampaignForm: React.FC = () => {
                     htmlFor="image"
                     className="block text-sm font-medium text-gray-700 mb-1"
                   >
-                    Campaign Image/Video*
+                    Campaign Image*
                   </label>
                   <div className="mt-1 border-2 border-dashed border-gray-300 rounded-md px-6 pt-5 pb-6">
                     <div className="space-y-1 text-center">
