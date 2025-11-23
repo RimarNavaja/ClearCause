@@ -40,7 +40,6 @@ export const createMilestones = withErrorHandling(async (
     title: string;
     description: string;
     targetAmount: number;
-    evidenceDescription?: string;
   }>
 ): Promise<ApiResponse<Milestone[]>> => {
   // Prepare milestone inserts
@@ -49,7 +48,6 @@ export const createMilestones = withErrorHandling(async (
     title: milestone.title,
     description: milestone.description,
     target_amount: milestone.targetAmount,
-    evidence_description: milestone.evidenceDescription,
     status: 'pending' as MilestoneStatus,
   }));
 
@@ -68,12 +66,7 @@ export const createMilestones = withErrorHandling(async (
     title: m.title,
     description: m.description,
     targetAmount: m.target_amount,
-    evidenceDescription: m.evidence_description,
     status: m.status,
-    proofDocuments: m.proof_documents,
-    verificationNotes: m.verification_notes,
-    verifiedAt: m.verified_at,
-    verifiedBy: m.verified_by,
     dueDate: m.due_date,
     createdAt: m.created_at,
     updatedAt: m.updated_at,
@@ -104,12 +97,7 @@ export const getMilestones = withErrorHandling(async (
     title: m.title,
     description: m.description,
     targetAmount: m.target_amount,
-    evidenceDescription: m.evidence_description,
     status: m.status,
-    proofDocuments: m.proof_documents,
-    verificationNotes: m.verification_notes,
-    verifiedAt: m.verified_at,
-    verifiedBy: m.verified_by,
     dueDate: m.due_date,
     createdAt: m.created_at,
     updatedAt: m.updated_at,
@@ -144,12 +132,7 @@ export const getMilestoneById = withErrorHandling(async (
     title: data.title,
     description: data.description,
     targetAmount: data.target_amount,
-    evidenceDescription: data.evidence_description,
     status: data.status,
-    proofDocuments: data.proof_documents,
-    verificationNotes: data.verification_notes,
-    verifiedAt: data.verified_at,
-    verifiedBy: data.verified_by,
     dueDate: data.due_date,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
@@ -167,7 +150,6 @@ export const updateMilestone = withErrorHandling(async (
     title: string;
     description: string;
     targetAmount: number;
-    evidenceDescription: string;
     dueDate: string;
   }>
 ): Promise<ApiResponse<Milestone>> => {
@@ -176,7 +158,6 @@ export const updateMilestone = withErrorHandling(async (
   if (updates.title !== undefined) updateData.title = updates.title;
   if (updates.description !== undefined) updateData.description = updates.description;
   if (updates.targetAmount !== undefined) updateData.target_amount = updates.targetAmount;
-  if (updates.evidenceDescription !== undefined) updateData.evidence_description = updates.evidenceDescription;
   if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate;
 
   const { data, error } = await supabase
@@ -196,12 +177,7 @@ export const updateMilestone = withErrorHandling(async (
     title: data.title,
     description: data.description,
     targetAmount: data.target_amount,
-    evidenceDescription: data.evidence_description,
     status: data.status,
-    proofDocuments: data.proof_documents,
-    verificationNotes: data.verification_notes,
-    verifiedAt: data.verified_at,
-    verifiedBy: data.verified_by,
     dueDate: data.due_date,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
@@ -234,12 +210,7 @@ export const updateMilestoneStatus = withErrorHandling(async (
     title: data.title,
     description: data.description,
     targetAmount: data.target_amount,
-    evidenceDescription: data.evidence_description,
     status: data.status,
-    proofDocuments: data.proof_documents,
-    verificationNotes: data.verification_notes,
-    verifiedAt: data.verified_at,
-    verifiedBy: data.verified_by,
     dueDate: data.due_date,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
