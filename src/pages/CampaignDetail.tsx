@@ -233,7 +233,7 @@ const CampaignDetail: React.FC = () => {
     <div className="flex flex-col min-h-screen">
       <Navbar />
 
-      <main className="flex-grow">
+      <main className="flex-grow mb-4">
         <CampaignBanner
           bannerUrl={campaign.imageUrl || SAMPLE_CAMPAIGN.bannerUrl}
           title={campaign.title}
@@ -308,7 +308,7 @@ const CampaignDetail: React.FC = () => {
                   daysLeft: daysLeft,
                   verified: campaign.charity?.verificationStatus === 'approved',
                   category: campaign.category || 'General',
-                  donors: 0,
+                  donors: campaign.donorsCount || 0,
                   location: campaign.location || 'Not specified',
                   charityLogo: campaign.charity?.logoUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(campaign.charity?.organizationName || 'Charity') + '&background=3b82f6&color=fff',
                   transparency: 0,

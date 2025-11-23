@@ -117,7 +117,8 @@ export default {
 				sans: ['Inter var', 'Inter', 'sans-serif'],
 				display: ['Montserrat', 'sans-serif'],
 				redhatbold:['RedHatBold', 'sans-serif'],
-				redhatregular:['RedHatRegular', 'sans-serif']
+				redhatregular:['RedHatRegular', 'sans-serif'],
+				interregular:['InterRegular','sans-serif']
 			}
 		}
 	},

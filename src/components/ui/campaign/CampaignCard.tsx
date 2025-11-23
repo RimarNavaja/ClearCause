@@ -200,22 +200,17 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           {/* Amount and Goal */}
           <div className="flex justify-between text-sm">
             <span
-              className={`font-semibold ${isAnimating ? "text-green-600" : ""}`}
+              className={`font-interregular font-semibold tracking-wide ${isAnimating ? "text-green-600" : ""}`}
             >
               {formatCurrency(realtimeData.currentAmount)}
             </span>
-            <span className="text-gray-500">
+            <span className="text-gray-500 font-interregular">
               of {formatCurrency(realtimeData.goalAmount)}
             </span>
           </div>
 
           {/* Stats Row */}
           <div className="flex justify-between items-center border-t border-gray-100 pt-3">
-            <div className="flex items-center text-sm text-gray-500">
-              <Users size={14} className="mr-1" />
-              <span>{realtimeData.donorsCount || 0} donors</span>
-            </div>
-
             {!isExpired ? (
               <div className="flex items-center text-sm text-gray-500">
                 <Clock size={14} className="mr-1" />

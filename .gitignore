@@ -65,6 +65,7 @@ $RECYCLE.BIN/
 *.backup
 *_backup.*
 *.md.backup
+issues
 
 # Development files
 debug_*.sql

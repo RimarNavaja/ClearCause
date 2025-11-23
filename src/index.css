@@ -135,3 +135,9 @@
   src: local("RedHatText-Bold"),
   url('./assets/fonts/RedHatText-Bold.ttf') format("truetype");
 }
+
+@font-face{
+   font-family: "InterRegular";
+  src: local("Inter-Regular"),
+  url('./assets/fonts/Inter_18pt-Regular.ttf') format("truetype");
+}
