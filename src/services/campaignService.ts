@@ -63,9 +63,15 @@ export const createCampaign = withErrorHandling(async (
     validateMilestoneAmounts(validatedData.milestones, validatedData.goalAmount);
   }
 
-  // Upload campaign image if provided
+  // Handle campaign image - either pre-uploaded URL or file to upload
   let imageUrl: string | null = null;
-  if (campaignData.imageFile) {
+
+  // Check if image URL is already provided (pre-uploaded by form)
+  if (campaignData.imageUrl) {
+    imageUrl = campaignData.imageUrl;
+  }
+  // Otherwise, check if image file provided for upload
+  else if (campaignData.imageFile) {
     const fileValidation = validateFile(campaignData.imageFile, {
       maxSize: 5 * 1024 * 1024, // 5MB
       allowedTypes: ['image/jpeg', 'image/png', 'image/webp']

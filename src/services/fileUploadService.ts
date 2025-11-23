@@ -9,7 +9,7 @@ import { withErrorHandling, handleSupabaseError, createSuccessResponse } from '.
 
 // Storage bucket names
 export const STORAGE_BUCKETS = {
-  CAMPAIGN_IMAGES: 'campaign-images',
+  CAMPAIGN_IMAGES: 'Campaigns',
   MILESTONE_PROOFS: 'milestone-proofs',
   CHARITY_DOCUMENTS: 'charity-documents',
   PROFILE_AVATARS: 'profile-avatars',

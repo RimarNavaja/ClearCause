@@ -1,37 +1,60 @@
-
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Plus, Trash2, Upload, Check, Info, ChevronRight, ChevronLeft, AlertTriangle, BadgeCheck, AlertCircle, Clock, User } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
-import CharityLayout from '@/components/layout/CharityLayout';
-import * as campaignService from '@/services/campaignService';
-import * as charityService from '@/services/charityService';
-import { CampaignCreateData } from '@/lib/types';
-import { getRelativeTime } from '@/utils/helpers';
-import { waitForAuthReady } from '@/utils/authHelper';
-import { uploadCampaignImage, validateFile, STORAGE_BUCKETS } from '@/services/fileUploadService';
-import * as categoryService from '@/services/categoryService';
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import {
+  Plus,
+  Trash2,
+  Upload,
+  Check,
+  Info,
+  ChevronRight,
+  ChevronLeft,
+  AlertTriangle,
+  BadgeCheck,
+  AlertCircle,
+  Clock,
+  User,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import CharityLayout from "@/components/layout/CharityLayout";
+import * as campaignService from "@/services/campaignService";
+import CampaignBanner from "@/components/ui/campaign/CampaignBanner";
+import * as charityService from "@/services/charityService";
+import { CampaignCreateData } from "@/lib/types";
+import { getRelativeTime } from "@/utils/helpers";
+import { waitForAuthReady } from "@/utils/authHelper";
+import {
+  uploadCampaignImage,
+  validateFile,
+  STORAGE_BUCKETS,
+} from "@/services/fileUploadService";
+import * as categoryService from "@/services/categoryService";
 
 // Proof type options for milestone evidence
 const PROOF_TYPE_OPTIONS = [
-  { value: 'receipts', label: 'Official Receipts' },
-  { value: 'photos', label: 'Photographs/Images' },
-  { value: 'videos', label: 'Video Documentation' },
-  { value: 'certificates', label: 'Certificates/Permits' },
-  { value: 'bank_statements', label: 'Bank Statements' },
-  { value: 'invoices', label: 'Invoices' },
-  { value: 'contracts', label: 'Contracts/Agreements' },
-  { value: 'medical_records', label: 'Medical Records' },
-  { value: 'progress_reports', label: 'Progress Reports' },
-  { value: 'beneficiary_list', label: 'Beneficiary List/Documentation' },
-  { value: 'other', label: 'Other (Specify)' }
+  { value: "receipts", label: "Official Receipts" },
+  { value: "photos", label: "Photographs/Images" },
+  { value: "videos", label: "Video Documentation" },
+  { value: "certificates", label: "Certificates/Permits" },
+  { value: "bank_statements", label: "Bank Statements" },
+  { value: "invoices", label: "Invoices" },
+  { value: "contracts", label: "Contracts/Agreements" },
+  { value: "medical_records", label: "Medical Records" },
+  { value: "progress_reports", label: "Progress Reports" },
+  { value: "beneficiary_list", label: "Beneficiary List/Documentation" },
+  { value: "other", label: "Other (Specify)" },
 ];
 
 // TypeScript interfaces
@@ -56,23 +79,33 @@ const CampaignForm: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(
+    null
+  );
   const [checkingVerification, setCheckingVerification] = useState(true);
   const [approvalFeedback, setApprovalFeedback] = useState<any>(null);
-  const [categories, setCategories] = useState<Array<{ id: string; name: string; slug: string; icon?: string; color?: string }>>([]);
+  const [categories, setCategories] = useState<
+    Array<{
+      id: string;
+      name: string;
+      slug: string;
+      icon?: string;
+      color?: string;
+    }>
+  >([]);
 
   // Form state
   const [campaignDetails, setCampaignDetails] = useState({
-    title: '',
-    description: '',
-    category: '',
-    location: '',
-    goal: '',
-    endDate: '',
+    title: "",
+    description: "",
+    category: "",
+    location: "",
+    goal: "",
+    endDate: "",
   });
-  
+
   const [milestones, setMilestones] = useState<Milestone[]>([
-    { id: '1', title: '', amount: 0, evidenceDescription: '' }
+    { id: "1", title: "", amount: 0, evidenceDescription: "" },
   ]);
 
   // Fetch categories on mount
@@ -84,15 +117,20 @@ const CampaignForm: React.FC = () => {
           setCategories(result.data);
         }
       } catch (error) {
-        console.error('Failed to fetch categories:', error);
+        console.error("Failed to fetch categories:", error);
         // Use fallback categories if fetch fails
         setCategories([
-          { id: '1', name: 'Education', slug: 'education', icon: '📚' },
-          { id: '2', name: 'Healthcare', slug: 'health', icon: '🏥' },
-          { id: '3', name: 'Environment', slug: 'environment', icon: '🌱' },
-          { id: '4', name: 'Disaster Relief', slug: 'disaster', icon: '🆘' },
-          { id: '5', name: 'Community Development', slug: 'community', icon: '🏘️' },
-          { id: '6', name: 'Other', slug: 'other', icon: '🤝' },
+          { id: "1", name: "Education", slug: "education", icon: "📚" },
+          { id: "2", name: "Healthcare", slug: "health", icon: "🏥" },
+          { id: "3", name: "Environment", slug: "environment", icon: "🌱" },
+          { id: "4", name: "Disaster Relief", slug: "disaster", icon: "🆘" },
+          {
+            id: "5",
+            name: "Community Development",
+            slug: "community",
+            icon: "🏘️",
+          },
+          { id: "6", name: "Other", slug: "other", icon: "🤝" },
         ]);
       }
     };
@@ -109,32 +147,39 @@ const CampaignForm: React.FC = () => {
         setCheckingVerification(true);
 
         // Wait for auth to be fully ready before making RLS-dependent queries
-        console.log('[CampaignForm] Waiting for auth to be ready...');
+        console.log("[CampaignForm] Waiting for auth to be ready...");
         const authReady = await waitForAuthReady(5000); // Wait up to 5 seconds
 
         if (!authReady) {
-          console.warn('[CampaignForm] Auth not ready, retrying in 1 second...');
+          console.warn(
+            "[CampaignForm] Auth not ready, retrying in 1 second..."
+          );
           // If auth isn't ready, wait a bit and the retry logic in getCharityByUserId will handle it
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
 
-        console.log('[CampaignForm] Fetching charity verification status...');
+        console.log("[CampaignForm] Fetching charity verification status...");
         const charityResult = await charityService.getCharityByUserId(user.id);
 
         if (charityResult.success && charityResult.data) {
-          console.log('[CampaignForm] Charity verification status:', charityResult.data.verificationStatus);
+          console.log(
+            "[CampaignForm] Charity verification status:",
+            charityResult.data.verificationStatus
+          );
           setVerificationStatus(charityResult.data.verificationStatus);
         } else {
-          console.warn('[CampaignForm] No charity data found, allowing creation');
+          console.warn(
+            "[CampaignForm] No charity data found, allowing creation"
+          );
           // If we can't find charity data but no error, assume they can create
           // This prevents blocking legitimate users
-          setVerificationStatus('approved');
+          setVerificationStatus("approved");
         }
       } catch (error) {
-        console.error('[CampaignForm] Error checking verification:', error);
+        console.error("[CampaignForm] Error checking verification:", error);
         // On error, don't block - assume approved to prevent false negatives
         // The actual API will validate on submission anyway
-        setVerificationStatus('approved');
+        setVerificationStatus("approved");
       } finally {
         setCheckingVerification(false);
       }
@@ -149,7 +194,10 @@ const CampaignForm: React.FC = () => {
       if (isEditMode && campaignId && user) {
         try {
           setLoading(true);
-          const result = await campaignService.getCampaignById(campaignId, true);
+          const result = await campaignService.getCampaignById(
+            campaignId,
+            true
+          );
 
           if (result.success && result.data) {
             const campaign = result.data;
@@ -157,19 +205,21 @@ const CampaignForm: React.FC = () => {
             setCampaignDetails({
               title: campaign.title,
               description: campaign.description,
-              category: campaign.category || '',
-              location: campaign.location || '',
+              category: campaign.category || "",
+              location: campaign.location || "",
               goal: campaign.goalAmount.toString(),
-              endDate: campaign.endDate || '',
+              endDate: campaign.endDate || "",
             });
 
             if (campaign.milestones) {
-              setMilestones(campaign.milestones.map((milestone, index) => ({
-                id: milestone.id || (index + 1).toString(),
-                title: milestone.title,
-                amount: milestone.targetAmount,
-                evidenceDescription: milestone.evidenceDescription || '',
-              })));
+              setMilestones(
+                campaign.milestones.map((milestone, index) => ({
+                  id: milestone.id || (index + 1).toString(),
+                  title: milestone.title,
+                  amount: milestone.targetAmount,
+                  evidenceDescription: milestone.evidenceDescription || "",
+                }))
+              );
             }
 
             if (campaign.imageUrl) {
@@ -178,16 +228,24 @@ const CampaignForm: React.FC = () => {
             }
 
             // Load approval feedback if campaign is in draft status
-            if (campaign.status === 'draft') {
-              const historyResult = await campaignService.getCampaignApprovalHistory(campaignId, user.id);
-              if (historyResult.success && historyResult.data && historyResult.data.length > 0) {
+            if (campaign.status === "draft") {
+              const historyResult =
+                await campaignService.getCampaignApprovalHistory(
+                  campaignId,
+                  user.id
+                );
+              if (
+                historyResult.success &&
+                historyResult.data &&
+                historyResult.data.length > 0
+              ) {
                 // Get the most recent feedback
                 setApprovalFeedback(historyResult.data[0]);
               }
             }
           }
         } catch (error) {
-          console.error('Failed to load campaign data:', error);
+          console.error("Failed to load campaign data:", error);
           toast({
             title: "Error",
             description: "Failed to load campaign data. Please try again.",
@@ -203,13 +261,21 @@ const CampaignForm: React.FC = () => {
   }, [isEditMode, campaignId, user, toast]);
 
   // Handle form field changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
     const { name, value } = e.target;
-    setCampaignDetails(prev => ({ ...prev, [name]: value }));
+    setCampaignDetails((prev) => ({ ...prev, [name]: value }));
   };
 
   // Handle milestone changes
-  const handleMilestoneChange = (index: number, field: keyof Milestone, value: string | number) => {
+  const handleMilestoneChange = (
+    index: number,
+    field: keyof Milestone,
+    value: string | number
+  ) => {
     const updatedMilestones = [...milestones];
     updatedMilestones[index] = { ...updatedMilestones[index], [field]: value };
     setMilestones(updatedMilestones);
@@ -217,7 +283,15 @@ const CampaignForm: React.FC = () => {
 
   // Add a new milestone
   const addMilestone = () => {
-    setMilestones([...milestones, { id: Date.now().toString(), title: '', amount: 0, evidenceDescription: '' }]);
+    setMilestones([
+      ...milestones,
+      {
+        id: Date.now().toString(),
+        title: "",
+        amount: 0,
+        evidenceDescription: "",
+      },
+    ]);
   };
 
   // Remove a milestone
@@ -242,7 +316,7 @@ const CampaignForm: React.FC = () => {
           description: validation.error,
           variant: "destructive",
         });
-        e.target.value = ''; // Reset file input
+        e.target.value = ""; // Reset file input
         return;
       }
 
@@ -261,13 +335,16 @@ const CampaignForm: React.FC = () => {
   const handleSubmit = async (isDraft: boolean = false) => {
     // Validate custom proof requirement
     const invalidMilestones = milestones.filter(
-      m => m.evidenceDescription === 'other' && (!m.customProof || m.customProof.trim() === '')
+      (m) =>
+        m.evidenceDescription === "other" &&
+        (!m.customProof || m.customProof.trim() === "")
     );
 
     if (invalidMilestones.length > 0) {
       toast({
         title: "Validation Error",
-        description: "Please provide a custom proof description for milestones with 'Other' evidence type.",
+        description:
+          "Please provide a custom proof description for milestones with 'Other' evidence type.",
         variant: "destructive",
       });
       return;
@@ -277,7 +354,7 @@ const CampaignForm: React.FC = () => {
 
     try {
       if (!user) {
-        throw new Error('User not authenticated');
+        throw new Error("User not authenticated");
       }
 
       // Upload campaign image if a new one was selected
@@ -286,7 +363,10 @@ const CampaignForm: React.FC = () => {
         setUploading(true);
         setUploadProgress(30);
 
-        const uploadResult = await uploadCampaignImage(campaignImage, campaignId);
+        const uploadResult = await uploadCampaignImage(
+          campaignImage,
+          campaignId
+        );
 
         setUploadProgress(70);
 
@@ -294,7 +374,7 @@ const CampaignForm: React.FC = () => {
           imageUrl = uploadResult.data.publicUrl;
           setUploadProgress(100);
         } else {
-          throw new Error('Failed to upload campaign image');
+          throw new Error("Failed to upload campaign image");
         }
 
         setUploading(false);
@@ -318,12 +398,15 @@ const CampaignForm: React.FC = () => {
         endDate: endDateISO,
         category: campaignDetails.category || undefined,
         location: campaignDetails.location || undefined,
-        status: isDraft ? 'draft' : 'pending',
-        milestones: milestones.map(milestone => {
+        status: isDraft ? "draft" : "pending",
+        milestones: milestones.map((milestone) => {
           // Use custom proof description if "other" is selected, otherwise use the selected option label
-          const evidenceDesc = milestone.evidenceDescription === 'other'
-            ? milestone.customProof || 'Other'
-            : PROOF_TYPE_OPTIONS.find(opt => opt.value === milestone.evidenceDescription)?.label || milestone.evidenceDescription;
+          const evidenceDesc =
+            milestone.evidenceDescription === "other"
+              ? milestone.customProof || "Other"
+              : PROOF_TYPE_OPTIONS.find(
+                  (opt) => opt.value === milestone.evidenceDescription
+                )?.label || milestone.evidenceDescription;
 
           return {
             title: milestone.title,
@@ -339,7 +422,7 @@ const CampaignForm: React.FC = () => {
         // When resubmitting after revision, it should go back to 'pending' for admin review
         const result = await campaignService.updateCampaign(
           campaignId!,
-          { ...campaignData, status: isDraft ? 'draft' : 'pending' },
+          { ...campaignData, status: isDraft ? "draft" : "pending" },
           user.id
         );
 
@@ -350,11 +433,14 @@ const CampaignForm: React.FC = () => {
               ? "Your campaign draft has been saved."
               : "Your campaign has been resubmitted for admin review.",
           });
-          navigate('/charity/campaigns');
+          navigate("/charity/campaigns");
         }
       } else {
         // Create new campaign
-        const result = await campaignService.createCampaign(campaignData, user.id);
+        const result = await campaignService.createCampaign(
+          campaignData,
+          user.id
+        );
 
         if (result.success) {
           toast({
@@ -363,11 +449,11 @@ const CampaignForm: React.FC = () => {
               ? "Your campaign draft has been saved."
               : "Your campaign has been submitted for review.",
           });
-          navigate('/charity/campaigns');
+          navigate("/charity/campaigns");
         }
       }
     } catch (error) {
-      console.error('Campaign submission error:', error);
+      console.error("Campaign submission error:", error);
 
       // Extract user-friendly error message
       let errorMessage = "Failed to save campaign. Please try again.";
@@ -377,10 +463,10 @@ const CampaignForm: React.FC = () => {
         errorMessage = error.message;
 
         // If it's a validation error with field prefix, clean it up
-        if (errorMessage.includes(':')) {
-          const parts = errorMessage.split(':');
+        if (errorMessage.includes(":")) {
+          const parts = errorMessage.split(":");
           if (parts.length > 1) {
-            errorMessage = parts.slice(1).join(':').trim();
+            errorMessage = parts.slice(1).join(":").trim();
           }
         }
       }
@@ -411,14 +497,20 @@ const CampaignForm: React.FC = () => {
   };
 
   // Calculate total milestone amount
-  const totalMilestoneAmount = milestones.reduce((sum, milestone) => sum + Number(milestone.amount), 0);
+  const totalMilestoneAmount = milestones.reduce(
+    (sum, milestone) => sum + Number(milestone.amount),
+    0
+  );
   const goalAmount = Number(campaignDetails.goal) || 0;
-  const milestoneAmountError = goalAmount > 0 && totalMilestoneAmount !== goalAmount;
+  const milestoneAmountError =
+    goalAmount > 0 && totalMilestoneAmount !== goalAmount;
 
   // Show loading state while checking verification
   if (checkingVerification) {
     return (
-      <CharityLayout title={isEditMode ? "Edit Campaign" : "Create New Campaign"}>
+      <CharityLayout
+        title={isEditMode ? "Edit Campaign" : "Create New Campaign"}
+      >
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
         </div>
@@ -427,7 +519,7 @@ const CampaignForm: React.FC = () => {
   }
 
   // Block campaign creation if charity is not verified
-  if (!isEditMode && verificationStatus !== 'approved') {
+  if (!isEditMode && verificationStatus !== "approved") {
     return (
       <CharityLayout title="Create New Campaign">
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -435,20 +527,29 @@ const CampaignForm: React.FC = () => {
             <div className="bg-gradient-to-br from-orange-100 to-orange-50 p-6 rounded-full w-fit mx-auto mb-6 shadow-lg">
               <AlertTriangle className="h-16 w-16 text-orange-600" />
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">Verification Required</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">
+              Verification Required
+            </h3>
             <p className="text-base text-gray-600 mb-8 leading-relaxed">
-              You must complete and be approved for organization verification before you can create campaigns.
-              This ensures transparency and builds trust with potential donors.
+              You must complete and be approved for organization verification
+              before you can create campaigns. This ensures transparency and
+              builds trust with potential donors.
             </p>
             <div className="bg-gray-50 rounded-lg p-6 mb-8 text-left">
-              <h4 className="font-semibold text-gray-900 mb-3">Current Status:</h4>
+              <h4 className="font-semibold text-gray-900 mb-3">
+                Current Status:
+              </h4>
               <div className="flex items-center gap-2 text-gray-700">
-                {verificationStatus === 'pending' || verificationStatus === 'under_review' ? (
+                {verificationStatus === "pending" ||
+                verificationStatus === "under_review" ? (
                   <>
                     <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-                    <span>Your verification is currently being reviewed by our team</span>
+                    <span>
+                      Your verification is currently being reviewed by our team
+                    </span>
                   </>
-                ) : verificationStatus === 'rejected' || verificationStatus === 'resubmission_required' ? (
+                ) : verificationStatus === "rejected" ||
+                  verificationStatus === "resubmission_required" ? (
                   <>
                     <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                     <span>Your verification needs to be resubmitted</span>
@@ -456,7 +557,9 @@ const CampaignForm: React.FC = () => {
                 ) : (
                   <>
                     <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
-                    <span>You haven't submitted a verification application yet</span>
+                    <span>
+                      You haven't submitted a verification application yet
+                    </span>
                   </>
                 )}
               </div>
@@ -465,13 +568,13 @@ const CampaignForm: React.FC = () => {
               <Button size="lg" asChild className="text-base">
                 <Link to="/charity/verification/apply">
                   <BadgeCheck className="mr-2 h-5 w-5" />
-                  {verificationStatus ? 'View Verification Status' : 'Start Verification'}
+                  {verificationStatus
+                    ? "View Verification Status"
+                    : "Start Verification"}
                 </Link>
               </Button>
               <Button variant="outline" size="lg" asChild className="text-base">
-                <Link to="/charity/dashboard">
-                  Back to Dashboard
-                </Link>
+                <Link to="/charity/dashboard">Back to Dashboard</Link>
               </Button>
             </div>
           </div>
@@ -483,7 +586,7 @@ const CampaignForm: React.FC = () => {
   return (
     <CharityLayout title={isEditMode ? "Edit Campaign" : "Create New Campaign"}>
       {/* Admin Revision Feedback Banner */}
-      {approvalFeedback && approvalFeedback.action === 'revision_requested' && (
+      {approvalFeedback && approvalFeedback.action === "revision_requested" && (
         <Alert className="mb-6 border-l-4 border-l-amber-500 bg-amber-50/80">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-full bg-amber-100">
@@ -512,7 +615,9 @@ const CampaignForm: React.FC = () => {
 
               {/* What needs to be changed */}
               <div className="p-4 rounded-lg bg-amber-100/50 border border-amber-200">
-                <p className="font-medium text-sm text-amber-900 mb-1">What needs to be changed:</p>
+                <p className="font-medium text-sm text-amber-900 mb-1">
+                  What needs to be changed:
+                </p>
                 <p className="text-gray-700">{approvalFeedback.reason}</p>
               </div>
 
@@ -523,7 +628,9 @@ const CampaignForm: React.FC = () => {
                     <AlertCircle className="h-4 w-4" />
                     Admin Suggestions:
                   </p>
-                  <p className="text-gray-700 text-sm">{approvalFeedback.suggestions}</p>
+                  <p className="text-gray-700 text-sm">
+                    {approvalFeedback.suggestions}
+                  </p>
                 </div>
               )}
 
@@ -531,7 +638,8 @@ const CampaignForm: React.FC = () => {
               <AlertDescription className="text-sm text-gray-600 mt-3 flex items-start gap-2">
                 <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <span>
-                  Please review and address the feedback above, then resubmit your campaign for review.
+                  Please review and address the feedback above, then resubmit
+                  your campaign for review.
                 </span>
               </AlertDescription>
             </div>
@@ -544,29 +652,33 @@ const CampaignForm: React.FC = () => {
         <div className="flex justify-between items-center">
           {[1, 2, 3, 4].map((step) => (
             <div key={step} className="flex flex-col items-center">
-              <div 
+              <div
                 className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                  currentStep === step 
-                    ? 'border-clearcause-primary bg-clearcause-primary text-white' 
-                    : currentStep > step 
-                      ? 'border-clearcause-primary text-clearcause-primary'
-                      : 'border-gray-300 text-gray-400'
+                  currentStep === step
+                    ? "border-clearcause-primary bg-clearcause-primary text-white"
+                    : currentStep > step
+                    ? "border-clearcause-primary text-clearcause-primary"
+                    : "border-gray-300 text-gray-400"
                 }`}
               >
                 {currentStep > step ? <Check className="w-5 h-5" /> : step}
               </div>
-              <span className={`text-xs mt-2 ${currentStep >= step ? 'text-gray-700' : 'text-gray-400'}`}>
-                {step === 1 && 'Campaign Details'}
-                {step === 2 && 'Funding Goal'}
-                {step === 3 && 'Define Milestones'}
-                {step === 4 && 'Evidence Requirements'}
+              <span
+                className={`text-xs mt-2 ${
+                  currentStep >= step ? "text-gray-700" : "text-gray-400"
+                }`}
+              >
+                {step === 1 && "Campaign Details"}
+                {step === 2 && "Funding Goal"}
+                {step === 3 && "Define Milestones"}
+                {step === 4 && "Evidence Requirements"}
               </span>
             </div>
           ))}
         </div>
         <div className="relative mt-2">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200 rounded-full">
-            <div 
+            <div
               className="h-1 bg-clearcause-primary rounded-full transition-all"
               style={{ width: `${((currentStep - 1) / 3) * 100}%` }}
             ></div>
@@ -580,25 +692,33 @@ const CampaignForm: React.FC = () => {
           {currentStep === 1 && (
             <div className="space-y-6">
               <h2 className="text-xl font-semibold">Campaign Details</h2>
-              <p className="text-gray-600">Provide the basic information about your campaign.</p>
-              
+              <p className="text-gray-600">
+                Provide the basic information about your campaign.
+              </p>
+
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="title"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Campaign Title*
                   </label>
-                  <Input 
-                    id="title" 
-                    name="title" 
-                    value={campaignDetails.title} 
-                    onChange={handleInputChange} 
+                  <Input
+                    id="title"
+                    name="title"
+                    value={campaignDetails.title}
+                    onChange={handleInputChange}
                     placeholder="Enter a compelling title for your campaign"
                     required
                   />
                 </div>
-                
+
                 <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="description"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Campaign Description*
                   </label>
                   <Textarea
@@ -609,19 +729,29 @@ const CampaignForm: React.FC = () => {
                     placeholder="Describe your campaign's purpose, impact, and why people should donate"
                     rows={6}
                     required
-                    className={campaignDetails.description.length > 0 && campaignDetails.description.length < 10 ? 'border-red-500' : ''}
+                    className={
+                      campaignDetails.description.length > 0 &&
+                      campaignDetails.description.length < 10
+                        ? "border-red-500"
+                        : ""
+                    }
                   />
-                  <p className={`text-sm mt-1 ${
-                    campaignDetails.description.length < 10
-                      ? 'text-red-600'
-                      : 'text-gray-500'
-                  }`}>
+                  <p
+                    className={`text-sm mt-1 ${
+                      campaignDetails.description.length < 10
+                        ? "text-red-600"
+                        : "text-gray-500"
+                    }`}
+                  >
                     {campaignDetails.description.length}/10 characters minimum
                   </p>
                 </div>
-                
+
                 <div>
-                  <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="category"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Campaign Category*
                   </label>
                   <select
@@ -635,14 +765,18 @@ const CampaignForm: React.FC = () => {
                     <option value="">Select a category</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.slug}>
-                        {category.icon && `${category.icon} `}{category.name}
+                        {category.icon && `${category.icon} `}
+                        {category.name}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="location"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Project Location*
                   </label>
                   <Input
@@ -660,18 +794,24 @@ const CampaignForm: React.FC = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="image"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Campaign Image/Video*
                   </label>
                   <div className="mt-1 border-2 border-dashed border-gray-300 rounded-md px-6 pt-5 pb-6">
                     <div className="space-y-1 text-center">
                       {imagePreview ? (
                         <div className="mb-4">
-                          <img
-                            src={imagePreview}
-                            alt="Campaign preview"
-                            className="mx-auto h-64 object-cover rounded-md"
-                          />
+                          <div className="max-w-4xl mx-auto">
+                            <CampaignBanner
+                              bannerUrl={imagePreview}
+                              title={
+                                campaignDetails.title || "Campaign Preview"
+                              }
+                            />
+                          </div>
                           {uploading && (
                             <div className="mt-3">
                               <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -680,7 +820,9 @@ const CampaignForm: React.FC = () => {
                                   style={{ width: `${uploadProgress}%` }}
                                 />
                               </div>
-                              <p className="text-sm text-gray-600 mt-1">Uploading... {uploadProgress}%</p>
+                              <p className="text-sm text-gray-600 mt-1">
+                                Uploading... {uploadProgress}%
+                              </p>
                             </div>
                           )}
                         </div>
@@ -694,11 +836,13 @@ const CampaignForm: React.FC = () => {
                           htmlFor="file-upload"
                           className={`relative cursor-pointer rounded-md bg-white font-medium focus-within:outline-none focus-within:ring-2 focus-within:ring-clearcause-primary focus-within:ring-offset-2 ${
                             uploading
-                              ? 'text-gray-400 pointer-events-none'
-                              : 'text-clearcause-primary hover:text-clearcause-secondary'
+                              ? "text-gray-400 pointer-events-none"
+                              : "text-clearcause-primary hover:text-clearcause-secondary"
                           }`}
                         >
-                          <span>{imagePreview ? 'Replace image' : 'Upload an image'}</span>
+                          <span>
+                            {imagePreview ? "Replace image" : "Upload an image"}
+                          </span>
                           <input
                             id="file-upload"
                             name="file-upload"
@@ -719,16 +863,21 @@ const CampaignForm: React.FC = () => {
               </div>
             </div>
           )}
-          
+
           {/* Step 2: Funding Goal */}
           {currentStep === 2 && (
             <div className="space-y-6">
               <h2 className="text-xl font-semibold">Funding Goal</h2>
-              <p className="text-gray-600">Set your campaign's financial target and timeline.</p>
-              
+              <p className="text-gray-600">
+                Set your campaign's financial target and timeline.
+              </p>
+
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="goal" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="goal"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Target Funding Amount (PHP)*
                   </label>
                   <div className="mt-1 relative rounded-md shadow-sm">
@@ -752,9 +901,12 @@ const CampaignForm: React.FC = () => {
                     This is the total amount you aim to raise for your project.
                   </p>
                 </div>
-                
+
                 <div>
-                  <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="endDate"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Campaign End Date (Optional)
                   </label>
                   <Input
@@ -763,37 +915,53 @@ const CampaignForm: React.FC = () => {
                     id="endDate"
                     value={campaignDetails.endDate}
                     onChange={handleInputChange}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={new Date().toISOString().split("T")[0]}
                   />
                   <p className="mt-1 text-sm text-gray-500">
-                    If not set, your campaign will run until you manually close it.
+                    If not set, your campaign will run until you manually close
+                    it.
                   </p>
                 </div>
               </div>
             </div>
           )}
-          
+
           {/* Step 3: Define Milestones */}
           {currentStep === 3 && (
             <div className="space-y-6">
               <h2 className="text-xl font-semibold">Define Milestones</h2>
-              <p className="text-gray-600">Break down your project into verifiable steps. The sum of milestone amounts should equal your total funding goal.</p>
-              
+              <p className="text-gray-600">
+                Break down your project into verifiable steps. The sum of
+                milestone amounts should equal your total funding goal.
+              </p>
+
               {milestoneAmountError && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 text-sm text-yellow-800">
                   <div className="flex">
                     <Info className="h-5 w-5 text-yellow-400 mr-2" />
                     <span>
-                      The sum of milestone amounts ({new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(totalMilestoneAmount)}) 
-                      doesn't match your total funding goal ({new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(goalAmount)}).
+                      The sum of milestone amounts (
+                      {new Intl.NumberFormat("en-PH", {
+                        style: "currency",
+                        currency: "PHP",
+                      }).format(totalMilestoneAmount)}
+                      ) doesn't match your total funding goal (
+                      {new Intl.NumberFormat("en-PH", {
+                        style: "currency",
+                        currency: "PHP",
+                      }).format(goalAmount)}
+                      ).
                     </span>
                   </div>
                 </div>
               )}
-              
+
               <div className="space-y-6">
                 {milestones.map((milestone, index) => (
-                  <div key={milestone.id} className="border rounded-md p-4 bg-gray-50">
+                  <div
+                    key={milestone.id}
+                    className="border rounded-md p-4 bg-gray-50"
+                  >
                     <div className="flex justify-between items-center mb-4">
                       <h3 className="font-medium">Milestone {index + 1}</h3>
                       {milestones.length > 1 && (
@@ -808,7 +976,7 @@ const CampaignForm: React.FC = () => {
                         </Button>
                       )}
                     </div>
-                    
+
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -816,12 +984,18 @@ const CampaignForm: React.FC = () => {
                         </label>
                         <Input
                           value={milestone.title}
-                          onChange={(e) => handleMilestoneChange(index, 'title', e.target.value)}
+                          onChange={(e) =>
+                            handleMilestoneChange(
+                              index,
+                              "title",
+                              e.target.value
+                            )
+                          }
                           placeholder="e.g., Initial Assessment, Purchase Equipment"
                           required
                         />
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Amount for this Milestone (PHP)*
@@ -833,8 +1007,18 @@ const CampaignForm: React.FC = () => {
                           <Input
                             type="number"
                             className="pl-8"
-                            value={milestone.amount === 0 ? '' : milestone.amount}
-                            onChange={(e) => handleMilestoneChange(index, 'amount', e.target.value === '' ? 0 : Number(e.target.value))}
+                            value={
+                              milestone.amount === 0 ? "" : milestone.amount
+                            }
+                            onChange={(e) =>
+                              handleMilestoneChange(
+                                index,
+                                "amount",
+                                e.target.value === ""
+                                  ? 0
+                                  : Number(e.target.value)
+                              )
+                            }
                             placeholder="0.00"
                             min="0"
                             required
@@ -844,7 +1028,7 @@ const CampaignForm: React.FC = () => {
                     </div>
                   </div>
                 ))}
-                
+
                 <Button
                   type="button"
                   variant="outline"
@@ -853,36 +1037,54 @@ const CampaignForm: React.FC = () => {
                 >
                   <Plus className="h-4 w-4 mr-2" /> Add Another Milestone
                 </Button>
-                
+
                 <div className="flex justify-between items-center py-2 border-t">
                   <span className="font-medium">Total:</span>
-                  <span className={`font-bold ${milestoneAmountError ? 'text-yellow-600' : 'text-green-600'}`}>
-                    {new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(totalMilestoneAmount)}
+                  <span
+                    className={`font-bold ${
+                      milestoneAmountError
+                        ? "text-yellow-600"
+                        : "text-green-600"
+                    }`}
+                  >
+                    {new Intl.NumberFormat("en-PH", {
+                      style: "currency",
+                      currency: "PHP",
+                    }).format(totalMilestoneAmount)}
                   </span>
                 </div>
               </div>
             </div>
           )}
-          
+
           {/* Step 4: Set Evidence Requirements */}
           {currentStep === 4 && (
             <div className="space-y-6">
-              <h2 className="text-xl font-semibold">Set Evidence Requirements</h2>
-              <p className="text-gray-600">Specify what proof will be required for ClearCause to verify each milestone. Clear requirements help build donor trust.</p>
-              
+              <h2 className="text-xl font-semibold">
+                Set Evidence Requirements
+              </h2>
+              <p className="text-gray-600">
+                Specify what proof will be required for ClearCause to verify
+                each milestone. Clear requirements help build donor trust.
+              </p>
+
               <div className="bg-blue-50 border border-blue-200 rounded-md p-4 text-sm text-blue-800 mb-6">
                 <div className="flex">
                   <Info className="h-5 w-5 text-blue-400 mr-2 flex-shrink-0" />
                   <span>
-                    Good evidence examples include: receipts, photographs, official documents, videos of completed work, beneficiary testimonials, etc.
+                    Good evidence examples include: receipts, photographs,
+                    official documents, videos of completed work, beneficiary
+                    testimonials, etc.
                   </span>
                 </div>
               </div>
-              
+
               <div className="space-y-6">
                 {milestones.map((milestone, index) => (
                   <div key={milestone.id} className="border rounded-md p-4">
-                    <h3 className="font-medium mb-3">Milestone {index + 1}: {milestone.title || 'Untitled'}</h3>
+                    <h3 className="font-medium mb-3">
+                      Milestone {index + 1}: {milestone.title || "Untitled"}
+                    </h3>
 
                     <div className="space-y-3">
                       <div>
@@ -891,14 +1093,23 @@ const CampaignForm: React.FC = () => {
                         </label>
                         <Select
                           value={milestone.evidenceDescription}
-                          onValueChange={(value) => handleMilestoneChange(index, 'evidenceDescription', value)}
+                          onValueChange={(value) =>
+                            handleMilestoneChange(
+                              index,
+                              "evidenceDescription",
+                              value
+                            )
+                          }
                         >
                           <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select required proof type" />
                           </SelectTrigger>
                           <SelectContent>
                             {PROOF_TYPE_OPTIONS.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
+                              <SelectItem
+                                key={option.value}
+                                value={option.value}
+                              >
                                 {option.label}
                               </SelectItem>
                             ))}
@@ -907,14 +1118,20 @@ const CampaignForm: React.FC = () => {
                       </div>
 
                       {/* Show custom input if "other" is selected */}
-                      {milestone.evidenceDescription === 'other' && (
+                      {milestone.evidenceDescription === "other" && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Custom Proof Description*
                           </label>
                           <Textarea
-                            value={milestone.customProof || ''}
-                            onChange={(e) => handleMilestoneChange(index, 'customProof', e.target.value)}
+                            value={milestone.customProof || ""}
+                            onChange={(e) =>
+                              handleMilestoneChange(
+                                index,
+                                "customProof",
+                                e.target.value
+                              )
+                            }
                             placeholder="Describe the specific evidence you will provide"
                             rows={3}
                             required
@@ -927,25 +1144,30 @@ const CampaignForm: React.FC = () => {
               </div>
             </div>
           )}
-          
+
           {/* Navigation Buttons */}
           <div className="flex justify-between mt-8 pt-5 border-t">
             {currentStep > 1 ? (
-              <Button type="button" variant="outline" onClick={goToPreviousStep}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={goToPreviousStep}
+              >
                 <ChevronLeft className="h-4 w-4 mr-2" /> Previous Step
               </Button>
             ) : (
-              <Button type="button" variant="outline" onClick={() => navigate('/charity/campaigns')}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate("/charity/campaigns")}
+              >
                 Cancel
               </Button>
             )}
-            
+
             <div className="space-x-2">
               {currentStep < 4 ? (
-                <Button
-                  type="button"
-                  onClick={goToNextStep}
-                >
+                <Button type="button" onClick={goToNextStep}>
                   Next Step <ChevronRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
@@ -967,10 +1189,10 @@ const CampaignForm: React.FC = () => {
                     {uploading
                       ? `Uploading... ${uploadProgress}%`
                       : loading
-                      ? 'Submitting...'
+                      ? "Submitting..."
                       : isEditMode
-                      ? 'Update Campaign'
-                      : 'Submit Campaign for Review'}
+                      ? "Update Campaign"
+                      : "Submit Campaign for Review"}
                   </Button>
                 </>
               )}

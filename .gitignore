@@ -103,3 +103,7 @@ CLAUDE.md
 .vercel
 .turbo
 *.pem
+
+
+#md files
+mdFiles/

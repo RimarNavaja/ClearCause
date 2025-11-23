@@ -686,7 +686,7 @@ export interface CampaignCreateData {
   title: string;
   description: string;
   goalAmount: number;
-  imageFile?: File;
+  imageFile?: string;
   startDate?: string;
   endDate?: string;
   category?: string;
