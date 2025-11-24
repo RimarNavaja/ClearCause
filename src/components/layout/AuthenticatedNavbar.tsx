@@ -28,6 +28,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { getUserInitials, getUserDisplayName } from "@/utils/userHelpers";
 import { useAuth } from "@/hooks/useAuth";
 import { User as UserType } from "@/lib/types";
 import { toast } from "@/hooks/use-toast";
@@ -323,13 +325,17 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
                 className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-clearcause-primary focus:ring-offset-2"
               >
                 <div className="flex items-center px-3 py-2 border border-gray-300 rounded-full hover:bg-gray-50">
-                  <div className="flex items-center justify-center w-8 h-8 bg-clearcause-primary text-white rounded-full text-xs font-medium">
-                    {user.fullName
-                      ? user.fullName[0].toUpperCase()
-                      : user.email[0].toUpperCase()}
-                  </div>
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage
+                      src={user.avatarUrl || undefined}
+                      alt={user.fullName || user.email}
+                    />
+                    <AvatarFallback className="bg-clearcause-primary text-white text-xs font-medium">
+                      {getUserInitials(user.fullName, user.email)}
+                    </AvatarFallback>
+                  </Avatar>
                   <span className="ml-2 text-sm font-medium text-gray-700 hidden lg:block">
-                    {user.fullName || user.email.split("@")[0]}
+                    {getUserDisplayName(user.fullName, user.email)}
                   </span>
                   <ChevronDown className="ml-2 h-4 w-4 text-gray-400" />
                 </div>
@@ -449,14 +455,18 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
             {/* Mobile User Info */}
             <div className="px-4 mb-3">
               <div className="flex items-center">
-                <div className="flex items-center justify-center w-10 h-10 bg-clearcause-primary text-white rounded-full text-sm font-medium">
-                  {user.fullName
-                    ? user.fullName[0].toUpperCase()
-                    : user.email[0].toUpperCase()}
-                </div>
+                <Avatar className="w-10 h-10">
+                  <AvatarImage
+                    src={user.avatarUrl || undefined}
+                    alt={user.fullName || user.email}
+                  />
+                  <AvatarFallback className="bg-clearcause-primary text-white text-sm font-medium">
+                    {getUserInitials(user.fullName, user.email)}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="ml-3">
                   <div className="text-base font-medium text-gray-800">
-                    {user.fullName || "User"}
+                    {getUserDisplayName(user.fullName, user.email)}
                   </div>
                   <div className="text-sm text-gray-500">{user.email}</div>
                 </div>

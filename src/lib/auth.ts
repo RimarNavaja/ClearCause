@@ -402,7 +402,7 @@ export const getCurrentUserWithTimeout = async (timeoutMs: number = 10000): Prom
 };
 
 /**
- * Get current authenticated user (simplified and reliable version)
+ * Get current authenticated user (simplified and reliable version with retry logic)
  */
 export const getCurrentUser = async (): Promise<User | null> => {
   try {
@@ -418,68 +418,126 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
     console.log('[getCurrentUser] Step 1 success: Auth user found:', user.id);
 
-    // Try simple profile query first with timeout protection
-    try {
-      console.log('[getCurrentUser] Step 2: Simple profile query with 2s timeout...');
+    // Try profile query with retry logic (3 attempts)
+    const maxRetries = 3;
+    const retryDelays = [0, 1000, 2000]; // 0ms, 1s, 2s delays
 
-      // Create AbortController to cancel the request if it times out
-      const abortController = new AbortController();
-
-      // Shorter timeout (2 seconds) to fail faster
-      const timeoutMs = 2000;
-
-      // Set timeout to abort the request
-      const timeoutId = setTimeout(() => {
-        console.warn('[getCurrentUser] Database query timeout - aborting request');
-        abortController.abort();
-      }, timeoutMs);
-
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        // Make the query with abort signal
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .abortSignal(abortController.signal)
-          .maybeSingle();
+        console.log(`[getCurrentUser] Step 2: Profile query attempt ${attempt + 1}/${maxRetries}...`);
 
-        // Clear timeout if query completes
-        clearTimeout(timeoutId);
-
-        if (!profileError && profileData) {
-          console.log('[getCurrentUser] Step 2 success: Profile found in database');
-          return {
-            id: profileData.id,
-            email: profileData.email,
-            fullName: profileData.full_name,
-            avatarUrl: profileData.avatar_url,
-            phone: profileData.phone,
-            role: profileData.role,
-            isVerified: profileData.is_verified,
-            isActive: profileData.is_active,
-            createdAt: profileData.created_at,
-            updatedAt: profileData.updated_at,
-          };
+        // Wait before retry (except first attempt)
+        if (retryDelays[attempt] > 0) {
+          console.log(`[getCurrentUser] Waiting ${retryDelays[attempt]}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelays[attempt]));
         }
 
-        console.warn('[getCurrentUser] Step 2 failed or no profile found:', profileError);
-      } catch (abortError) {
-        // Query was aborted due to timeout
-        clearTimeout(timeoutId);
-        console.warn('[getCurrentUser] Database query aborted:', abortError);
+        // Create AbortController to cancel the request if it times out
+        const abortController = new AbortController();
+
+        // Timeout for each attempt (5 seconds)
+        const timeoutMs = 5000;
+
+        // Set timeout to abort the request
+        const timeoutId = setTimeout(() => {
+          console.warn(`[getCurrentUser] Database query timeout on attempt ${attempt + 1} - aborting request`);
+          abortController.abort();
+        }, timeoutMs);
+
+        try {
+          // Make the query with abort signal
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .abortSignal(abortController.signal)
+            .maybeSingle();
+
+          // Clear timeout if query completes
+          clearTimeout(timeoutId);
+
+          if (!profileError && profileData) {
+            console.log('[getCurrentUser] Step 2 success: Profile found in database');
+
+            // Cache the profile data (especially avatar URL) for fallback on future page loads
+            try {
+              localStorage.setItem(`profile_cache_${profileData.id}`, JSON.stringify({
+                avatarUrl: profileData.avatar_url,
+                fullName: profileData.full_name,
+                role: profileData.role,
+                timestamp: Date.now()
+              }));
+              console.log('[getCurrentUser] Cached profile data to localStorage');
+            } catch (cacheError) {
+              console.warn('[getCurrentUser] Failed to cache profile data:', cacheError);
+            }
+
+            return {
+              id: profileData.id,
+              email: profileData.email,
+              fullName: profileData.full_name,
+              avatarUrl: profileData.avatar_url,
+              phone: profileData.phone,
+              role: profileData.role,
+              isVerified: profileData.is_verified,
+              isActive: profileData.is_active,
+              createdAt: profileData.created_at,
+              updatedAt: profileData.updated_at,
+            };
+          }
+
+          console.warn(`[getCurrentUser] Attempt ${attempt + 1} failed or no profile found:`, profileError);
+
+          // If this is not the last attempt and we got an error, continue to retry
+          if (attempt < maxRetries - 1 && profileError) {
+            console.log(`[getCurrentUser] Will retry... (${maxRetries - attempt - 1} attempts remaining)`);
+            continue;
+          }
+        } catch (abortError) {
+          // Query was aborted due to timeout
+          clearTimeout(timeoutId);
+          console.warn(`[getCurrentUser] Database query aborted on attempt ${attempt + 1}:`, abortError);
+
+          // If this is not the last attempt, retry
+          if (attempt < maxRetries - 1) {
+            console.log(`[getCurrentUser] Will retry after timeout... (${maxRetries - attempt - 1} attempts remaining)`);
+            continue;
+          }
+        }
+      } catch (queryError) {
+        console.warn(`[getCurrentUser] Profile query failed on attempt ${attempt + 1}:`, queryError);
+
+        // If this is not the last attempt, retry
+        if (attempt < maxRetries - 1) {
+          console.log(`[getCurrentUser] Will retry after error... (${maxRetries - attempt - 1} attempts remaining)`);
+          continue;
+        }
       }
-    } catch (queryError) {
-      console.warn('[getCurrentUser] Profile query failed (timeout or error):', queryError);
     }
 
+    console.warn('[getCurrentUser] All retry attempts exhausted');
+
     // If database query fails or returns no profile, use auth data as fallback
-    console.log('[getCurrentUser] Using auth metadata as fallback profile');
+    console.log('[getCurrentUser] Using auth metadata and localStorage cache as fallback profile');
+
+    // Try to get cached avatar URL from localStorage
+    let cachedAvatarUrl = null;
+    try {
+      const cachedProfile = localStorage.getItem(`profile_cache_${user.id}`);
+      if (cachedProfile) {
+        const parsed = JSON.parse(cachedProfile);
+        cachedAvatarUrl = parsed.avatarUrl || null;
+        console.log('[getCurrentUser] Found cached avatar URL:', cachedAvatarUrl);
+      }
+    } catch (cacheError) {
+      console.warn('[getCurrentUser] Failed to read from cache:', cacheError);
+    }
 
     return {
       id: user.id,
       email: user.email || '',
       fullName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-      avatarUrl: user.user_metadata?.avatar_url || null,
+      avatarUrl: cachedAvatarUrl || user.user_metadata?.avatar_url || null,
       phone: user.user_metadata?.phone || null,
       role: (user.user_metadata?.role || 'donor') as 'donor' | 'charity' | 'admin',
       isVerified: !!user.email_confirmed_at,
