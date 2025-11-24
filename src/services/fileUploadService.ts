@@ -314,7 +314,8 @@ export const uploadProfileAvatar = (
   file: File
 ): Promise<ApiResponse<{ path: string; publicUrl: string }>> => {
   return uploadImage(STORAGE_BUCKETS.PROFILE_AVATARS, file, {
-    folder: 'profile-avatars', // Upload to Campaigns/profile-avatars/
+    // Don't specify folder - it will upload directly to the profile-avatars bucket root
+    // This prevents double-nesting like profile-avatars/profile-avatars/...
   });
 };
 

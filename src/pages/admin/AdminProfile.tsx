@@ -20,7 +20,7 @@ const formSchema = adminProfileSchema;
 type FormData = z.infer<typeof formSchema>;
 
 const AdminProfile: React.FC = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -119,6 +119,10 @@ const AdminProfile: React.FC = () => {
           ...prev,
           avatarUrl: result.data?.avatarUrl,
         }));
+
+        // Refresh the user context to update the navbar avatar
+        await refreshUser();
+
         return { success: true, url: result.data.avatarUrl };
       } else {
         return { success: false, error: result.error || 'Upload failed' };

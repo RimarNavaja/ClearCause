@@ -30,7 +30,7 @@ const sampleBadges = [
 ];
 
 const DonorProfile: React.FC = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
@@ -76,9 +76,14 @@ const DonorProfile: React.FC = () => {
       if (!user?.id) throw new Error("User not authenticated");
       return userService.uploadUserAvatar(user.id, file, user.id);
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (result.success) {
+        // Invalidate the query cache
         queryClient.invalidateQueries({ queryKey: ['userProfile', user?.id] });
+
+        // Refresh the user context to update the navbar avatar
+        await refreshUser();
+
         toast({ title: "Success", description: "Avatar updated successfully." });
         return { success: true, url: result.data?.avatarUrl };
       }

@@ -353,8 +353,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 if (session?.user) {
                   console.log('[AUTH] 🔄 Creating fallback profile from session after error...');
 
-                  // Determine role from email pattern or metadata
-                  let userRole = session.user.user_metadata?.role || 'donor';
+                  // Try to get cached avatar URL from localStorage
+                  let cachedAvatarUrl = null;
+                  let cachedFullName = null;
+                  let cachedRole = null;
+                  try {
+                    const cachedProfile = localStorage.getItem(`profile_cache_${session.user.id}`);
+                    if (cachedProfile) {
+                      const parsed = JSON.parse(cachedProfile);
+                      cachedAvatarUrl = parsed.avatarUrl || null;
+                      cachedFullName = parsed.fullName || null;
+                      cachedRole = parsed.role || null;
+                      console.log('[AUTH] Found cached profile data:', { cachedAvatarUrl, cachedFullName, cachedRole });
+                    }
+                  } catch (cacheError) {
+                    console.warn('[AUTH] Failed to read from cache:', cacheError);
+                  }
+
+                  // Determine role from cache, email pattern, or metadata
+                  let userRole = cachedRole || session.user.user_metadata?.role || 'donor';
 
                   // Special handling for admin emails
                   if (session.user.email?.includes('admin@') ||
@@ -365,8 +382,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                   const fallbackUser = {
                     id: session.user.id,
                     email: session.user.email || '',
-                    fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-                    avatarUrl: session.user.user_metadata?.avatar_url || null,
+                    fullName: cachedFullName || session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+                    avatarUrl: cachedAvatarUrl || session.user.user_metadata?.avatar_url || null,
                     phone: session.user.user_metadata?.phone || null,
                     role: userRole as 'donor' | 'charity' | 'admin',
                     isVerified: !!session.user.email_confirmed_at,
@@ -375,7 +392,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     updatedAt: new Date().toISOString(),
                   };
 
-                  console.log('[AUTH] ✅ Using fallback profile:', fallbackUser.email, 'Role:', fallbackUser.role);
+                  console.log('[AUTH] ✅ Using fallback profile:', fallbackUser.email, 'Role:', fallbackUser.role, 'Avatar:', fallbackUser.avatarUrl);
                   setUser(fallbackUser);
                   setAuthError(null); // Clear error since we have a working fallback
                   setRetryCount(0);

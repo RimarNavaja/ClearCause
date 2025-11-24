@@ -177,6 +177,23 @@ export const uploadUserAvatar = withErrorHandling(async (
 
     console.log('[uploadUserAvatar] Avatar upload completed successfully');
 
+    // Update localStorage cache with new avatar URL
+    try {
+      const cacheKey = `profile_cache_${userId}`;
+      const existingCache = localStorage.getItem(cacheKey);
+      let cacheData: any = { avatarUrl: avatarUrl };
+
+      if (existingCache) {
+        const parsed = JSON.parse(existingCache);
+        cacheData = { ...parsed, avatarUrl: avatarUrl, timestamp: Date.now() };
+      }
+
+      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+      console.log('[uploadUserAvatar] Updated cache with new avatar URL');
+    } catch (cacheError) {
+      console.warn('[uploadUserAvatar] Failed to update cache:', cacheError);
+    }
+
     // Non-blocking audit log
     logAuditEvent(currentUserId, 'USER_AVATAR_UPDATE', 'user', userId, { avatarUrl })
       .then(() => console.log('[uploadUserAvatar] Audit log successful'))

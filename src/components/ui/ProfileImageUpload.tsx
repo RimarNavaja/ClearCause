@@ -1,17 +1,19 @@
-import React, { useState, useRef } from 'react';
-import { Upload, Camera, X, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useToast } from '@/hooks/use-toast';
+import React, { useState, useRef } from "react";
+import { Upload, Camera, X, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProfileImageUploadProps {
   currentImageUrl?: string | null;
-  onImageUpload: (file: File) => Promise<{ success: boolean; url?: string; error?: string }>;
+  onImageUpload: (
+    file: File
+  ) => Promise<{ success: boolean; url?: string; error?: string }>;
   fallbackText: string;
-  imageType: 'avatar' | 'logo';
+  imageType: "avatar" | "logo";
   className?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
 }
 
 const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
@@ -19,8 +21,8 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
   onImageUpload,
   fallbackText,
   imageType,
-  className = '',
-  size = 'md'
+  className = "",
+  size = "md",
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -28,9 +30,9 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
   const { toast } = useToast();
 
   const sizeClasses = {
-    sm: 'h-16 w-16',
-    md: 'h-24 w-24',
-    lg: 'h-32 w-32'
+    sm: "h-16 w-16",
+    md: "h-24 w-24",
+    lg: "h-32 w-32",
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,7 +40,7 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
     if (!file) return;
 
     // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
       toast({
         title: "Invalid file type",
@@ -75,13 +77,16 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
       if (result.success) {
         toast({
           title: "Success",
-          description: `${imageType === 'avatar' ? 'Profile picture' : 'Logo'} updated successfully.`,
+          description: `${
+            imageType === "avatar" ? "Profile picture" : "Logo"
+          } updated successfully.`,
         });
       } else {
         setPreviewUrl(null);
         toast({
           title: "Upload failed",
-          description: result.error || "Failed to upload image. Please try again.",
+          description:
+            result.error || "Failed to upload image. Please try again.",
           variant: "destructive",
         });
       }
@@ -95,7 +100,7 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
     }
   };
@@ -117,8 +122,12 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
           <div className="relative">
             <Avatar className={`${sizeClasses[size]} border-2 border-gray-200`}>
               <AvatarImage
-                src={displayImageUrl || ''}
-                alt={imageType === 'avatar' ? 'Profile picture' : 'Organization logo'}
+                src={displayImageUrl || ""}
+                alt={
+                  imageType === "avatar"
+                    ? "Profile picture"
+                    : "Organization logo"
+                }
               />
               <AvatarFallback className="text-lg font-semibold bg-gray-100">
                 {fallbackText}
@@ -140,10 +149,11 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
 
           <div className="text-center">
             <h3 className="font-medium text-gray-900">
-              {imageType === 'avatar' ? 'Profile Picture' : 'Organization Logo'}
+              {imageType === "avatar" ? "Profile Picture" : "Organization Logo"}
             </h3>
             <p className="text-sm text-gray-500 mt-1">
-              Upload a {imageType === 'avatar' ? 'photo' : 'logo'} to personalize your profile
+              Upload a {imageType === "avatar" ? "photo" : "logo"} to
+              personalize your profile
             </p>
           </div>
 
@@ -153,22 +163,22 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
               variant="outline"
               onClick={handleUploadClick}
               disabled={isUploading}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 hover:bg-blue-600"
             >
               {isUploading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Camera className="h-4 w-4" />
               )}
-              {isUploading ? 'Uploading...' : 'Change'}
+              {isUploading ? "Uploading..." : "Change"}
             </Button>
 
             {displayImageUrl && (
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => window.open(displayImageUrl, '_blank')}
-                className="flex items-center gap-2"
+                onClick={() => window.open(displayImageUrl, "_blank")}
+                className="flex items-center gap-2 hover:bg-blue-600"
               >
                 <Upload className="h-4 w-4" />
                 View
