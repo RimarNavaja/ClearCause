@@ -348,6 +348,18 @@ export const updateCampaign = withErrorHandling(async (
   // Log audit event
   await logAuditEvent(currentUserId, 'CAMPAIGN_UPDATED', 'campaign', campaignId, validatedUpdates);
 
+  // Release seed funding if campaign is being activated
+  if (validatedUpdates.status === 'active' && campaign.status !== 'active') {
+    try {
+      await releaseSeedFunds(campaignId, currentUserId);
+      console.log(`[Campaign] Seed funds released for campaign ${campaignId}`);
+    } catch (seedError) {
+      console.error(`[Campaign] Failed to release seed funds for campaign ${campaignId}:`, seedError);
+      // Don't fail the campaign update if seed release fails
+      // Admin can manually release funds later
+    }
+  }
+
   // Return updated campaign with relations
   return getCampaignById(campaignId, true);
 });
@@ -1017,6 +1029,117 @@ export const getCampaignStatistics = withErrorHandling(async (
 });
 
 /**
+ * Release seed funding (25% of goal) when campaign becomes active
+ */
+export const releaseSeedFunds = withErrorHandling(async (
+  campaignId: string,
+  adminUserId: string
+): Promise<ApiResponse<{ amount: number; disbursementId: string }>> => {
+  // Get campaign details
+  const campaignResult = await getCampaignById(campaignId, true);
+  if (!campaignResult.success || !campaignResult.data) {
+    throw new ClearCauseError('NOT_FOUND', 'Campaign not found', 404);
+  }
+
+  const campaign = campaignResult.data;
+
+  // Check if seed was already released
+  if (campaign.seedAmountReleased && campaign.seedAmountReleased > 0) {
+    throw new ClearCauseError('BAD_REQUEST', 'Seed funding already released for this campaign', 400);
+  }
+
+  // Calculate seed amount (25% of goal)
+  const seedAmount = campaign.goalAmount * 0.25;
+
+  // Create disbursement record
+  const { data: disbursement, error: disbursementError } = await supabase
+    .from('fund_disbursements')
+    .insert({
+      campaign_id: campaignId,
+      charity_id: campaign.charityId,
+      amount: seedAmount,
+      disbursement_type: 'seed',
+      status: 'completed',
+      approved_by: adminUserId,
+      approved_at: new Date().toISOString(),
+      notes: 'Initial seed funding (25% of campaign goal) released upon campaign activation',
+    })
+    .select()
+    .single();
+
+  if (disbursementError) {
+    throw handleSupabaseError(disbursementError);
+  }
+
+  // Update campaign with seed amount
+  const { error: campaignUpdateError } = await supabase
+    .from('campaigns')
+    .update({
+      seed_amount_released: seedAmount,
+      seed_released_at: new Date().toISOString(),
+    })
+    .eq('id', campaignId);
+
+  if (campaignUpdateError) {
+    throw handleSupabaseError(campaignUpdateError);
+  }
+
+  // Update charity balance
+  const { data: charity, error: charityFetchError } = await supabase
+    .from('charities')
+    .select('available_balance, total_received')
+    .eq('id', campaign.charityId)
+    .single();
+
+  if (charityFetchError) {
+    throw handleSupabaseError(charityFetchError);
+  }
+
+  const { error: charityUpdateError } = await supabase
+    .from('charities')
+    .update({
+      available_balance: (charity.available_balance || 0) + seedAmount,
+      total_received: (charity.total_received || 0) + seedAmount,
+    })
+    .eq('id', campaign.charityId);
+
+  if (charityUpdateError) {
+    throw handleSupabaseError(charityUpdateError);
+  }
+
+  // Send notification to charity
+  try {
+    const { createNotification } = await import('./notificationService');
+    await createNotification({
+      userId: campaign.charity?.userId || '',
+      type: 'fund_released',
+      title: '🎉 Seed Funding Released!',
+      message: `₱${seedAmount.toLocaleString()} seed funding (25% of goal) has been released for your campaign "${campaign.title}". Use these funds to start your project!`,
+      campaignId: campaignId,
+      actionUrl: `/charity/funds`,
+      metadata: {
+        disbursement_id: disbursement.id,
+        amount: seedAmount,
+        type: 'seed',
+      },
+    });
+  } catch (notificationError) {
+    console.error('Failed to send seed funding notification:', notificationError);
+  }
+
+  // Log audit event
+  await logAuditEvent(adminUserId, 'SEED_FUNDS_RELEASED', 'campaign', campaignId, {
+    amount: seedAmount,
+    disbursementId: disbursement.id,
+  });
+
+  return createSuccessResponse({
+    amount: seedAmount,
+    disbursementId: disbursement.id,
+  });
+});
+
+/**
  * Create campaign update/impact post
  */
 export const createCampaignUpdate = withErrorHandling(async (
@@ -1109,6 +1232,43 @@ export const createCampaignUpdate = withErrorHandling(async (
       milestone_id: updateData.milestoneId
     }
   );
+
+  // Notify all donors of this campaign
+  try {
+    // Get all unique donors who have donated to this campaign
+    const { data: donations, error: donorsError } = await supabase
+      .from('donations')
+      .select('user_id')
+      .eq('campaign_id', campaignId)
+      .eq('status', 'completed');
+
+    if (!donorsError && donations && donations.length > 0) {
+      // Get unique donor IDs
+      const uniqueDonorIds = [...new Set(donations.map(d => d.user_id))];
+
+      // Create notifications for each donor
+      const { createNotification } = await import('./notificationService');
+
+      for (const donorId of uniqueDonorIds) {
+        await createNotification({
+          userId: donorId,
+          type: 'campaign_update',
+          title: `New Update: ${updateData.title}`,
+          message: `${campaign.charity.organizationName} posted a new update for "${campaign.title}". Check it out to see the latest progress!`,
+          campaignId: campaignId,
+          actionUrl: `/campaigns/${campaignId}?tab=updates`,
+          metadata: {
+            update_id: update.id,
+            update_type: updateData.updateType,
+            charity_name: campaign.charity.organizationName
+          }
+        });
+      }
+    }
+  } catch (notificationError) {
+    // Don't fail the update creation if notifications fail
+    console.error('Failed to send donor notifications:', notificationError);
+  }
 
   return createSuccessResponse({
     id: update.id,

@@ -69,6 +69,19 @@ export const getPlatformStatistics = withErrorHandling(async (
   activeUsers: number;
   activeCampaigns: number;
   pendingVerifications: number;
+  // Growth metrics
+  newUsersThisMonth: number;
+  newCampaignsThisMonth: number;
+  donationsThisMonth: number;
+  amountRaisedThisMonth: number;
+  // Performance metrics
+  averageDonationAmount: number;
+  completedCampaigns: number;
+  failedDonations: number;
+  // Campaign status breakdown
+  draftCampaigns: number;
+  pausedCampaigns: number;
+  completedCampaignsList: number;
 }>> => {
   // Check if current user is admin
   const { data: currentUser, error: userError } = await supabase
@@ -81,8 +94,11 @@ export const getPlatformStatistics = withErrorHandling(async (
     throw new ClearCauseError('FORBIDDEN', 'Only administrators can access platform statistics', 403);
   }
 
+  // Calculate date for "this month"
+  const now = new Date();
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
   // Get all statistics in parallel
-  // Note: audit_logs query removed due to RLS restrictions
   const [
     usersResult,
     charitiesResult,
@@ -90,6 +106,12 @@ export const getPlatformStatistics = withErrorHandling(async (
     donationsResult,
     activeCampaignsResult,
     pendingVerificationsResult,
+    newUsersResult,
+    newCampaignsResult,
+    thisMonthDonationsResult,
+    draftCampaignsResult,
+    pausedCampaignsResult,
+    completedCampaignsResult,
   ] = await Promise.allSettled([
     // Total users
     supabase.from('profiles').select('id', { count: 'exact', head: true }),
@@ -108,27 +130,82 @@ export const getPlatformStatistics = withErrorHandling(async (
 
     // Pending verifications
     supabase.from('charities').select('id', { count: 'exact', head: true }).eq('verification_status', 'pending'),
+
+    // New users this month
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', firstDayOfMonth),
+
+    // New campaigns this month
+    supabase.from('campaigns').select('id', { count: 'exact', head: true }).gte('created_at', firstDayOfMonth),
+
+    // Donations this month
+    supabase.from('donations').select('amount, status').gte('donated_at', firstDayOfMonth),
+
+    // Draft campaigns
+    supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
+
+    // Paused campaigns
+    supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('status', 'paused'),
+
+    // Completed campaigns
+    supabase.from('campaigns').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
   ]);
 
-  // Process results
+  // Process basic results
   const totalUsers = usersResult.status === 'fulfilled' ? usersResult.value.count || 0 : 0;
   const totalCharities = charitiesResult.status === 'fulfilled' ? charitiesResult.value.count || 0 : 0;
   const totalCampaigns = campaignsResult.status === 'fulfilled' ? campaignsResult.value.count || 0 : 0;
-  
+
+  // Process donations
   let totalDonations = 0;
   let totalAmountRaised = 0;
+  let failedDonations = 0;
+  let completedDonationAmount = 0;
+  let completedDonationCount = 0;
+
   if (donationsResult.status === 'fulfilled' && donationsResult.value.data) {
-    totalDonations = donationsResult.value.data.length;
-    totalAmountRaised = donationsResult.value.data
+    const donations = donationsResult.value.data;
+    totalDonations = donations.length;
+
+    donations.forEach(d => {
+      if (d.status === 'completed') {
+        completedDonationAmount += d.amount;
+        completedDonationCount++;
+      } else if (d.status === 'failed') {
+        failedDonations++;
+      }
+    });
+
+    totalAmountRaised = completedDonationAmount;
+  }
+
+  // Calculate average donation
+  const averageDonationAmount = completedDonationCount > 0 ? completedDonationAmount / completedDonationCount : 0;
+
+  // Process growth metrics
+  const newUsersThisMonth = newUsersResult.status === 'fulfilled' ? newUsersResult.value.count || 0 : 0;
+  const newCampaignsThisMonth = newCampaignsResult.status === 'fulfilled' ? newCampaignsResult.value.count || 0 : 0;
+
+  let donationsThisMonth = 0;
+  let amountRaisedThisMonth = 0;
+  if (thisMonthDonationsResult.status === 'fulfilled' && thisMonthDonationsResult.value.data) {
+    const monthDonations = thisMonthDonationsResult.value.data;
+    donationsThisMonth = monthDonations.filter(d => d.status === 'completed').length;
+    amountRaisedThisMonth = monthDonations
       .filter(d => d.status === 'completed')
       .reduce((sum, d) => sum + d.amount, 0);
   }
 
+  // Campaign status breakdown
+  const activeCampaigns = activeCampaignsResult.status === 'fulfilled' ? activeCampaignsResult.value.count || 0 : 0;
+  const draftCampaigns = draftCampaignsResult.status === 'fulfilled' ? draftCampaignsResult.value.count || 0 : 0;
+  const pausedCampaigns = pausedCampaignsResult.status === 'fulfilled' ? pausedCampaignsResult.value.count || 0 : 0;
+  const completedCampaignsList = completedCampaignsResult.status === 'fulfilled' ? completedCampaignsResult.value.count || 0 : 0;
+
+  // Pending verifications
+  const pendingVerifications = pendingVerificationsResult.status === 'fulfilled' ? pendingVerificationsResult.value.count || 0 : 0;
+
   // Active users calculation skipped due to audit_logs RLS restrictions
   const activeUsers = 0;
-
-  const activeCampaigns = activeCampaignsResult.status === 'fulfilled' ? activeCampaignsResult.value.count || 0 : 0;
-  const pendingVerifications = pendingVerificationsResult.status === 'fulfilled' ? pendingVerificationsResult.value.count || 0 : 0;
 
   return createSuccessResponse({
     totalUsers,
@@ -139,6 +216,19 @@ export const getPlatformStatistics = withErrorHandling(async (
     activeUsers,
     activeCampaigns,
     pendingVerifications,
+    // Growth metrics
+    newUsersThisMonth,
+    newCampaignsThisMonth,
+    donationsThisMonth,
+    amountRaisedThisMonth,
+    // Performance metrics
+    averageDonationAmount,
+    completedCampaigns: completedCampaignsList,
+    failedDonations,
+    // Campaign status breakdown
+    draftCampaigns,
+    pausedCampaigns,
+    completedCampaignsList,
   });
 });
 

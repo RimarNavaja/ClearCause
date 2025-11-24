@@ -5,6 +5,7 @@ import ImpactDashboard from './ImpactDashboard';
 import AuditTrail from './AuditTrail';
 import ReviewForm from '@/components/campaign/ReviewForm';
 import ReviewsList from '@/components/campaign/ReviewsList';
+import CampaignUpdatesFeed from './CampaignUpdatesFeed';
 import { useAuth } from '@/hooks/useAuth';
 
 interface Milestone {
@@ -74,7 +75,7 @@ const TabContent: React.FC<TabContentProps> = ({
         </div>
       );
     case 'updates':
-      return <ImpactDashboard metrics={impactMetrics} recentActivities={recentActivities} />;
+      return <CampaignUpdatesFeed campaignId={campaignId} showFilters={true} />;
     case 'milestones':
       return <MilestoneTracker milestones={milestones} />;
     case 'audit':

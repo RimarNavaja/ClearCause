@@ -9,7 +9,11 @@ import {
   PencilIcon,
   Save,
   AlertCircle,
-  Loader2
+  Loader2,
+  TrendingUp,
+  Wallet,
+  CheckCircle,
+  Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
 import CharityLayout from '@/components/layout/CharityLayout';
@@ -66,8 +70,10 @@ const FundsManagement: React.FC = () => {
 
   // Statistics
   const [totalRaised, setTotalRaised] = useState(0);
-  const [totalHeld, setTotalHeld] = useState(0);
-  const [totalReleased, setTotalReleased] = useState(0);
+  const [availableBalance, setAvailableBalance] = useState(0);
+  const [totalReceived, setTotalReceived] = useState(0);
+  const [totalWithdrawn, setTotalWithdrawn] = useState(0);
+  const [disbursements, setDisbursements] = useState<any[]>([]);
 
   // Bank details form
   const form = useForm<z.infer<typeof bankAccountSchema>>({
@@ -122,59 +128,44 @@ const FundsManagement: React.FC = () => {
       const statsResult = await charityService.getCharityStatistics(charity.id, user.id);
       if (statsResult.success && statsResult.data) {
         setTotalRaised(statsResult.data.totalFundsRaised || 0);
-        setTotalReleased(statsResult.data.totalFundsReleased || 0);
-        // Held = Raised - Released
-        setTotalHeld((statsResult.data.totalFundsRaised || 0) - (statsResult.data.totalFundsReleased || 0));
       }
 
-      // Load campaigns to get transactions
-      console.log('[FundsManagement] Loading campaigns...');
-      const campaignsResult = await campaignService.getCharityCampaigns(
+      // Get charity fund balances from new columns
+      console.log('[FundsManagement] Loading fund balances...');
+      const fundsResult = await charityService.getCharityFunds(charity.id, user.id);
+      if (fundsResult.success && fundsResult.data) {
+        setAvailableBalance(fundsResult.data.availableBalance || 0);
+        setTotalReceived(fundsResult.data.totalReceived || 0);
+        setTotalWithdrawn(fundsResult.data.totalWithdrawn || 0);
+      }
+
+      // Load disbursement history
+      console.log('[FundsManagement] Loading disbursements...');
+      const disbursementsResult = await charityService.getCharityDisbursements(
         charity.id,
-        { page: 1, limit: 100 },
-        user.id
+        user.id,
+        { limit: 50, offset: 0 }
       );
 
-      if (campaignsResult.success && campaignsResult.data) {
-        const campaigns = Array.isArray(campaignsResult.data) ? campaignsResult.data : [];
-        const allTransactions: Transaction[] = [];
+      if (disbursementsResult.success && disbursementsResult.data) {
+        setDisbursements(disbursementsResult.data);
 
-        // Get donations for each campaign
-        for (const campaign of campaigns) {
-          try {
-            const donationsResult = await donationService.getDonationsByCampaign(
-              campaign.id,
-              { page: 1, limit: 50 },
-              user.id
-            );
+        // Convert disbursements to transaction format for the table
+        const disbursementTransactions: Transaction[] = disbursementsResult.data.map((d: any) => ({
+          id: d.id,
+          date: new Date(d.created_at),
+          type: d.disbursement_type === 'seed' ? 'Seed Funding Released' :
+                d.disbursement_type === 'milestone' ? 'Milestone Funds Released' :
+                d.disbursement_type === 'final' ? 'Final Release' : 'Manual Release',
+          campaignTitle: d.campaigns?.title || 'Unknown Campaign',
+          amount: d.amount,
+          status: d.status === 'completed' ? 'Released' :
+                  d.status === 'pending' ? 'Pending' :
+                  d.status === 'failed' ? 'Failed' : 'Cancelled',
+          reference: `DIS-${d.id.substring(0, 8).toUpperCase()}`
+        }));
 
-            if (donationsResult.success && donationsResult.data) {
-              const donations = Array.isArray(donationsResult.data)
-                ? donationsResult.data
-                : donationsResult.data.donations || [];
-
-              donations.forEach((donation: any) => {
-                if (donation.status === 'completed') {
-                  allTransactions.push({
-                    id: donation.id,
-                    date: new Date(donation.createdAt),
-                    type: 'Donation Received',
-                    campaignTitle: campaign.title,
-                    amount: donation.amount,
-                    status: 'Held', // In real implementation, check if funds were released
-                    reference: `DON-${donation.id.substring(0, 8).toUpperCase()}`
-                  });
-                }
-              });
-            }
-          } catch (err) {
-            console.error('Error loading donations for campaign:', campaign.id, err);
-          }
-        }
-
-        // Sort by date (newest first)
-        allTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
-        setTransactions(allTransactions.slice(0, 50)); // Limit to 50 most recent
+        setTransactions(disbursementTransactions);
       }
 
     } catch (err: any) {
@@ -268,46 +259,107 @@ const FundsManagement: React.FC = () => {
     <CharityLayout title="Funds Management">
       <div className="space-y-8">
         {/* Funds Summary Section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-clearcause-primary" />
+                <TrendingUp className="h-5 w-5 text-blue-500" />
                 Total Raised
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">{formatCurrency(totalRaised)}</p>
-              <p className="text-sm text-gray-500">Across all campaigns</p>
+              <p className="text-sm text-gray-500">From all donations</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-white">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Wallet className="h-5 w-5 text-green-600" />
+                Available Balance
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-green-600">{formatCurrency(availableBalance)}</p>
+              <p className="text-sm text-green-700 font-medium">Ready for withdrawal</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-amber-500" />
-                Funds Held
+                <CheckCircle className="h-5 w-5 text-emerald-500" />
+                Total Received
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{formatCurrency(totalHeld)}</p>
-              <p className="text-sm text-gray-500">Awaiting milestone verification</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalReceived)}</p>
+              <p className="text-sm text-gray-500">Funds released to date</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-green-500" />
-                Funds Released
+                <Clock className="h-5 w-5 text-amber-500" />
+                Pending Release
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{formatCurrency(totalReleased)}</p>
-              <p className="text-sm text-gray-500">Total transferred to your account</p>
+              <p className="text-2xl font-bold">{formatCurrency(Math.max(0, totalRaised - totalReceived))}</p>
+              <p className="text-sm text-gray-500">Awaiting verification</p>
             </CardContent>
           </Card>
         </div>
+
+        {/* Fund Breakdown Section */}
+        {disbursements.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Fund Release Breakdown
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label className="text-sm text-gray-500 mb-2 block">Seed Funding (25% Initial Release)</Label>
+                  <p className="text-xl font-bold text-blue-600">
+                    {formatCurrency(
+                      disbursements
+                        .filter(d => d.disbursement_type === 'seed' && d.status === 'completed')
+                        .reduce((sum, d) => sum + Number(d.amount), 0)
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Released when campaigns activated
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-500 mb-2 block">Milestone Releases (75% Verified)</Label>
+                  <p className="text-xl font-bold text-purple-600">
+                    {formatCurrency(
+                      disbursements
+                        .filter(d => d.disbursement_type === 'milestone' && d.status === 'completed')
+                        .reduce((sum, d) => sum + Number(d.amount), 0)
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Released after admin verification
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Total Disbursements</span>
+                  <span className="font-semibold">{disbursements.filter(d => d.status === 'completed').length} releases</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Bank Account Section */}
         <Card>
@@ -476,24 +528,52 @@ const FundsManagement: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {transactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell>{format(transaction.date, 'MMM d, yyyy')}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={transaction.type === 'Donation Received' ? 'text-blue-600 border-blue-200 bg-blue-50' : 'text-green-600 border-green-200 bg-green-50'}>
-                          {transaction.type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate">{transaction.campaignTitle}</TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(transaction.amount)}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={transaction.status === 'Held' ? 'text-amber-600 border-amber-200 bg-amber-50' : 'text-green-600 border-green-200 bg-green-50'}>
-                          {transaction.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{transaction.reference}</TableCell>
-                    </TableRow>
-                  ))}
+                  {transactions.map((transaction) => {
+                    const isReleased = transaction.status === 'Released';
+                    const isSeed = transaction.type === 'Seed Funding Released';
+                    const isMilestone = transaction.type === 'Milestone Funds Released';
+
+                    return (
+                      <TableRow key={transaction.id}>
+                        <TableCell className="font-medium">{format(transaction.date, 'MMM d, yyyy h:mm a')}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              isSeed ? 'text-blue-600 border-blue-200 bg-blue-50' :
+                              isMilestone ? 'text-purple-600 border-purple-200 bg-purple-50' :
+                              'text-green-600 border-green-200 bg-green-50'
+                            }
+                          >
+                            {transaction.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[250px]">
+                          <p className="truncate font-medium">{transaction.campaignTitle}</p>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span className="text-lg font-bold text-green-600">
+                            +{formatCurrency(transaction.amount)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={isReleased ? 'default' : 'outline'}
+                            className={
+                              isReleased ? 'bg-green-500 hover:bg-green-600' :
+                              transaction.status === 'Pending' ? 'text-amber-600 border-amber-200 bg-amber-50' :
+                              transaction.status === 'Failed' ? 'text-red-600 border-red-200 bg-red-50' :
+                              'text-gray-600 border-gray-200 bg-gray-50'
+                            }
+                          >
+                            {isReleased && <CheckCircle className="h-3 w-3 mr-1 inline" />}
+                            {transaction.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-gray-500">{transaction.reference}</TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}

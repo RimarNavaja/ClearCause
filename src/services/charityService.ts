@@ -865,3 +865,119 @@ export const getCharityVerificationData = withErrorHandling(async (
     documents: documentsWithUrls
   });
 });
+
+/**
+ * Get charity fund balances (available, received, withdrawn)
+ */
+export const getCharityFunds = withErrorHandling(async (
+  charityId: string,
+  currentUserId: string
+): Promise<ApiResponse<{
+  availableBalance: number;
+  totalReceived: number;
+  totalWithdrawn: number;
+}>> => {
+  // Get charity with fund balances
+  const { data: charity, error } = await supabase
+    .from('charities')
+    .select('available_balance, total_received, total_withdrawn, user_id')
+    .eq('id', charityId)
+    .single();
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  if (!charity) {
+    throw new ClearCauseError('NOT_FOUND', 'Charity not found', 404);
+  }
+
+  // Check permissions - only charity owner or admins can view
+  const { data: currentUser } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (currentUser?.role !== 'admin' && charity.user_id !== currentUserId) {
+    throw new ClearCauseError('FORBIDDEN', 'You do not have permission to view this charity\'s funds', 403);
+  }
+
+  return createSuccessResponse({
+    availableBalance: charity.available_balance || 0,
+    totalReceived: charity.total_received || 0,
+    totalWithdrawn: charity.total_withdrawn || 0,
+  });
+});
+
+/**
+ * Get charity disbursement history
+ */
+export const getCharityDisbursements = withErrorHandling(async (
+  charityId: string,
+  currentUserId: string,
+  params?: { limit?: number; offset?: number }
+): Promise<ApiResponse<any[]>> => {
+  // Get charity
+  const { data: charity, error: charityError } = await supabase
+    .from('charities')
+    .select('user_id')
+    .eq('id', charityId)
+    .single();
+
+  if (charityError) {
+    throw handleSupabaseError(charityError);
+  }
+
+  if (!charity) {
+    throw new ClearCauseError('NOT_FOUND', 'Charity not found', 404);
+  }
+
+  // Check permissions - only charity owner or admins can view
+  const { data: currentUser } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (currentUser?.role !== 'admin' && charity.user_id !== currentUserId) {
+    throw new ClearCauseError('FORBIDDEN', 'You do not have permission to view this charity\'s disbursements', 403);
+  }
+
+  // Fetch disbursements with campaign details
+  let query = supabase
+    .from('fund_disbursements')
+    .select(`
+      *,
+      campaigns (
+        id,
+        title
+      ),
+      milestones (
+        id,
+        title
+      ),
+      approver:approved_by (
+        id,
+        full_name
+      )
+    `)
+    .eq('charity_id', charityId)
+    .order('created_at', { ascending: false });
+
+  if (params?.limit) {
+    query = query.limit(params.limit);
+  }
+
+  if (params?.offset) {
+    query = query.range(params.offset, params.offset + (params.limit || 10) - 1);
+  }
+
+  const { data: disbursements, error } = await query;
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  return createSuccessResponse(disbursements || []);
+});

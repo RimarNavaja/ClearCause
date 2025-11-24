@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Eye, Plus, Search, AlertCircle, BarChart3, AlertTriangle, XCircle, CheckCircle, Edit, Clock, User, Info, Trash2 } from 'lucide-react';
+import { Eye, Plus, Search, AlertCircle, BarChart3, AlertTriangle, XCircle, CheckCircle, Edit, Clock, User, Info, Trash2, Megaphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -439,7 +439,15 @@ const ManageCampaigns: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-end">
+              <div className="flex items-center justify-end gap-2">
+                {campaign.status === 'active' && (
+                  <Button variant="default" size="sm" asChild className="bg-clearcause-primary hover:bg-clearcause-secondary">
+                    <Link to={`/charity/campaigns/${campaign.id}/updates`}>
+                      <Megaphone className="mr-2 h-4 w-4" />
+                      Post Update
+                    </Link>
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" asChild>
                   <Link to={`/campaigns/${campaign.id}`}>
                     <Eye className="mr-2 h-4 w-4" />

@@ -1,12 +1,42 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminStatsGrid from '@/components/admin/AdminStatsGrid';
+import AdminGrowthMetrics from '@/components/admin/AdminGrowthMetrics';
+import AdminPerformanceMetrics from '@/components/admin/AdminPerformanceMetrics';
 import AdminQuickActions from '@/components/admin/AdminQuickActions';
 import AdminRecentActivity from '@/components/admin/AdminRecentActivity';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Card, CardContent } from '@/components/ui/card';
+import { useAuth } from '@/hooks/useAuth';
+import * as adminService from '@/services/adminService';
+import { PlatformStatistics } from '@/lib/types';
 
 const AdminDashboard = () => {
+  const [stats, setStats] = useState<PlatformStatistics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const loadStats = async () => {
+      if (!user) return;
+
+      try {
+        setLoading(true);
+        const result = await adminService.getPlatformStatistics(user.id);
+
+        if (result.success && result.data) {
+          setStats(result.data);
+        }
+      } catch (err) {
+        console.error('Failed to load admin statistics:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadStats();
+  }, [user]);
+
   return (
     <AdminLayout title="Dashboard">
       <div className="space-y-8">
@@ -31,8 +61,14 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Stats Grid */}
+        {/* Main Stats Grid */}
         <AdminStatsGrid />
+
+        {/* Growth Metrics */}
+        {!loading && <AdminGrowthMetrics stats={stats} />}
+
+        {/* Performance Metrics */}
+        {!loading && <AdminPerformanceMetrics stats={stats} />}
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* Quick Actions */}

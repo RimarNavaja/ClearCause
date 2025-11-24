@@ -656,6 +656,19 @@ export interface PlatformStatistics {
   activeUsers: number;
   activeCampaigns: number;
   pendingVerifications: number;
+  // Growth metrics
+  newUsersThisMonth: number;
+  newCampaignsThisMonth: number;
+  donationsThisMonth: number;
+  amountRaisedThisMonth: number;
+  // Performance metrics
+  averageDonationAmount: number;
+  completedCampaigns: number;
+  failedDonations: number;
+  // Campaign status breakdown
+  draftCampaigns: number;
+  pausedCampaigns: number;
+  completedCampaignsList: number;
 }
 
 // ===== FORM TYPES =====
@@ -758,6 +771,19 @@ export interface PlatformStatistics {
   activeUsers: number;
   activeCampaigns: number;
   pendingVerifications: number;
+  // Growth metrics
+  newUsersThisMonth: number;
+  newCampaignsThisMonth: number;
+  donationsThisMonth: number;
+  amountRaisedThisMonth: number;
+  // Performance metrics
+  averageDonationAmount: number;
+  completedCampaigns: number;
+  failedDonations: number;
+  // Campaign status breakdown
+  draftCampaigns: number;
+  pausedCampaigns: number;
+  completedCampaignsList: number;
 }
 
 export interface RecentActivity {

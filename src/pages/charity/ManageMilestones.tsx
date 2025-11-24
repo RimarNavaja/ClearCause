@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { 
-  CheckCircle, 
-  Clock, 
-  AlertTriangle, 
+import {
+  CheckCircle,
+  Clock,
+  AlertTriangle,
   ChevronLeft,
   Upload
 } from 'lucide-react';
@@ -12,9 +12,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import CharityLayout from '@/components/layout/CharityLayout';
+import { getCampaignById } from '@/services/campaignService';
+import { getMilestones } from '@/services/milestoneService';
+import { toast } from 'sonner';
 
 // Milestone status type
-type MilestoneStatus = 'awaiting_proof' | 'pending_review' | 'verified' | 'rejected';
+type MilestoneStatus = 'awaiting_proof' | 'pending_review' | 'verified' | 'rejected' | 'pending' | 'in_progress' | 'completed';
 
 // Milestone interface
 interface Milestone {
@@ -27,56 +30,96 @@ interface Milestone {
   dateSubmitted?: string;
 }
 
+interface Campaign {
+  id: string;
+  title: string;
+  totalRaised: number;
+  goal: number;
+}
+
 const ManageMilestones: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
-  
-  // Sample campaign data - in a real app would be fetched based on campaignId
-  const [campaign] = useState({
-    id: campaignId || '1',
-    title: 'Clean Water Project',
-    totalRaised: 125000,
-    goal: 200000,
-  });
-  
-  // Sample milestones data - in a real app would be fetched based on campaignId
-  const [milestones] = useState<Milestone[]>([
-    {
-      id: '1',
-      title: 'Initial Assessment and Planning',
-      description: 'Conduct site surveys and create implementation plans',
-      amount: 40000,
-      status: 'verified',
-      dateSubmitted: '2025-01-20',
-    },
-    {
-      id: '2',
-      title: 'Equipment Procurement',
-      description: 'Purchase water filters and treatment supplies',
-      amount: 80000,
-      status: 'pending_review',
-      dateSubmitted: '2025-03-05',
-    },
-    {
-      id: '3',
-      title: 'Installation and Setup',
-      description: 'Install water treatment systems in target communities',
-      amount: 60000,
-      status: 'awaiting_proof',
-    },
-    {
-      id: '4',
-      title: 'Community Training',
-      description: 'Train local residents on system maintenance',
-      amount: 20000,
-      status: 'rejected',
-      feedback: 'The training materials are incomplete. Please include detailed handouts and attendance records.',
-      dateSubmitted: '2025-02-15',
-    },
-  ]);
+
+  const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!campaignId) {
+        toast.error('Campaign ID not found');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        // Load campaign data
+        const campaignResult = await getCampaignById(campaignId);
+        if (campaignResult.success && campaignResult.data) {
+          setCampaign({
+            id: campaignResult.data.id,
+            title: campaignResult.data.title,
+            totalRaised: campaignResult.data.currentAmount || 0,
+            goal: campaignResult.data.goalAmount,
+          });
+        }
+
+        // Load milestones
+        const milestonesResult = await getMilestones(campaignId);
+        if (milestonesResult.success && milestonesResult.data) {
+          setMilestones(milestonesResult.data.map((m: any) => ({
+            id: m.id,
+            title: m.title,
+            description: m.description || '',
+            amount: m.targetAmount,
+            status: m.status as MilestoneStatus,
+            dateSubmitted: m.createdAt,
+          })));
+        }
+      } catch (error) {
+        console.error('Error loading milestone data:', error);
+        toast.error('Failed to load milestone data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [campaignId]);
 
   // Function to get status badge
   const getStatusBadge = (status: MilestoneStatus) => {
     switch(status) {
+      case 'pending':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            <Clock className="w-3 h-3 mr-1" />
+            Pending
+          </span>
+        );
+      case 'in_progress':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            <Clock className="w-3 h-3 mr-1" />
+            In Progress
+          </span>
+        );
+      case 'completed':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Completed
+          </span>
+        );
+      case 'verified':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Verified
+          </span>
+        );
       case 'awaiting_proof':
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
@@ -91,13 +134,6 @@ const ManageMilestones: React.FC = () => {
             Pending Review
           </span>
         );
-      case 'verified':
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Verified
-          </span>
-        );
       case 'rejected':
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -108,7 +144,7 @@ const ManageMilestones: React.FC = () => {
       default:
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-            Unknown
+            {status}
           </span>
         );
     }
@@ -118,6 +154,32 @@ const ManageMilestones: React.FC = () => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
   };
+
+  if (loading) {
+    return (
+      <CharityLayout title="Manage Milestones">
+        <div className="flex items-center justify-center min-h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-clearcause-primary mx-auto mb-4"></div>
+            <p className="text-gray-500">Loading milestones...</p>
+          </div>
+        </div>
+      </CharityLayout>
+    );
+  }
+
+  if (!campaign) {
+    return (
+      <CharityLayout title="Manage Milestones">
+        <div className="text-center py-8">
+          <p className="text-gray-500">Campaign not found</p>
+          <Link to="/charity/campaigns">
+            <Button className="mt-4">Back to Campaigns</Button>
+          </Link>
+        </div>
+      </CharityLayout>
+    );
+  }
 
   return (
     <CharityLayout title={`Manage Milestones: ${campaign.title}`}>
@@ -146,13 +208,8 @@ const ManageMilestones: React.FC = () => {
           </div>
           
           <Progress value={(campaign.totalRaised / campaign.goal) * 100} className="h-2 mb-2" />
-          
+
           <div className="mt-4">
-            <Link to={`/charity/campaigns/${campaign.id}/update`}>
-              <Button variant="outline" size="sm" className="mr-2">
-                Post Impact Update
-              </Button>
-            </Link>
             <Link to={`/campaigns/${campaign.id}`}>
               <Button variant="outline" size="sm">
                 View Public Campaign

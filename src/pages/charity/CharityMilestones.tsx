@@ -217,14 +217,8 @@ const CharityMilestones: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Campaign Milestones</h1>
-            <p className="text-gray-600">Define, track, and submit proof for your campaign milestones</p>
+            <p className="text-gray-600">Track and submit proof for your campaign milestones</p>
           </div>
-          <Button asChild>
-            <Link to="/charity/campaigns">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Milestone
-            </Link>
-          </Button>
         </div>
 
         {/* Stats */}
@@ -338,7 +332,7 @@ const CharityMilestones: React.FC = () => {
                           <TableCell>{getVerificationBadge(milestone.verificationStatus)}</TableCell>
                           <TableCell>
                             <div className="flex gap-2">
-                              {milestone.status === 'completed' && milestone.verificationStatus === 'pending' && (
+                              {(milestone.verificationStatus === 'pending' || !milestone.verificationStatus) && milestone.verificationStatus !== 'approved' && (
                                 <Button variant="outline" size="sm" asChild>
                                   <Link to={`/charity/campaigns/${milestone.campaignId}/milestones/${milestone.id}/submit`}>
                                     <Upload className="w-4 h-4 mr-1" />
@@ -385,6 +379,14 @@ const CharityMilestones: React.FC = () => {
                             <div className="flex flex-col gap-2">
                               {getStatusBadge(milestone.status)}
                               {getVerificationBadge(milestone.verificationStatus)}
+                              {(milestone.verificationStatus === 'pending' || !milestone.verificationStatus) && milestone.verificationStatus !== 'approved' && (
+                                <Button variant="outline" size="sm" asChild>
+                                  <Link to={`/charity/campaigns/${milestone.campaignId}/milestones/${milestone.id}/submit`}>
+                                    <Upload className="w-4 h-4 mr-1" />
+                                    Submit Proof
+                                  </Link>
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -411,6 +413,14 @@ const CharityMilestones: React.FC = () => {
                             <div className="flex flex-col gap-2">
                               {getStatusBadge(milestone.status)}
                               {getVerificationBadge(milestone.verificationStatus)}
+                              {(milestone.verificationStatus === 'pending' || !milestone.verificationStatus) && milestone.verificationStatus !== 'approved' && (
+                                <Button variant="outline" size="sm" asChild>
+                                  <Link to={`/charity/campaigns/${milestone.campaignId}/milestones/${milestone.id}/submit`}>
+                                    <Upload className="w-4 h-4 mr-1" />
+                                    Submit Proof
+                                  </Link>
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -435,7 +445,17 @@ const CharityMilestones: React.FC = () => {
                                 Due: {milestone.dueDate ? new Date(milestone.dueDate).toLocaleDateString() : 'Not set'}
                               </p>
                             </div>
-                            {getStatusBadge(milestone.status)}
+                            <div className="flex flex-col gap-2">
+                              {getStatusBadge(milestone.status)}
+                              {(milestone.verificationStatus === 'pending' || !milestone.verificationStatus) && milestone.verificationStatus !== 'approved' && (
+                                <Button variant="outline" size="sm" asChild>
+                                  <Link to={`/charity/campaigns/${milestone.campaignId}/milestones/${milestone.id}/submit`}>
+                                    <Upload className="w-4 h-4 mr-1" />
+                                    Submit Proof
+                                  </Link>
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))

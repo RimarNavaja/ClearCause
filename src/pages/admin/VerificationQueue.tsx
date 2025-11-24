@@ -123,7 +123,7 @@ const VerificationQueue = () => {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{stats.pendingReview}</div>
+                <div className="text-2xl font-bold">{stats.pending || 0}</div>
                 <p className="text-xs text-muted-foreground">Awaiting review</p>
               </>
             )}
@@ -142,7 +142,7 @@ const VerificationQueue = () => {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{stats.underReview}</div>
+                <div className="text-2xl font-bold">{stats.underReview || 0}</div>
                 <p className="text-xs text-muted-foreground">In progress</p>
               </>
             )}
@@ -161,8 +161,8 @@ const VerificationQueue = () => {
               </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{stats.approvedToday}</div>
-                <p className="text-xs text-muted-foreground">{formatCurrency(stats.totalAmountApproved)} released</p>
+                <div className="text-2xl font-bold">{stats.approved || 0}</div>
+                <p className="text-xs text-muted-foreground">{formatCurrency(stats.totalAmountApproved || 0)} released</p>
               </>
             )}
           </CardContent>
@@ -214,13 +214,13 @@ const VerificationQueue = () => {
           <Tabs defaultValue="pending">
             <TabsList className="mb-4">
               <TabsTrigger value="pending">
-                Pending ({verifications.filter(v => v.status === 'pending').length})
+                Pending ({verifications.filter(v => v.verificationStatus === 'pending').length})
               </TabsTrigger>
               <TabsTrigger value="under_review">
-                Under Review ({verifications.filter(v => v.status === 'under_review').length})
+                Under Review ({verifications.filter(v => v.verificationStatus === 'under_review').length})
               </TabsTrigger>
               <TabsTrigger value="needs_revision">
-                Needs Revision ({verifications.filter(v => v.status === 'needs_revision').length})
+                Needs Revision ({verifications.filter(v => v.verificationStatus === 'resubmission_required').length})
               </TabsTrigger>
             </TabsList>
 
@@ -235,7 +235,7 @@ const VerificationQueue = () => {
                     </div>
                   ))}
                 </div>
-              ) : verifications.filter(v => v.status === 'pending').length === 0 ? (
+              ) : verifications.filter(v => v.verificationStatus === 'pending').length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>No pending verifications</p>
@@ -243,26 +243,26 @@ const VerificationQueue = () => {
                 </div>
               ) : (
                 verifications
-                  .filter(v => v.status === 'pending')
+                  .filter(v => v.verificationStatus === 'pending')
                   .map((verification) => (
                     <Card key={verification.id} className="hover:shadow-md transition-shadow">
                       <CardContent className="pt-6">
                         <div className="flex items-start justify-between">
                           <div className="space-y-2 flex-1">
                             <div className="flex items-center space-x-2">
-                              <h3 className="font-semibold">{verification.campaign?.title || 'Unknown Campaign'}</h3>
-                              {getStatusBadge(verification.status)}
+                              <h3 className="font-semibold">{verification.milestone?.campaign?.title || 'Unknown Campaign'}</h3>
+                              {getStatusBadge(verification.verificationStatus)}
                               {verification.priority && getPriorityBadge(verification.priority)}
                             </div>
                             <p className="text-sm text-muted-foreground">
-                              <span className="font-medium">Milestone {verification.milestone?.milestone_number || 'N/A'}:</span> {verification.milestone?.title || 'N/A'}
+                              <span className="font-medium">Milestone:</span> {verification.milestone?.title || 'N/A'}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              <span className="font-medium">Organization:</span> {verification.campaign?.charity?.organization_name || 'Unknown'}
+                              <span className="font-medium">Organization:</span> {verification.milestone?.campaign?.charity?.organizationName || 'Unknown'}
                             </p>
                             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                              <span><span className="font-medium">Amount:</span> {verification.milestone?.target_amount ? formatCurrency(verification.milestone.target_amount) : 'N/A'}</span>
-                              <span><span className="font-medium">Submitted:</span> {verification.submitted_at ? new Date(verification.submitted_at).toLocaleDateString() : 'N/A'}</span>
+                              <span><span className="font-medium">Amount:</span> {verification.milestone?.targetAmount ? formatCurrency(verification.milestone.targetAmount) : 'N/A'}</span>
+                              <span><span className="font-medium">Submitted:</span> {verification.submittedAt ? new Date(verification.submittedAt).toLocaleDateString() : 'N/A'}</span>
                             </div>
                           </div>
 

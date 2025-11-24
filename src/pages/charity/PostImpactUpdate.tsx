@@ -58,20 +58,30 @@ const PostImpactUpdate: React.FC = () => {
   // Load campaign and milestone data
   useEffect(() => {
     const loadData = async () => {
-      if (!campaignId || !user?.id) return;
+      if (!campaignId || !user?.id) {
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
 
         // Load campaign data
         const campaignResult = await getCampaignById(campaignId);
+        console.log('[PostImpactUpdate] Campaign result:', campaignResult);
+
         if (campaignResult.success && campaignResult.data) {
+          const charityName = campaignResult.data.charity?.organizationName || 'Unknown Organization';
+
           setCampaign({
             id: campaignResult.data.id,
             title: campaignResult.data.title,
             description: campaignResult.data.description,
-            organizationName: campaignResult.data.charity.organizationName,
+            organizationName: charityName,
           });
+        } else {
+          console.error('[PostImpactUpdate] Failed to load campaign:', campaignResult.error);
+          toast.error(campaignResult.error || 'Failed to load campaign');
         }
 
         // Load milestones
@@ -86,7 +96,7 @@ const PostImpactUpdate: React.FC = () => {
           })));
         }
       } catch (error) {
-        console.error('Error loading data:', error);
+        console.error('[PostImpactUpdate] Error loading data:', error);
         toast.error('Failed to load campaign data');
       } finally {
         setLoading(false);
@@ -177,7 +187,7 @@ const PostImpactUpdate: React.FC = () => {
 
       if (result.success) {
         toast.success('Update posted successfully!');
-        navigate(`/charity/campaigns/${campaignId}`);
+        navigate(`/campaigns/${campaignId}?tab=updates`);
       } else {
         toast.error(result.error || 'Failed to post update');
       }

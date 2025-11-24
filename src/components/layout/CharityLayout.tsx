@@ -109,11 +109,6 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
       icon: <Target className="w-5 h-5" />
     },
     {
-      path: '/charity/updates',
-      label: 'Post Updates',
-      icon: <FileText className="w-5 h-5" />
-    },
-    {
       path: '/charity/analytics',
       label: 'Analytics',
       icon: <BarChart3 className="w-5 h-5" />

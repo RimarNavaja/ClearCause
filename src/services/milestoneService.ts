@@ -505,38 +505,54 @@ export const getMilestoneProofStats = withErrorHandling(async (
   }
 
   // Get counts for each status
-  const { data: pending } = await supabase
+  const { count: pendingCount } = await supabase
     .from('milestone_proofs')
-    .select('id', { count: 'exact', head: true })
+    .select('*', { count: 'exact', head: true })
     .eq('verification_status', 'pending');
 
-  const { data: underReview } = await supabase
+  const { count: underReviewCount } = await supabase
     .from('milestone_proofs')
-    .select('id', { count: 'exact', head: true })
+    .select('*', { count: 'exact', head: true })
     .eq('verification_status', 'under_review');
 
-  const { data: approved } = await supabase
+  const { count: approvedCount } = await supabase
     .from('milestone_proofs')
-    .select('id', { count: 'exact', head: true })
+    .select('*', { count: 'exact', head: true })
     .eq('verification_status', 'approved');
 
-  const { data: rejected } = await supabase
+  const { count: rejectedCount } = await supabase
     .from('milestone_proofs')
-    .select('id', { count: 'exact', head: true })
+    .select('*', { count: 'exact', head: true })
     .eq('verification_status', 'rejected');
 
-  const { data: resubmissionRequired } = await supabase
+  const { count: resubmissionRequiredCount } = await supabase
     .from('milestone_proofs')
-    .select('id', { count: 'exact', head: true })
+    .select('*', { count: 'exact', head: true })
     .eq('verification_status', 'resubmission_required');
 
+  // Get total amount approved today
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const { data: approvedToday } = await supabase
+    .from('milestone_proofs')
+    .select(`
+      milestones!inner(target_amount)
+    `)
+    .eq('verification_status', 'approved')
+    .gte('submitted_at', today.toISOString());
+
+  const totalAmountApproved = approvedToday?.reduce((sum, proof: any) =>
+    sum + (proof.milestones?.target_amount || 0), 0) || 0;
+
   const stats = {
-    pending: pending?.length || 0,
-    underReview: underReview?.length || 0,
-    approved: approved?.length || 0,
-    rejected: rejected?.length || 0,
-    resubmissionRequired: resubmissionRequired?.length || 0,
-    total: (pending?.length || 0) + (underReview?.length || 0) + (approved?.length || 0) + (rejected?.length || 0) + (resubmissionRequired?.length || 0)
+    pending: pendingCount || 0,
+    underReview: underReviewCount || 0,
+    approved: approvedCount || 0,
+    rejected: rejectedCount || 0,
+    resubmissionRequired: resubmissionRequiredCount || 0,
+    total: (pendingCount || 0) + (underReviewCount || 0) + (approvedCount || 0) + (rejectedCount || 0) + (resubmissionRequiredCount || 0),
+    totalAmountApproved: totalAmountApproved
   };
 
   return createSuccessResponse(stats);
@@ -556,7 +572,7 @@ export const approveMilestoneProof = withErrorHandling(async (
   currentUserId: string
 ): Promise<ApiResponse<any>> => {
   // Check if current user is admin
-  const { data: currentUser, error: userError } = await supabase
+  const { data: currentUser, error: userError} = await supabase
     .from('profiles')
     .select('role')
     .eq('id', currentUserId)
@@ -566,32 +582,208 @@ export const approveMilestoneProof = withErrorHandling(async (
     throw new ClearCauseError('FORBIDDEN', 'Only administrators can approve milestone proofs', 403);
   }
 
+  // Get milestone proof with full details
+  const { data: proof, error: proofError } = await supabase
+    .from('milestone_proofs')
+    .select(`
+      *,
+      milestones (
+        *,
+        campaigns (
+          id,
+          title,
+          charity_id,
+          charities (
+            id,
+            user_id,
+            organization_name,
+            available_balance,
+            total_received
+          )
+        )
+      )
+    `)
+    .eq('id', proofId)
+    .single();
+
+  if (proofError) {
+    throw handleSupabaseError(proofError);
+  }
+
+  if (!proof || !proof.milestones) {
+    throw new ClearCauseError('NOT_FOUND', 'Milestone proof or milestone not found', 404);
+  }
+
+  const milestone = proof.milestones as any;
+  const campaign = milestone.campaigns;
+  const charity = campaign?.charities;
+
+  if (!campaign || !charity) {
+    throw new ClearCauseError('NOT_FOUND', 'Campaign or charity not found', 404);
+  }
+
+  // Check if funds were already released for this milestone
+  if (milestone.funds_released) {
+    throw new ClearCauseError('BAD_REQUEST', 'Funds already released for this milestone', 400);
+  }
+
+  // Calculate release amount (milestone target amount)
+  const releaseAmount = milestone.target_amount;
+
   // Update milestone proof status
-  const { data, error } = await supabase
+  const { error: proofUpdateError } = await supabase
     .from('milestone_proofs')
     .update({
       verification_status: 'approved',
       verified_by: currentUserId,
       verification_notes: adminNotes,
     })
-    .eq('id', proofId)
-    .select('*, milestones(*)')
+    .eq('id', proofId);
+
+  if (proofUpdateError) {
+    throw handleSupabaseError(proofUpdateError);
+  }
+
+  // Update milestone as verified and funds released
+  const { error: milestoneUpdateError } = await supabase
+    .from('milestones')
+    .update({
+      status: 'verified',
+      verified_at: new Date().toISOString(),
+      verified_by: currentUserId,
+      funds_released: true,
+      released_amount: releaseAmount,
+    })
+    .eq('id', milestone.id);
+
+  if (milestoneUpdateError) {
+    throw handleSupabaseError(milestoneUpdateError);
+  }
+
+  // Create fund disbursement record
+  const { data: disbursement, error: disbursementError } = await supabase
+    .from('fund_disbursements')
+    .insert({
+      campaign_id: campaign.id,
+      charity_id: charity.id,
+      milestone_id: milestone.id,
+      amount: releaseAmount,
+      disbursement_type: 'milestone',
+      status: 'completed',
+      approved_by: currentUserId,
+      approved_at: new Date().toISOString(),
+      notes: `Milestone "${milestone.title}" verified and funds released`,
+    })
+    .select()
     .single();
 
-  if (error) {
-    throw handleSupabaseError(error);
+  if (disbursementError) {
+    throw handleSupabaseError(disbursementError);
+  }
+
+  // Update campaign milestone amount released
+  const { error: campaignUpdateError } = await supabase
+    .from('campaigns')
+    .update({
+      milestone_amount_released: supabase.rpc('increment', { x: releaseAmount }),
+    })
+    .eq('id', campaign.id);
+
+  // If the rpc doesn't work, fetch and update manually
+  if (campaignUpdateError) {
+    const { data: campaignData } = await supabase
+      .from('campaigns')
+      .select('milestone_amount_released')
+      .eq('id', campaign.id)
+      .single();
+
+    await supabase
+      .from('campaigns')
+      .update({
+        milestone_amount_released: (campaignData?.milestone_amount_released || 0) + releaseAmount,
+      })
+      .eq('id', campaign.id);
+  }
+
+  // Update charity balance
+  const { error: charityUpdateError } = await supabase
+    .from('charities')
+    .update({
+      available_balance: (charity.available_balance || 0) + releaseAmount,
+      total_received: (charity.total_received || 0) + releaseAmount,
+    })
+    .eq('id', charity.id);
+
+  if (charityUpdateError) {
+    throw handleSupabaseError(charityUpdateError);
+  }
+
+  // Send notification to charity
+  try {
+    const { createNotification } = await import('./notificationService');
+    await createNotification({
+      userId: charity.user_id,
+      type: 'milestone_verified',
+      title: '✅ Milestone Verified - Funds Released!',
+      message: `Your milestone "${milestone.title}" for campaign "${campaign.title}" has been verified by admin. ₱${releaseAmount.toLocaleString()} has been released to your account!`,
+      campaignId: campaign.id,
+      milestoneId: milestone.id,
+      actionUrl: `/charity/funds`,
+      metadata: {
+        disbursement_id: disbursement.id,
+        amount: releaseAmount,
+        milestone_title: milestone.title,
+      },
+    });
+
+    // Notify donors
+    const { data: donations } = await supabase
+      .from('donations')
+      .select('user_id')
+      .eq('campaign_id', campaign.id)
+      .eq('status', 'completed');
+
+    if (donations && donations.length > 0) {
+      const uniqueDonorIds = [...new Set(donations.map(d => d.user_id))];
+      for (const donorId of uniqueDonorIds) {
+        await createNotification({
+          userId: donorId,
+          type: 'milestone_verified',
+          title: 'Milestone Verified!',
+          message: `Great news! The milestone "${milestone.title}" for "${campaign.title}" has been verified by ClearCause. Your donation is making a real impact!`,
+          campaignId: campaign.id,
+          milestoneId: milestone.id,
+          actionUrl: `/campaigns/${campaign.id}?tab=milestones`,
+          metadata: {
+            milestone_title: milestone.title,
+            charity_name: charity.organization_name,
+          },
+        });
+      }
+    }
+  } catch (notificationError) {
+    console.error('Failed to send milestone verification notifications:', notificationError);
   }
 
   // Log audit event
   await logAuditEvent(
     currentUserId,
-    'approve_milestone_proof',
-    'milestone_proof',
-    proofId,
-    { admin_notes: adminNotes }
+    'MILESTONE_VERIFIED_FUNDS_RELEASED',
+    'milestone',
+    milestone.id,
+    {
+      proof_id: proofId,
+      amount_released: releaseAmount,
+      disbursement_id: disbursement.id,
+      admin_notes: adminNotes,
+    }
   );
 
-  return createSuccessResponse(data);
+  return createSuccessResponse({
+    milestone: milestone,
+    disbursement: disbursement,
+    amountReleased: releaseAmount,
+  });
 });
 
 /**

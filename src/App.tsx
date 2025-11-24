@@ -248,11 +248,6 @@ const App = () => (
               <CharityAnalytics />
             </CharityRoute>
           } />
-          <Route path="/charity/updates" element={
-            <CharityRoute>
-              <PostImpactUpdate />
-            </CharityRoute>
-          } />
 
           {/* Admin routes */}
           <Route path="/admin/dashboard" element={
