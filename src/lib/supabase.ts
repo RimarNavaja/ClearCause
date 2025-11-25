@@ -150,6 +150,32 @@ export const uploadFile = async (
 };
 
 /**
+ * Get a signed URL for viewing a file from a private bucket
+ * Signed URLs are temporary and expire after the specified time (default 1 hour)
+ */
+export const getSignedFileUrl = async (
+  bucket: string,
+  filePath: string,
+  expiresIn: number = 3600 // Default: 1 hour
+): Promise<{ signedUrl: string | null; error: string | null }> => {
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(filePath, expiresIn);
+
+    if (error) {
+      console.error('Error creating signed URL:', error);
+      return { signedUrl: null, error: error.message };
+    }
+
+    return { signedUrl: data.signedUrl, error: null };
+  } catch (error) {
+    console.error('Failed to create signed URL:', error);
+    return { signedUrl: null, error: 'Failed to create signed URL' };
+  }
+};
+
+/**
  * Delete file from Supabase storage
  */
 export const deleteFile = async (

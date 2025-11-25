@@ -63,6 +63,7 @@ import FundReleaseManagement from "./pages/admin/FundReleaseManagement";
 import CharityManagement from "./pages/admin/CharityManagement";
 import CharityApplicationReview from "./pages/admin/CharityApplicationReview";
 import DonorManagement from "./pages/admin/DonorManagement";
+import DonationManagement from "./pages/admin/DonationManagement";
 import CampaignManagement from "./pages/admin/CampaignManagement";
 import CampaignReview from "./pages/admin/CampaignReview";
 import ScorecardManagement from "./pages/admin/ScorecardManagement";
@@ -293,6 +294,11 @@ const App = () => (
           <Route path="/admin/donors" element={
             <AdminRoute>
               <DonorManagement />
+            </AdminRoute>
+          } />
+          <Route path="/admin/donations" element={
+            <AdminRoute>
+              <DonationManagement />
             </AdminRoute>
           } />
           <Route path="/admin/campaigns" element={

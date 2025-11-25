@@ -31,9 +31,11 @@ import { useAuth } from '@/hooks/useAuth';
 import * as charityService from '@/services/charityService';
 import * as donationService from '@/services/donationService';
 import * as campaignService from '@/services/campaignService';
+import * as withdrawalService from '@/services/withdrawalService';
 import { formatCurrency } from '@/utils/helpers';
 import { waitForAuthReady } from '@/utils/authHelper';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 // Bank account form schema
 const bankAccountSchema = z.object({
@@ -74,6 +76,12 @@ const FundsManagement: React.FC = () => {
   const [totalReceived, setTotalReceived] = useState(0);
   const [totalWithdrawn, setTotalWithdrawn] = useState(0);
   const [disbursements, setDisbursements] = useState<any[]>([]);
+
+  // Withdrawal state
+  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
+  const [withdrawalAmount, setWithdrawalAmount] = useState('');
+  const [withdrawalHistory, setWithdrawalHistory] = useState<any[]>([]);
+  const [processingWithdrawal, setProcessingWithdrawal] = useState(false);
 
   // Bank details form
   const form = useForm<z.infer<typeof bankAccountSchema>>({
@@ -168,6 +176,13 @@ const FundsManagement: React.FC = () => {
         setTransactions(disbursementTransactions);
       }
 
+      // Load withdrawal history
+      console.log('[FundsManagement] Loading withdrawal history...');
+      const withdrawalResult = await withdrawalService.getWithdrawalHistory(charity.id, user.id);
+      if (withdrawalResult.success && withdrawalResult.data) {
+        setWithdrawalHistory(withdrawalResult.data);
+      }
+
     } catch (err: any) {
       console.error('[FundsManagement] Error loading funds data:', err);
       setError(err.message || 'Failed to load funds management data');
@@ -207,6 +222,68 @@ const FundsManagement: React.FC = () => {
     } catch (err: any) {
       console.error('Error saving bank details:', err);
       toast.error('Failed to save bank details');
+    }
+  };
+
+  // Handle withdrawal processing
+  const handleWithdrawal = async () => {
+    if (!charityData || !user) return;
+
+    const amount = parseFloat(withdrawalAmount);
+
+    // Validation
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+
+    if (amount < 100) {
+      toast.error('Minimum withdrawal amount is ₱100');
+      return;
+    }
+
+    if (amount > availableBalance) {
+      toast.error(`Insufficient balance. Available: ${formatCurrency(availableBalance)}`);
+      return;
+    }
+
+    if (!bankDetails.bankName || !bankDetails.accountNumber) {
+      toast.error('Please add your bank details first');
+      return;
+    }
+
+    try {
+      setProcessingWithdrawal(true);
+
+      const result = await withdrawalService.processWithdrawal(
+        charityData.id,
+        amount,
+        {
+          bankName: bankDetails.bankName,
+          accountNumber: bankDetails.accountNumber,
+        },
+        user.id
+      );
+
+      if (result.success && result.data) {
+        toast.success('Withdrawal processed successfully!', {
+          description: `Transaction reference: ${result.data.transactionReference}`,
+        });
+
+        // Reset and close modal
+        setWithdrawalAmount('');
+        setShowWithdrawalModal(false);
+
+        // Reload data to show updated balance and new withdrawal
+        await loadFundsData();
+      } else {
+        toast.error(result.error?.message || 'Failed to process withdrawal');
+      }
+    } catch (err: any) {
+      console.error('Error processing withdrawal:', err);
+      toast.error(err.message || 'Failed to process withdrawal');
+    } finally {
+      setProcessingWithdrawal(false);
     }
   };
 
@@ -282,7 +359,16 @@ const FundsManagement: React.FC = () => {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-green-600">{formatCurrency(availableBalance)}</p>
-              <p className="text-sm text-green-700 font-medium">Ready for withdrawal</p>
+              <p className="text-sm text-green-700 font-medium mb-3">Ready for withdrawal</p>
+              <Button
+                onClick={() => setShowWithdrawalModal(true)}
+                disabled={availableBalance <= 0}
+                className="w-full bg-green-600 hover:bg-green-700"
+                size="sm"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Withdraw Funds
+              </Button>
             </CardContent>
           </Card>
 
@@ -579,7 +665,136 @@ const FundsManagement: React.FC = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Withdrawal History */}
+        {withdrawalHistory.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Download className="h-5 w-5" />
+                Withdrawal History
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Bank Account</TableHead>
+                    <TableHead>Transaction Reference</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {withdrawalHistory.map((withdrawal: any) => (
+                    <TableRow key={withdrawal.id}>
+                      <TableCell>{format(new Date(withdrawal.processedAt), 'MMM dd, yyyy HH:mm')}</TableCell>
+                      <TableCell className="font-medium">{formatCurrency(withdrawal.amount)}</TableCell>
+                      <TableCell className="text-sm">
+                        {withdrawal.bankName}<br />
+                        ****{withdrawal.bankAccountLast4}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-blue-600">{withdrawal.transactionReference}</TableCell>
+                      <TableCell>
+                        <Badge variant={withdrawal.status === 'completed' ? 'default' : 'destructive'}>
+                          {withdrawal.status === 'completed' && <CheckCircle className="h-3 w-3 mr-1 inline" />}
+                          {withdrawal.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      {/* Withdrawal Modal */}
+      <Dialog open={showWithdrawalModal} onOpenChange={setShowWithdrawalModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Withdraw Funds</DialogTitle>
+            <DialogDescription>
+              Process instant withdrawal from your available balance
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Available Balance</Label>
+              <p className="text-2xl font-bold text-green-600">{formatCurrency(availableBalance)}</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="withdrawal-amount">Withdrawal Amount</Label>
+              <Input
+                id="withdrawal-amount"
+                type="number"
+                placeholder="Enter amount"
+                value={withdrawalAmount}
+                onChange={(e) => setWithdrawalAmount(e.target.value)}
+                min="100"
+                max={availableBalance}
+                step="0.01"
+              />
+              <p className="text-sm text-muted-foreground">
+                Minimum: ₱100 | Maximum: {formatCurrency(availableBalance)}
+              </p>
+            </div>
+
+            <div className="space-y-2 p-3 bg-gray-50 rounded-md">
+              <Label className="text-sm font-medium">Bank Details</Label>
+              <div className="text-sm space-y-1">
+                <p><span className="text-muted-foreground">Bank:</span> {bankDetails.bankName || 'Not set'}</p>
+                <p><span className="text-muted-foreground">Account:</span> {bankDetails.accountNumber ? `****${bankDetails.accountNumber.slice(-4)}` : 'Not set'}</p>
+                <p><span className="text-muted-foreground">Holder:</span> {bankDetails.accountHolder || 'Not set'}</p>
+              </div>
+              {(!bankDetails.bankName || !bankDetails.accountNumber) && (
+                <p className="text-sm text-amber-600 mt-2">
+                  ⚠️ Please add your bank details first
+                </p>
+              )}
+            </div>
+
+            <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded-md">
+              <p className="font-medium text-blue-900 mb-1">Instant Processing</p>
+              <p>Funds will be deducted immediately and a transaction reference will be generated.</p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowWithdrawalModal(false);
+                setWithdrawalAmount('');
+              }}
+              disabled={processingWithdrawal}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleWithdrawal}
+              disabled={processingWithdrawal || !withdrawalAmount || parseFloat(withdrawalAmount) < 100}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {processingWithdrawal ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Process Withdrawal
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </CharityLayout>
   );
 };

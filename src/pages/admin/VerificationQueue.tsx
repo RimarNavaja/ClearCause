@@ -219,6 +219,12 @@ const VerificationQueue = () => {
               <TabsTrigger value="under_review">
                 Under Review ({verifications.filter(v => v.verificationStatus === 'under_review').length})
               </TabsTrigger>
+              <TabsTrigger value="approved">
+                Approved ({verifications.filter(v => v.verificationStatus === 'approved').length})
+              </TabsTrigger>
+              <TabsTrigger value="rejected">
+                Rejected ({verifications.filter(v => v.verificationStatus === 'rejected').length})
+              </TabsTrigger>
               <TabsTrigger value="needs_revision">
                 Needs Revision ({verifications.filter(v => v.verificationStatus === 'resubmission_required').length})
               </TabsTrigger>
@@ -328,6 +334,129 @@ const VerificationQueue = () => {
                               <Link to={`/admin/verifications/${verification.id}`}>
                                 <Eye className="h-4 w-4 mr-2" />
                                 Review
+                              </Link>
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+              )}
+            </TabsContent>
+
+            <TabsContent value="approved" className="space-y-4">
+              {loading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="animate-pulse border rounded-lg p-6">
+                      <div className="h-6 bg-gray-200 rounded w-2/3 mb-3"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : verifications.filter(v => v.verificationStatus === 'approved').length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No approved submissions</p>
+                  <p className="text-sm">Approved submissions will appear here</p>
+                </div>
+              ) : (
+                verifications
+                  .filter(v => v.verificationStatus === 'approved')
+                  .map((verification) => (
+                    <Card key={verification.id} className="hover:shadow-md transition-shadow border-green-200 bg-green-50">
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-2 flex-1">
+                            <div className="flex items-center space-x-2">
+                              <h3 className="font-semibold">{verification.milestone?.campaign?.title || 'Unknown Campaign'}</h3>
+                              <Badge variant="default" className="bg-green-100 text-green-800">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Approved
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              <span className="font-medium">Milestone:</span> {verification.milestone?.title || 'N/A'}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              <span className="font-medium">Organization:</span> {verification.milestone?.campaign?.charity?.organizationName || 'Unknown'}
+                            </p>
+                            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                              <span><span className="font-medium">Amount Released:</span> {verification.milestone?.targetAmount ? formatCurrency(verification.milestone.targetAmount) : 'N/A'}</span>
+                              <span><span className="font-medium">Approved:</span> {verification.verifiedAt ? new Date(verification.verifiedAt).toLocaleDateString() : 'N/A'}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex space-x-2 ml-4">
+                            <Button variant="outline" asChild>
+                              <Link to={`/admin/verifications/${verification.id}`}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View
+                              </Link>
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+              )}
+            </TabsContent>
+
+            <TabsContent value="rejected" className="space-y-4">
+              {loading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="animate-pulse border rounded-lg p-6">
+                      <div className="h-6 bg-gray-200 rounded w-2/3 mb-3"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : verifications.filter(v => v.verificationStatus === 'rejected').length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <AlertTriangle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No rejected submissions</p>
+                  <p className="text-sm">Rejected submissions will appear here</p>
+                </div>
+              ) : (
+                verifications
+                  .filter(v => v.verificationStatus === 'rejected')
+                  .map((verification) => (
+                    <Card key={verification.id} className="hover:shadow-md transition-shadow border-red-200 bg-red-50">
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-2 flex-1">
+                            <div className="flex items-center space-x-2">
+                              <h3 className="font-semibold">{verification.milestone?.campaign?.title || 'Unknown Campaign'}</h3>
+                              <Badge variant="destructive" className="bg-red-100 text-red-800">
+                                <AlertTriangle className="w-3 h-3 mr-1" />
+                                Rejected
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              <span className="font-medium">Milestone:</span> {verification.milestone?.title || 'N/A'}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              <span className="font-medium">Organization:</span> {verification.milestone?.campaign?.charity?.organizationName || 'Unknown'}
+                            </p>
+                            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                              <span><span className="font-medium">Amount:</span> {verification.milestone?.targetAmount ? formatCurrency(verification.milestone.targetAmount) : 'N/A'}</span>
+                              <span><span className="font-medium">Rejected:</span> {verification.verifiedAt ? new Date(verification.verifiedAt).toLocaleDateString() : 'N/A'}</span>
+                            </div>
+                            {verification.verificationNotes && (
+                              <p className="text-sm text-red-700 bg-red-100 p-2 rounded mt-2">
+                                <span className="font-medium">Reason:</span> {verification.verificationNotes}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex space-x-2 ml-4">
+                            <Button variant="outline" asChild>
+                              <Link to={`/admin/verifications/${verification.id}`}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View
                               </Link>
                             </Button>
                           </div>

@@ -83,7 +83,15 @@ export const getMilestones = withErrorHandling(async (
 ): Promise<ApiResponse<Milestone[]>> => {
   const { data: milestonesData, error } = await supabase
     .from('milestones')
-    .select('*')
+    .select(`
+      *,
+      milestone_proofs (
+        id,
+        verification_status,
+        submitted_at,
+        verified_by
+      )
+    `)
     .eq('campaign_id', campaignId)
     .order('target_amount', { ascending: true });
 
@@ -91,17 +99,27 @@ export const getMilestones = withErrorHandling(async (
     throw handleSupabaseError(error);
   }
 
-  const milestones: Milestone[] = milestonesData.map(m => ({
-    id: m.id,
-    campaignId: m.campaign_id,
-    title: m.title,
-    description: m.description,
-    targetAmount: m.target_amount,
-    status: m.status,
-    dueDate: m.due_date,
-    createdAt: m.created_at,
-    updatedAt: m.updated_at,
-  }));
+  const milestones: Milestone[] = milestonesData.map(m => {
+    // Get the latest proof submission (if any)
+    const latestProof = m.milestone_proofs && m.milestone_proofs.length > 0
+      ? m.milestone_proofs[m.milestone_proofs.length - 1]
+      : null;
+
+    return {
+      id: m.id,
+      campaignId: m.campaign_id,
+      title: m.title,
+      description: m.description,
+      targetAmount: m.target_amount,
+      status: m.status,
+      dueDate: m.due_date,
+      createdAt: m.created_at,
+      updatedAt: m.updated_at,
+      // Add proof submission information
+      verificationStatus: latestProof?.verification_status || null,
+      proofSubmittedAt: latestProof?.submitted_at || null,
+    };
+  });
 
   return createSuccessResponse(milestones);
 });
@@ -365,7 +383,37 @@ export const getMilestoneProofById = withErrorHandling(async (
     throw new ClearCauseError('NOT_FOUND', 'Milestone proof not found', 404);
   }
 
-  return createSuccessResponse(data);
+  // Transform the data to match the expected structure in VerificationDetail component
+  const transformedData = {
+    id: data.id,
+    milestoneId: data.milestone_id,
+    proofUrl: data.proof_url,
+    description: data.description,
+    submittedAt: data.submitted_at,
+    verificationStatus: data.verification_status,
+    verificationNotes: data.verification_notes,
+    verifiedBy: data.verified_by,
+    verifiedAt: data.verified_at,
+    milestone: data.milestones ? {
+      id: data.milestones.id,
+      title: data.milestones.title,
+      description: data.milestones.description,
+      targetAmount: data.milestones.target_amount,
+      campaign: data.milestones.campaigns ? {
+        id: data.milestones.campaigns.id,
+        title: data.milestones.campaigns.title,
+        charity: data.milestones.campaigns.charities ? {
+          id: data.milestones.campaigns.charities.id,
+          organizationName: data.milestones.campaigns.charities.organization_name,
+          userId: data.milestones.campaigns.charities.user_id,
+          contactName: data.milestones.campaigns.charities.profiles?.full_name,
+          contactEmail: data.milestones.campaigns.charities.profiles?.email,
+        } : null
+      } : null
+    } : null
+  };
+
+  return createSuccessResponse(transformedData);
 });
 
 /**
@@ -636,6 +684,7 @@ export const approveMilestoneProof = withErrorHandling(async (
     .update({
       verification_status: 'approved',
       verified_by: currentUserId,
+      verified_at: new Date().toISOString(),
       verification_notes: adminNotes,
     })
     .eq('id', proofId);
@@ -682,35 +731,29 @@ export const approveMilestoneProof = withErrorHandling(async (
   }
 
   // Update campaign milestone amount released
+  const { data: campaignData } = await supabase
+    .from('campaigns')
+    .select('milestone_amount_released')
+    .eq('id', campaign.id)
+    .single();
+
   const { error: campaignUpdateError } = await supabase
     .from('campaigns')
     .update({
-      milestone_amount_released: supabase.rpc('increment', { x: releaseAmount }),
+      milestone_amount_released: (parseFloat(campaignData?.milestone_amount_released) || 0) + releaseAmount,
     })
     .eq('id', campaign.id);
 
-  // If the rpc doesn't work, fetch and update manually
   if (campaignUpdateError) {
-    const { data: campaignData } = await supabase
-      .from('campaigns')
-      .select('milestone_amount_released')
-      .eq('id', campaign.id)
-      .single();
-
-    await supabase
-      .from('campaigns')
-      .update({
-        milestone_amount_released: (campaignData?.milestone_amount_released || 0) + releaseAmount,
-      })
-      .eq('id', campaign.id);
+    throw handleSupabaseError(campaignUpdateError);
   }
 
   // Update charity balance
   const { error: charityUpdateError } = await supabase
     .from('charities')
     .update({
-      available_balance: (charity.available_balance || 0) + releaseAmount,
-      total_received: (charity.total_received || 0) + releaseAmount,
+      available_balance: (parseFloat(charity.available_balance) || 0) + releaseAmount,
+      total_received: (parseFloat(charity.total_received) || 0) + releaseAmount,
     })
     .eq('id', charity.id);
 

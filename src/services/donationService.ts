@@ -238,7 +238,7 @@ export const getDonationById = withErrorHandling(async (
         id,
         title,
         charity_id,
-        charity_organizations:charity_id (
+        charities:charity_id (
           organization_name,
           user_id
         )
@@ -259,7 +259,7 @@ export const getDonationById = withErrorHandling(async (
   const currentUser = await getUserProfile(currentUserId);
   const isAdmin = currentUser.success && currentUser.data?.role === 'admin';
   const isDonor = donation.user_id === currentUserId;
-  const isCharityOwner = donation.campaigns?.charity_organizations?.user_id === currentUserId;
+  const isCharityOwner = donation.campaigns?.charities?.user_id === currentUserId;
 
   if (!isAdmin && !isDonor && !isCharityOwner) {
     throw new ClearCauseError('FORBIDDEN', 'You do not have permission to view this donation', 403);
@@ -303,10 +303,10 @@ export const getDonationById = withErrorHandling(async (
       createdAt: '',
       updatedAt: '',
       progress: 0,
-      charity: donation.campaigns.charity_organizations ? {
+      charity: donation.campaigns.charities ? {
         id: '',
-        userId: donation.campaigns.charity_organizations.user_id,
-        organizationName: donation.campaigns.charity_organizations.organization_name,
+        userId: donation.campaigns.charities.user_id,
+        organizationName: donation.campaigns.charities.organization_name,
         description: '',
         websiteUrl: null,
         phone: null,
@@ -329,14 +329,35 @@ export const listDonations = withErrorHandling(async (
   params: PaginationParams,
   currentUserId: string
 ): Promise<PaginatedResponse<Donation>> => {
+  console.log('[donationService.listDonations] Called with:', {
+    filters,
+    params,
+    currentUserId
+  });
+
   const validatedFilters = validateData(donationFilterSchema, filters);
   const validatedParams = validateData(paginationSchema, params);
   const { page, limit, sortBy = 'donated_at', sortOrder = 'desc' } = validatedParams;
   const offset = (page - 1) * limit;
 
+  console.log('[donationService.listDonations] Validated params:', {
+    page,
+    limit,
+    offset,
+    sortBy,
+    sortOrder
+  });
+
   // Check user permissions
   const currentUser = await getUserProfile(currentUserId);
   const isAdmin = currentUser.success && currentUser.data?.role === 'admin';
+
+  console.log('[donationService.listDonations] Permission check:', {
+    getUserProfileSuccess: currentUser.success,
+    userRole: currentUser.data?.role,
+    isAdmin,
+    currentUser: currentUser.data
+  });
 
   // Build query
   let query = supabase
@@ -353,7 +374,7 @@ export const listDonations = withErrorHandling(async (
         id,
         title,
         charity_id,
-        charity_organizations:charity_id (
+        charities:charity_id (
           organization_name,
           user_id
         )
@@ -363,7 +384,10 @@ export const listDonations = withErrorHandling(async (
   // Apply user-based filtering (skip if campaignId is provided, as caller handles permissions)
   if (!isAdmin && !validatedFilters.campaignId) {
     // Non-admin users can only see their own donations
+    console.log('[donationService.listDonations] Applying user filter (not admin)');
     query = query.eq('user_id', currentUserId);
+  } else {
+    console.log('[donationService.listDonations] No user filter applied (admin or campaign specified)');
   }
 
   // Apply filters
@@ -396,9 +420,18 @@ export const listDonations = withErrorHandling(async (
     .order(sortBy, { ascending: sortOrder === 'asc' })
     .range(offset, offset + limit - 1);
 
+  console.log('[donationService.listDonations] Executing query...');
   const { data, count, error } = await query;
 
+  console.log('[donationService.listDonations] Query result:', {
+    dataLength: data?.length || 0,
+    count,
+    error: error?.message,
+    firstItem: data?.[0]
+  });
+
   if (error) {
+    console.error('[donationService.listDonations] Supabase error:', error);
     throw handleSupabaseError(error);
   }
 
@@ -440,10 +473,10 @@ export const listDonations = withErrorHandling(async (
       createdAt: '',
       updatedAt: '',
       progress: 0,
-      charity: donation.campaigns.charity_organizations ? {
+      charity: donation.campaigns.charities ? {
         id: '',
-        userId: donation.campaigns.charity_organizations.user_id,
-        organizationName: donation.campaigns.charity_organizations.organization_name,
+        userId: donation.campaigns.charities.user_id,
+        organizationName: donation.campaigns.charities.organization_name,
         description: '',
         websiteUrl: null,
         phone: null,
@@ -456,6 +489,11 @@ export const listDonations = withErrorHandling(async (
       } : undefined,
     } : undefined,
   }));
+
+  console.log('[donationService.listDonations] Mapped donations:', {
+    count: donations.length,
+    firstDonation: donations[0]
+  });
 
   return createPaginatedResponse(donations, count || 0, validatedParams);
 });
@@ -535,7 +573,7 @@ export const getDonationsByDonor = withErrorHandling(async (
         id,
         title,
         charity_id,
-        charity_organizations:charity_id (
+        charities:charity_id (
           organization_name
         )
       )
@@ -576,10 +614,10 @@ export const getDonationsByDonor = withErrorHandling(async (
       createdAt: '',
       updatedAt: '',
       progress: 0,
-      charity: donation.campaigns.charity_organizations ? {
+      charity: donation.campaigns.charities ? {
         id: '',
         userId: '',
-        organizationName: donation.campaigns.charity_organizations.organization_name,
+        organizationName: donation.campaigns.charities.organization_name,
         description: '',
         websiteUrl: null,
         phone: null,
@@ -718,7 +756,7 @@ export const getDonationStatistics = withErrorHandling(async (
   // Build query
   let query = supabase
     .from('donations')
-    .select('amount, status, donated_at, campaign_id, campaigns:campaign_id(charity_organizations:charity_id(user_id))');
+    .select('amount, status, donated_at, campaign_id, campaigns:campaign_id(charities:charity_id(user_id))');
 
   // Apply user-based filtering for non-admins (skip if campaignId is provided)
   if (!isAdmin && !filters.campaignId) {

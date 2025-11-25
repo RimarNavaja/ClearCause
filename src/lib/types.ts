@@ -598,6 +598,9 @@ export interface Milestone {
   updatedAt: string;
   campaign?: Campaign;
   proofs?: MilestoneProof[];
+  // Proof submission tracking
+  verificationStatus?: string | null;
+  proofSubmittedAt?: string | null;
 }
 
 export interface MilestoneProof {

@@ -162,6 +162,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ title = 'Dashboard', children
               <NavItem to="/admin/charities" icon={<Building2 className="h-4 w-4" />} label="Charities" />
               <NavItem to="/admin/campaigns" icon={<LineChart className="h-4 w-4" />} label="Campaigns" />
               <NavItem to="/admin/donors" icon={<Users className="h-4 w-4" />} label="Donors" />
+              <NavItem to="/admin/donations" icon={<DollarSign className="h-4 w-4" />} label="Donations" />
               <NavItem to="/admin/logs" icon={<FileText className="h-4 w-4" />} label="Audit Logs" />
             </SidebarMenu>
           </SidebarGroup>

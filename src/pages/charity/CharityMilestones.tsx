@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Target, Plus, CheckCircle, Clock, AlertTriangle, AlertCircle, Edit, Upload } from 'lucide-react';
+import { Target, Plus, CheckCircle, Clock, AlertTriangle, AlertCircle, Upload } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,9 +31,9 @@ interface Milestone {
   targetAmount: number;
   currentAmount?: number;
   status: 'pending' | 'in_progress' | 'completed' | 'verified';
-  verificationStatus?: 'pending' | 'under_review' | 'approved' | 'rejected';
+  verificationStatus?: 'pending' | 'under_review' | 'approved' | 'rejected' | null;
   dueDate?: string;
-  completedAt?: string;
+  proofSubmittedAt?: string;
 }
 
 const CharityMilestones: React.FC = () => {
@@ -99,9 +99,9 @@ const CharityMilestones: React.FC = () => {
               targetAmount: m.targetAmount,
               currentAmount: campaign.currentAmount || 0,
               status: m.status,
-              verificationStatus: m.verifiedAt ? 'approved' : 'pending',
+              verificationStatus: m.verificationStatus, // Use actual verification status from proof
               dueDate: m.dueDate,
-              completedAt: m.verifiedAt,
+              proofSubmittedAt: m.proofSubmittedAt, // Track when proof was submitted
             }));
             allMilestones.push(...campaignMilestones);
           }
@@ -142,7 +142,7 @@ const CharityMilestones: React.FC = () => {
     }
   };
 
-  const getVerificationBadge = (status?: string) => {
+  const getVerificationBadge = (status?: string | null) => {
     switch (status) {
       case 'approved':
         return <Badge className="bg-green-100 text-green-800">✓ Verified</Badge>;
@@ -151,6 +151,9 @@ const CharityMilestones: React.FC = () => {
       case 'rejected':
         return <Badge className="bg-red-100 text-red-800">Rejected</Badge>;
       case 'pending':
+        return <Badge className="bg-blue-100 text-blue-800">Pending Review</Badge>;
+      case null:
+      case undefined:
         return <Badge variant="outline">Not Submitted</Badge>;
       default:
         return <Badge variant="outline">Not Submitted</Badge>;
@@ -305,7 +308,6 @@ const CharityMilestones: React.FC = () => {
                         <TableHead>Campaign</TableHead>
                         <TableHead>Milestone</TableHead>
                         <TableHead>Target Amount</TableHead>
-                        <TableHead>Due Date</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Verification</TableHead>
                         <TableHead>Actions</TableHead>
@@ -322,29 +324,23 @@ const CharityMilestones: React.FC = () => {
                             </div>
                           </TableCell>
                           <TableCell>{formatCurrency(milestone.targetAmount)}</TableCell>
-                          <TableCell>
-                            {milestone.dueDate
-                              ? new Date(milestone.dueDate).toLocaleDateString()
-                              : 'Not set'
-                            }
-                          </TableCell>
                           <TableCell>{getStatusBadge(milestone.status)}</TableCell>
                           <TableCell>{getVerificationBadge(milestone.verificationStatus)}</TableCell>
                           <TableCell>
                             <div className="flex gap-2">
-                              {(milestone.verificationStatus === 'pending' || !milestone.verificationStatus) && milestone.verificationStatus !== 'approved' && (
+                              {(!milestone.verificationStatus || milestone.verificationStatus === 'rejected') && (
                                 <Button variant="outline" size="sm" asChild>
                                   <Link to={`/charity/campaigns/${milestone.campaignId}/milestones/${milestone.id}/submit`}>
                                     <Upload className="w-4 h-4 mr-1" />
-                                    Submit Proof
+                                    {milestone.verificationStatus === 'rejected' ? 'Resubmit Proof' : 'Submit Proof'}
                                   </Link>
                                 </Button>
                               )}
-                              <Button variant="ghost" size="sm" asChild>
-                                <Link to={`/charity/campaigns/${milestone.campaignId}/milestones`}>
-                                  <Edit className="w-4 h-4" />
-                                </Link>
-                              </Button>
+                              {milestone.proofSubmittedAt && (
+                                <p className="text-xs text-muted-foreground">
+                                  Submitted: {new Date(milestone.proofSubmittedAt).toLocaleDateString()}
+                                </p>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>

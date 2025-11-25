@@ -15,11 +15,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
-import { approveSubmission, rejectSubmission } from '@/services/adminService';
-import { getMilestoneProofById } from '@/services/milestoneService';
+import { getMilestoneProofById, approveMilestoneProof, rejectMilestoneProof } from '@/services/milestoneService';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '@/utils/helpers';
+import { supabase } from '@/lib/supabase';
 
 const VerificationDetail = () => {
   const { submissionId } = useParams();
@@ -29,6 +29,76 @@ const VerificationDetail = () => {
   const [submission, setSubmission] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+
+  // Function to extract file path from proof URL
+  const extractFilePath = (url: string): string => {
+    try {
+      // Extract the path after 'milestone-proofs/'
+      const parts = url.split('/');
+      const bucketIndex = parts.findIndex(part => part === 'milestone-proofs');
+
+      if (bucketIndex !== -1) {
+        return parts.slice(bucketIndex + 1).join('/');
+      }
+
+      // If URL format is unexpected, return the URL as-is
+      return url;
+    } catch (error) {
+      console.error('Error extracting file path:', error);
+      return url;
+    }
+  };
+
+  // Function to handle file viewing with signed URL
+  const handleViewFile = async (fileUrl: string) => {
+    try {
+      const filePath = extractFilePath(fileUrl);
+
+      const { data, error } = await supabase.storage
+        .from('milestone-proofs')
+        .createSignedUrl(filePath, 3600); // URL valid for 1 hour
+
+      if (error) throw error;
+
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, '_blank');
+      }
+    } catch (error) {
+      console.error('Error generating signed URL:', error);
+      toast.error('Failed to load file. Please try again.');
+    }
+  };
+
+  // Load image preview URL when submission loads
+  useEffect(() => {
+    const loadImagePreview = async () => {
+      if (!submission?.proofUrl) return;
+
+      const fileName = submission.proofUrl.split('/').pop() || '';
+      const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName);
+
+      if (isImage) {
+        try {
+          const filePath = extractFilePath(submission.proofUrl);
+
+          const { data, error } = await supabase.storage
+            .from('milestone-proofs')
+            .createSignedUrl(filePath, 3600);
+
+          if (error) throw error;
+
+          if (data?.signedUrl) {
+            setImagePreviewUrl(data.signedUrl);
+          }
+        } catch (error) {
+          console.error('Error loading image preview:', error);
+        }
+      }
+    };
+
+    loadImagePreview();
+  }, [submission?.proofUrl]);
 
   useEffect(() => {
     const loadSubmission = async () => {
@@ -64,9 +134,11 @@ const VerificationDetail = () => {
 
     try {
       setSubmitting(true);
-      const result = await approveSubmission(submissionId, 'verification', feedback, user.id);
+      const result = await approveMilestoneProof(submissionId, feedback, user.id);
       if (result.success) {
-        toast.success('Submission approved successfully');
+        toast.success('Milestone approved and funds released!', {
+          description: 'The charity has been notified and funds have been added to their balance.',
+        });
         navigate('/admin/verifications');
       } else {
         toast.error(result.error || 'Failed to approve submission');
@@ -87,9 +159,11 @@ const VerificationDetail = () => {
 
     try {
       setSubmitting(true);
-      const result = await rejectSubmission(submissionId, 'verification', feedback, null, user.id);
+      const result = await rejectMilestoneProof(submissionId, feedback, null, user.id);
       if (result.success) {
-        toast.success('Submission rejected');
+        toast.success('Submission rejected', {
+          description: 'The charity will be notified of the rejection.',
+        });
         navigate('/admin/verifications');
       } else {
         toast.error(result.error || 'Failed to reject submission');
@@ -162,27 +236,28 @@ const VerificationDetail = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h3 className="font-semibold text-lg">{submission.campaign?.title || 'Unknown Campaign'}</h3>
-              <p className="text-sm text-muted-foreground">{submission.campaign?.charity?.organization_name || 'Unknown Charity'}</p>
+              <h3 className="font-semibold text-lg">{submission.milestone?.campaign?.title || 'Unknown Campaign'}</h3>
+              <p className="text-sm text-muted-foreground">{submission.milestone?.campaign?.charity?.organizationName || 'Unknown Charity'}</p>
             </div>
             <div>
-              <p className="text-sm font-medium">Milestone {submission.milestone?.milestone_number || 'N/A'}</p>
-              <p className="text-lg">{submission.milestone?.title || 'N/A'}</p>
+              <p className="text-sm font-medium text-gray-500">Milestone</p>
+              <p className="text-lg font-semibold">{submission.milestone?.title || 'N/A'}</p>
+              <p className="text-sm text-muted-foreground mt-1">{submission.milestone?.description || ''}</p>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center pt-2 border-t">
               <span className="text-sm text-muted-foreground">Release Amount:</span>
-              <span className="font-semibold">
-                {submission.milestone?.target_amount ? formatCurrency(submission.milestone.target_amount) : 'N/A'}
+              <span className="text-lg font-bold text-green-600">
+                {submission.milestone?.targetAmount ? formatCurrency(submission.milestone.targetAmount) : 'N/A'}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Submitted:</span>
-              <span>{submission.submitted_at ? new Date(submission.submitted_at).toLocaleDateString() : 'N/A'}</span>
+              <span>{submission.submittedAt ? new Date(submission.submittedAt).toLocaleDateString() : 'N/A'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Status:</span>
-              <Badge variant={submission.status === 'approved' ? 'default' : submission.status === 'pending' ? 'secondary' : 'destructive'}>
-                {submission.status}
+              <Badge variant={submission.verificationStatus === 'approved' ? 'default' : submission.verificationStatus === 'pending' ? 'secondary' : 'destructive'}>
+                {submission.verificationStatus}
               </Badge>
             </div>
           </CardContent>
@@ -205,31 +280,56 @@ const VerificationDetail = () => {
           <CardDescription>Review submitted proof materials</CardDescription>
         </CardHeader>
         <CardContent>
-          {submission.proof_files && submission.proof_files.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              {submission.proof_files.map((fileUrl: string, index: number) => {
-                const fileName = fileUrl.split('/').pop() || `file_${index + 1}`;
+          {submission.proofUrl ? (
+            <div className="space-y-4">
+              {(() => {
+                const fileUrl = submission.proofUrl;
+                const fileName = fileUrl.split('/').pop() || 'proof_file';
                 const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName);
 
                 return (
-                  <div key={index} className="flex items-center space-x-3 p-4 border rounded-lg">
-                    {isImage ?
-                      <ImageIcon className="h-8 w-8 text-blue-500" /> :
-                      <FileText className="h-8 w-8 text-gray-500" />
-                    }
-                    <div className="flex-1">
-                      <p className="font-medium">{fileName}</p>
-                      <p className="text-sm text-muted-foreground">{isImage ? 'Image' : 'Document'}</p>
-                    </div>
-                    <Button size="sm" variant="outline" asChild>
-                      <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-3 p-4 border rounded-lg bg-gray-50">
+                      {isImage ?
+                        <ImageIcon className="h-8 w-8 text-blue-500" /> :
+                        <FileText className="h-8 w-8 text-gray-500" />
+                      }
+                      <div className="flex-1">
+                        <p className="font-medium">{fileName}</p>
+                        <p className="text-sm text-muted-foreground">{isImage ? 'Image File' : 'Document'}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewFile(fileUrl)}
+                      >
                         <Download className="h-4 w-4 mr-2" />
-                        View
-                      </a>
-                    </Button>
+                        View File
+                      </Button>
+                    </div>
+
+                    {/* Image Preview for image files */}
+                    {isImage && imagePreviewUrl && (
+                      <div className="border rounded-lg p-4 bg-white">
+                        <p className="text-sm font-medium mb-3">Preview:</p>
+                        <img
+                          src={imagePreviewUrl}
+                          alt="Proof document"
+                          className="max-w-full h-auto rounded-lg shadow-sm max-h-96 object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                    {isImage && !imagePreviewUrl && (
+                      <div className="border rounded-lg p-4 bg-gray-50 text-center">
+                        <p className="text-sm text-muted-foreground">Loading preview...</p>
+                      </div>
+                    )}
                   </div>
                 );
-              })}
+              })()}
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
@@ -261,7 +361,7 @@ const VerificationDetail = () => {
               variant="outline"
               onClick={handleReject}
               className="flex-1"
-              disabled={submitting || !feedback.trim() || submission.status !== 'pending'}
+              disabled={submitting || !feedback.trim() || submission.verificationStatus !== 'pending'}
             >
               <XCircle className="h-4 w-4 mr-2" />
               {submitting ? 'Processing...' : 'Reject Submission'}
@@ -269,15 +369,15 @@ const VerificationDetail = () => {
             <Button
               onClick={handleApprove}
               className="flex-1"
-              disabled={submitting || !feedback.trim() || submission.status !== 'pending'}
+              disabled={submitting || !feedback.trim() || submission.verificationStatus !== 'pending'}
             >
               <CheckCircle className="h-4 w-4 mr-2" />
               {submitting ? 'Processing...' : 'Approve & Release Funds'}
             </Button>
           </div>
-          {submission.status !== 'pending' && (
+          {submission.verificationStatus !== 'pending' && (
             <p className="text-sm text-muted-foreground mt-2">
-              This submission has already been {submission.status}. No further action required.
+              This submission has already been {submission.verificationStatus}. No further action required.
             </p>
           )}
         </CardContent>
