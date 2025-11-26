@@ -92,7 +92,11 @@ const Navbar: React.FC = () => {
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
               <Link to="/" className="flex items-center">
-                <img src="/logo.png" alt="ClearCause" className="h-8 w-auto" />
+                <img
+                  src="/CLEARCAUSE-logo.svg"
+                  alt="ClearCause"
+                  className="h-[23px] w-auto "
+                />
               </Link>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
