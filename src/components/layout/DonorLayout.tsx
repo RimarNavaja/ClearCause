@@ -1,7 +1,18 @@
-
-import React, { useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CreditCard, UserRound, Settings, LogOut, Loader2, Search, Heart, TrendingUp, MessageSquare, List } from 'lucide-react';
+import React, { useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import {
+  LayoutDashboard,
+  CreditCard,
+  UserRound,
+  Settings,
+  LogOut,
+  Loader2,
+  Search,
+  Heart,
+  TrendingUp,
+  MessageSquare,
+  List,
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,12 +22,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import Navbar from './Navbar';
-import Footer from './Footer';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
-import { performCompleteLogout } from '@/utils/sessionManager';
+} from "@/components/ui/alert-dialog";
+import Navbar from "./Navbar";
+import Footer from "./Footer";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
+import { performCompleteLogout } from "@/utils/sessionManager";
 
 interface DonorLayoutProps {
   children: React.ReactNode;
@@ -46,7 +57,7 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
           description: "You have been signed out of your donor account.",
         });
         // Use enhanced complete logout for session isolation
-        await performCompleteLogout('/login');
+        await performCompleteLogout("/login");
       } else {
         toast({
           title: "Logout failed",
@@ -55,14 +66,14 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
         });
       }
     } catch (error) {
-      console.error('[DonorLayout] Logout error:', error);
+      console.error("[DonorLayout] Logout error:", error);
       toast({
         title: "Logout failed",
         description: "An unexpected error occurred.",
         variant: "destructive",
       });
       // Force cleanup even on error
-      await performCompleteLogout('/login');
+      await performCompleteLogout("/login");
     } finally {
       setIsLoggingOut(false);
     }
@@ -71,55 +82,57 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
   const handleLogoutClick = () => {
     setShowLogoutDialog(true);
   };
-  
+
   const navItems = [
     {
-      path: '/donor/dashboard',
-      label: 'Dashboard',
-      icon: <LayoutDashboard className="w-5 h-5" />
+      path: "/donor/dashboard",
+      label: "Dashboard",
+      icon: <LayoutDashboard className="w-5 h-5" />,
     },
     {
-      path: '/donor/profile',
-      label: 'My Profile',
-      icon: <UserRound className="w-5 h-5" />
+      path: "/donor/profile",
+      label: "My Profile",
+      icon: <UserRound className="w-5 h-5" />,
     },
     {
-      path: '/donor/campaigns',
-      label: 'Browse Campaigns',
-      icon: <Search className="w-5 h-5" />
+      path: "/donor/campaigns",
+      label: "Browse Campaigns",
+      icon: <Search className="w-5 h-5" />,
     },
     {
-      path: '/donor/donations',
-      label: 'My Donations',
-      icon: <CreditCard className="w-5 h-5" />
+      path: "/donor/donations",
+      label: "My Donations",
+      icon: <CreditCard className="w-5 h-5" />,
     },
     {
-      path: '/donor/track-campaigns',
-      label: 'Track Campaigns',
-      icon: <TrendingUp className="w-5 h-5" />
+      path: "/donor/track-campaigns",
+      label: "Track Campaigns",
+      icon: <TrendingUp className="w-5 h-5" />,
     },
     {
-      path: '/donor/feedback',
-      label: 'Feedback/Reviews',
-      icon: <MessageSquare className="w-5 h-5" />
+      path: "/donor/feedback",
+      label: "Feedback/Reviews",
+      icon: <MessageSquare className="w-5 h-5" />,
     },
     {
-      path: '/donor/settings',
-      label: 'Settings',
-      icon: <Settings className="w-5 h-5" />
+      path: "/donor/settings",
+      label: "Settings",
+      icon: <Settings className="w-5 h-5" />,
     },
   ];
 
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      
+
       <div className="flex-grow flex flex-col md:flex-row bg-clearcause-background">
         {/* Sidebar */}
         <aside className="bg-white w-full md:w-64 md:min-h-[calc(100vh-4rem)] shadow-sm">
           <div className="p-4 md:p-6 h-full">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6 hidden md:block">Donor Account</h2>
-            
+            <h2 className="text-xl font-semibold text-gray-900 mb-6 hidden md:block">
+              Donor Account
+            </h2>
+
             <div className="flex md:flex-col space-x-4 md:space-x-0 md:space-y-2 overflow-x-auto md:overflow-visible py-2 md:py-0">
               {navItems.map((item) => (
                 <NavLink
@@ -127,9 +140,10 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
                   to={item.path}
                   className={({ isActive }) => `
                     flex items-center px-3 py-2 rounded-md text-sm font-medium
-                    ${isActive 
-                      ? 'bg-clearcause-primary/10 text-clearcause-primary' 
-                      : 'text-gray-600 hover:text-clearcause-primary hover:bg-gray-100'
+                    ${
+                      isActive
+                        ? "bg-clearcause-primary/10 text-clearcause-primary"
+                        : "text-gray-600 hover:text-clearcause-primary hover:bg-gray-100"
                     }
                   `}
                 >
@@ -137,14 +151,14 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
                   <span className="ml-3">{item.label}</span>
                 </NavLink>
               ))}
-              
+
               <button
                 onClick={handleLogoutClick}
                 disabled={isLoggingOut || authLoading}
                 className={`flex items-center px-3 py-2 rounded-md text-sm font-medium mt-8 md:mt-auto w-full text-left transition-colors ${
-                  isLoggingOut || authLoading 
-                    ? 'text-gray-400 cursor-not-allowed bg-gray-100' 
-                    : 'text-gray-600 hover:text-red-500 hover:bg-red-50'
+                  isLoggingOut || authLoading
+                    ? "text-gray-400 cursor-not-allowed bg-gray-100"
+                    : "text-gray-600 hover:text-red-500 hover:bg-red-50"
                 }`}
               >
                 {isLoggingOut || authLoading ? (
@@ -162,11 +176,13 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
             </div>
           </div>
         </aside>
-        
+
         {/* Main content */}
         <main className="flex-grow p-4 md:p-8">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">{title}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">
+              {title}
+            </h1>
             {children}
           </div>
         </main>
@@ -178,22 +194,23 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
       <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <LogOut className="h-5 w-5 text-red-600" />
-              Confirm Sign Out
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to sign out of your donor account? You will need to log in again to access your dashboard.
+            <AlertDialogTitle>Confirm Sign Out</AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              Are you sure you want to sign out of your Donor account? You will
+              need to log in again to access your dashboard.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoggingOut}>
+          <AlertDialogFooter className=" gap-2">
+            <AlertDialogCancel
+              disabled={isLoggingOut}
+              className="hover:bg-blue-600 px-6 border-2 border-gray-200 text-blue-700 shadow-sm hover:text-white"
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleLogoutConfirm}
               disabled={isLoggingOut}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              className="bg-red-600 hover:bg-red-700 shadow-sm focus:ring-red-600 px-6"
             >
               {isLoggingOut ? (
                 <>
@@ -201,10 +218,7 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
                   Signing out...
                 </>
               ) : (
-                <>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
-                </>
+                <>Sign out</>
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
