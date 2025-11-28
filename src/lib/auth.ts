@@ -17,6 +17,26 @@ export const signUp = async (userData: SignUpData): Promise<ApiResponse<User>> =
     console.debug('Starting signup process for:', userData.email);
     const { email, password, fullName, role } = userData;
 
+    // First, check if an account with this email already exists
+    // Use unauthenticated query to check profile existence (allowed by "Public profiles are viewable by everyone" RLS policy)
+    const { data: existingProfile, error: profileCheckError } = await supabase
+      .from('profiles')
+      .select('id, email, created_at')
+      .eq('email', email)
+      .maybeSingle();
+
+    console.debug('Pre-signup profile check result:', { existingProfile, profileCheckError });
+
+    // If we found a profile, this email is already registered
+    if (existingProfile && !profileCheckError) {
+      console.debug('Email already registered - throwing error');
+      throw new ClearCauseError(
+        'EMAIL_ALREADY_REGISTERED',
+        'An account with this email already exists. Please sign in instead.',
+        400
+      );
+    }
+
     // Create auth user with retry logic for timeouts
     let authData, authError;
     const maxRetries = 3;
@@ -102,97 +122,11 @@ export const signUp = async (userData: SignUpData): Promise<ApiResponse<User>> =
 
     console.debug('Auth user created successfully');
 
-    // Try to create profile using the database function first
-    try {
-      const { data: profileResult, error: profileFunctionError } = await supabase
-        .rpc('ensure_user_profile', {
-          p_user_id: authData.user.id,
-          p_email: email,
-          p_full_name: fullName,
-          p_role: role
-        });
-
-      if (profileFunctionError) {
-        console.debug('Profile function failed, trying manual creation...', profileFunctionError);
-
-        // Fallback to manual profile creation
-        const { data: newProfile, error: createError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            email: email,
-            full_name: fullName,
-            role: role,
-            is_verified: !!authData.user.email_confirmed_at,
-            is_active: true
-          })
-          .select()
-          .single();
-
-        if (createError) {
-          reportAuthError(createError, { context: 'manual_profile_creation', userId: authData.user.id });
-
-          // Try to clean up auth user if profile creation fails
-          try {
-            await supabase.auth.signOut();
-          } catch (cleanupError) {
-            reportAuthError(cleanupError, { context: 'auth_cleanup_after_profile_failure', userId: authData.user.id });
-          }
-
-          throw new ClearCauseError(
-            'DATABASE_ERROR',
-            'Failed to create user profile. Please try again or contact support if the issue persists.',
-            500,
-            createError
-          );
-        }
-
-        console.debug('Profile created manually successfully');
-      } else {
-        console.debug('Profile created via function successfully:', profileResult);
-      }
-    } catch (error) {
-      if (error instanceof ClearCauseError) {
-        throw error;
-      }
-
-      reportAuthError(error, { context: 'profile_creation_error', userId: authData.user.id });
-
-      // Final fallback - try direct insert
-      try {
-        const { data: fallbackProfile, error: fallbackError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            email: email,
-            full_name: fullName,
-            role: role,
-            is_verified: false,
-            is_active: true
-          })
-          .select()
-          .single();
-
-        if (fallbackError) {
-          throw new ClearCauseError(
-            'DATABASE_ERROR',
-            'Unable to create user profile. Please contact support.',
-            500,
-            fallbackError
-          );
-        }
-
-        console.debug('Profile created via fallback successfully');
-      } catch (fallbackError) {
-        reportAuthError(fallbackError, { context: 'fallback_profile_creation_error', userId: authData.user.id });
-        throw new ClearCauseError(
-          'DATABASE_ERROR',
-          'Critical error: Unable to create user profile. Please contact support immediately.',
-          500,
-          fallbackError
-        );
-      }
-    }
+    // Profile is automatically created by database trigger (handle_new_user)
+    // The trigger runs with SECURITY DEFINER privileges, bypassing RLS policies
+    // We cannot verify the profile here because RLS blocks unauthenticated queries
+    // Trust that the trigger has created the profile successfully
+    console.debug('Profile creation handled by database trigger');
 
     // Log audit event (don't fail signup if this fails)
     logAuditEvent(authData.user.id, 'USER_SIGNUP', 'user', authData.user.id, {

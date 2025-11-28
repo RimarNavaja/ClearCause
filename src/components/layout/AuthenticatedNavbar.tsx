@@ -73,7 +73,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
   // Get link classes with active state
   const getLinkClasses = (path: string) => {
     const baseClasses =
-      "inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors";
+      "inline-flex items-center px-1 pt-1 border-b-2 text-sm font-poppinsregular font-medium transition-colors";
     const activeClasses = "border-clearcause-primary text-clearcause-primary";
     const inactiveClasses =
       "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300";
@@ -294,7 +294,11 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
                 to={getDashboardLink(user.role)}
                 className="flex items-center"
               >
-                <img src="/logo.png" alt="ClearCause" className="h-8 w-auto" />
+                <img
+                  src="/CLEARCAUSE-logo.svg"
+                  alt="ClearCause"
+                  className="h-[23px] w-auto"
+                />
               </Link>
             </div>
 
@@ -346,14 +350,14 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
                 <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg py-1 border border-gray-200 z-50">
                   {/* User Info */}
                   <div className="px-4 py-3 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-md font-bold capitalize text-gray-900">
                       {user.fullName || "User"}
                     </p>
                     <p className="text-sm text-gray-500">{user.email}</p>
                     <p className="text-xs text-gray-400 mt-1 capitalize">
                       {user.role} Account
                       {user.isVerified && (
-                        <span className="text-green-600 ml-1">• Verified</span>
+                        <span className="text-blue-700 ml-1">• Verified</span>
                       )}
                     </p>
                   </div>
@@ -549,23 +553,23 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
       <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <LogOut className="h-5 w-5 text-red-600" />
-              Confirm Sign Out
-            </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle>Confirm Sign Out</AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
               Are you sure you want to sign out of your {user.role} account? You
               will need to log in again to access your dashboard.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoggingOut}>
+          <AlertDialogFooter className=" gap-2">
+            <AlertDialogCancel
+              disabled={isLoggingOut}
+              className="hover:bg-blue-600 px-6 border-2 border-gray-200 text-blue-700 shadow-sm hover:text-white"
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleLogoutConfirm}
               disabled={isLoggingOut}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              className="bg-red-600 hover:bg-red-700 shadow-sm focus:ring-red-600 px-6"
             >
               {isLoggingOut ? (
                 <>
@@ -573,10 +577,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
                   Signing out...
                 </>
               ) : (
-                <>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
-                </>
+                <>Sign out</>
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

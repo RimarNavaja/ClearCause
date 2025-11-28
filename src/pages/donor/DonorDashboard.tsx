@@ -1,18 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, Landmark, Heart, Clock, TrendingUp, ExternalLink, Gift, Target, Calendar, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import DonorLayout from '@/components/layout/DonorLayout';
-import CampaignGrid from '@/components/ui/campaign/CampaignGrid';
-import { useAuth } from '@/hooks/useAuth';
-import { useRealtime } from '@/hooks/useRealtime';
-import * as donationService from '@/services/donationService';
-import * as campaignService from '@/services/campaignService';
-import { formatCurrency, getRelativeTime } from '@/utils/helpers';
-import { validateUserForDashboard, isUserLoaded } from '@/utils/userUtils';
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import {
+  ArrowRight,
+  Landmark,
+  Heart,
+  Clock,
+  TrendingUp,
+  ExternalLink,
+  Gift,
+  Target,
+  Calendar,
+  AlertCircle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import DonorLayout from "@/components/layout/DonorLayout";
+import CampaignGrid from "@/components/ui/campaign/CampaignGrid";
+import { useAuth } from "@/hooks/useAuth";
+import { useRealtime } from "@/hooks/useRealtime";
+import * as donationService from "@/services/donationService";
+import * as campaignService from "@/services/campaignService";
+import { formatCurrency, getRelativeTime } from "@/utils/helpers";
+import { validateUserForDashboard, isUserLoaded } from "@/utils/userUtils";
 
 const DonorDashboard: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
@@ -28,14 +46,15 @@ const DonorDashboard: React.FC = () => {
   // Load dashboard data
   const loadDashboardData = async () => {
     if (!isUserLoaded(user)) {
-      console.log('[DonorDashboard] User not properly loaded, skipping data load');
+      console.log(
+        "[DonorDashboard] User not properly loaded, skipping data load"
+      );
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-
 
       // Load donor statistics
       const statsResult = await donationService.getDonorStatistics(user.id);
@@ -44,26 +63,35 @@ const DonorDashboard: React.FC = () => {
       }
 
       // Load recent donations
-      const donationsResult = await donationService.getDonationsByDonor(user.id, { limit: 5, page: 1 }, user.id);
+      const donationsResult = await donationService.getDonationsByDonor(
+        user.id,
+        { limit: 5, page: 1 },
+        user.id
+      );
       if (donationsResult.success && donationsResult.data) {
         setRecentDonations(donationsResult.data);
       }
 
       // Load impact updates from supported campaigns
-      const impactResult = await donationService.getDonorImpactUpdates(user.id, { limit: 3 });
+      const impactResult = await donationService.getDonorImpactUpdates(
+        user.id,
+        { limit: 3 }
+      );
       if (impactResult.success && impactResult.data) {
         setImpactUpdates(impactResult.data);
       }
 
       // Load suggested campaigns
-      const suggestionsResult = await campaignService.getSuggestedCampaigns(user.id, { limit: 4 });
+      const suggestionsResult = await campaignService.getSuggestedCampaigns(
+        user.id,
+        { limit: 4 }
+      );
       if (suggestionsResult.success && suggestionsResult.data) {
         setSuggestedCampaigns(suggestionsResult.data);
       }
-
     } catch (err) {
-      setError('Failed to load dashboard data');
-      console.error('Donor dashboard error:', err);
+      setError("Failed to load dashboard data");
+      console.error("Donor dashboard error:", err);
     } finally {
       setLoading(false);
     }
@@ -76,9 +104,11 @@ const DonorDashboard: React.FC = () => {
     const unsubscribeFns: (() => void)[] = [];
 
     // Subscribe to campaign updates for campaigns the user has donated to
-    const campaignSub = subscribe('campaigns', (payload) => {
+    const campaignSub = subscribe("campaigns", (payload) => {
       // Check if user has donated to this campaign
-      const hasDonated = recentDonations.some(d => d.campaign?.id === payload.new.id);
+      const hasDonated = recentDonations.some(
+        (d) => d.campaign?.id === payload.new.id
+      );
       if (hasDonated) {
         // Refresh impact updates
         loadDashboardData();
@@ -87,8 +117,8 @@ const DonorDashboard: React.FC = () => {
     unsubscribeFns.push(campaignSub);
 
     // Subscribe to milestone updates
-    const milestoneSub = subscribe('milestones', (payload) => {
-      if (payload.new.status === 'verified') {
+    const milestoneSub = subscribe("milestones", (payload) => {
+      if (payload.new.status === "verified") {
         // Refresh impact updates when milestones are verified
         loadDashboardData();
       }
@@ -96,8 +126,8 @@ const DonorDashboard: React.FC = () => {
     unsubscribeFns.push(milestoneSub);
 
     return () => {
-      unsubscribeFns.forEach(fn => {
-        if (typeof fn === 'function') {
+      unsubscribeFns.forEach((fn) => {
+        if (typeof fn === "function") {
           fn();
         }
       });
@@ -109,14 +139,17 @@ const DonorDashboard: React.FC = () => {
     const userValidation = validateUserForDashboard(user);
 
     if (userValidation.isValid) {
-      console.log('[DonorDashboard] User valid, loading dashboard data');
+      console.log("[DonorDashboard] User valid, loading dashboard data");
       loadDashboardData();
     } else {
       if (userValidation.isLoading) {
-        console.log('[DonorDashboard] User still loading, waiting...');
+        console.log("[DonorDashboard] User still loading, waiting...");
         setLoading(true);
       } else {
-        console.log('[DonorDashboard] User validation failed:', userValidation.error);
+        console.log(
+          "[DonorDashboard] User validation failed:",
+          userValidation.error
+        );
         setLoading(false);
         setError(userValidation.error);
       }
@@ -126,11 +159,19 @@ const DonorDashboard: React.FC = () => {
   // Get donation status badge
   const getDonationStatusBadge = (status: string) => {
     switch (status) {
-      case 'completed':
-        return <Badge variant="secondary" className="text-green-600">Completed</Badge>;
-      case 'processing':
-        return <Badge variant="outline" className="text-blue-600">Processing</Badge>;
-      case 'failed':
+      case "completed":
+        return (
+          <Badge variant="secondary" className="text-white bg-blue-700/90">
+            Completed
+          </Badge>
+        );
+      case "processing":
+        return (
+          <Badge variant="outline" className="text-blue-600">
+            Processing
+          </Badge>
+        );
+      case "failed":
         return <Badge variant="destructive">Failed</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
@@ -164,7 +205,10 @@ const DonorDashboard: React.FC = () => {
                 <CardContent>
                   <div className="space-y-3">
                     {Array.from({ length: 3 }).map((_, j) => (
-                      <div key={j} className="h-16 bg-gray-200 rounded animate-pulse" />
+                      <div
+                        key={j}
+                        className="h-16 bg-gray-200 rounded animate-pulse"
+                      />
                     ))}
                   </div>
                 </CardContent>
@@ -182,7 +226,9 @@ const DonorDashboard: React.FC = () => {
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <AlertCircle className="mx-auto h-12 w-12 text-red-500" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Error loading dashboard</h3>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              Error loading dashboard
+            </h3>
             <p className="mt-1 text-sm text-gray-500">{error}</p>
             <Button onClick={loadDashboardData} className="mt-4">
               Try Again
@@ -199,7 +245,7 @@ const DonorDashboard: React.FC = () => {
         {/* Welcome Section */}
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Welcome back, {user?.fullName || 'Donor'}! 
+            Welcome back, {user?.fullName || "Donor"}!
           </h1>
           <p className="text-gray-600">
             Thank you for making a difference. Here's your impact summary.
@@ -212,7 +258,9 @@ const DonorDashboard: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Total Donated</p>
+                  <p className="text-sm font-medium text-gray-500">
+                    Total Donated
+                  </p>
                   <p className="text-2xl font-bold text-gray-900">
                     {formatCurrency(stats?.totalAmount || 0)}
                   </p>
@@ -231,13 +279,13 @@ const DonorDashboard: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Campaigns Supported</p>
+                  <p className="text-sm font-medium text-gray-500">
+                    Campaigns Supported
+                  </p>
                   <p className="text-2xl font-bold text-gray-900">
                     {stats?.campaignsSupported || 0}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Unique campaigns
-                  </p>
+                  <p className="text-xs text-gray-400 mt-1">Unique campaigns</p>
                 </div>
                 <div className="bg-rose-100 p-3 rounded-full">
                   <Heart className="h-6 w-6 text-rose-600" />
@@ -250,13 +298,13 @@ const DonorDashboard: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Average Donation</p>
+                  <p className="text-sm font-medium text-gray-500">
+                    Average Donation
+                  </p>
                   <p className="text-2xl font-bold text-gray-900">
                     {formatCurrency(stats?.averageDonation || 0)}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Per donation
-                  </p>
+                  <p className="text-xs text-gray-400 mt-1">Per donation</p>
                 </div>
                 <div className="bg-green-100 p-3 rounded-full">
                   <TrendingUp className="h-6 w-6 text-green-600" />
@@ -272,10 +320,14 @@ const DonorDashboard: React.FC = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  <Gift className="h-5 w-5" />
                   Recent Donations
                 </CardTitle>
-                <Button variant="outline" size="sm" asChild>
+                <Button
+                  variant="outline"
+                  className="hover:bg-blue-600"
+                  size="sm"
+                  asChild
+                >
                   <Link to="/donor/donations">View All</Link>
                 </Button>
               </div>
@@ -284,8 +336,12 @@ const DonorDashboard: React.FC = () => {
               {recentDonations.length === 0 ? (
                 <div className="text-center py-8">
                   <Gift className="mx-auto h-12 w-12 text-gray-300" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No donations yet</h3>
-                  <p className="mt-1 text-sm text-gray-500">Start making a difference today</p>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">
+                    No donations yet
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Start making a difference today
+                  </p>
                   <Button className="mt-4" asChild>
                     <Link to="/campaigns">Browse Campaigns</Link>
                   </Button>
@@ -293,7 +349,10 @@ const DonorDashboard: React.FC = () => {
               ) : (
                 <div className="space-y-4">
                   {recentDonations.map((donation) => (
-                    <div key={donation.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div
+                      key={donation.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
                       <div className="flex-1">
                         <h4 className="font-medium text-sm text-gray-900">
                           {donation.campaign?.title}
@@ -320,10 +379,14 @@ const DonorDashboard: React.FC = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5" />
                   Impact Updates
                 </CardTitle>
-                <Button variant="outline" size="sm" asChild>
+                <Button
+                  variant="outline"
+                  className="hover:bg-blue-600"
+                  size="sm"
+                  asChild
+                >
                   <Link to="/donor/impact">View All</Link>
                 </Button>
               </div>
@@ -332,7 +395,9 @@ const DonorDashboard: React.FC = () => {
               {impactUpdates.length === 0 ? (
                 <div className="text-center py-8">
                   <Target className="mx-auto h-12 w-12 text-gray-300" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No impact updates</h3>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">
+                    No impact updates
+                  </h3>
                   <p className="mt-1 text-sm text-gray-500">
                     Impact updates will appear here as campaigns progress
                   </p>
@@ -340,7 +405,10 @@ const DonorDashboard: React.FC = () => {
               ) : (
                 <div className="space-y-4">
                   {impactUpdates.map((update) => (
-                    <div key={update.id} className="border-l-4 border-blue-500 pl-4 py-2">
+                    <div
+                      key={update.id}
+                      className="border-l-4 border-blue-500 pl-4 py-2"
+                    >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <h4 className="font-medium text-sm text-gray-900">
@@ -382,7 +450,7 @@ const DonorDashboard: React.FC = () => {
                   Based on your donation history and interests
                 </CardDescription>
               </div>
-              <Button variant="outline" asChild>
+              <Button variant="outline" className="hover:bg-blue-600" asChild>
                 <Link to="/campaigns">
                   Browse All Campaigns
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -394,13 +462,15 @@ const DonorDashboard: React.FC = () => {
             {suggestedCampaigns.length === 0 ? (
               <div className="text-center py-8">
                 <Calendar className="mx-auto h-12 w-12 text-gray-300" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No suggestions available</h3>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                  No suggestions available
+                </h3>
                 <p className="mt-1 text-sm text-gray-500">
                   Make a few donations to get personalized campaign suggestions
                 </p>
               </div>
             ) : (
-              <CampaignGrid 
+              <CampaignGrid
                 campaigns={suggestedCampaigns}
                 loading={false}
                 error={null}
@@ -415,7 +485,9 @@ const DonorDashboard: React.FC = () => {
         {/* Call to Action */}
         <Card className="bg-gradient-to-r from-clearcause-primary to-clearcause-secondary text-white">
           <CardContent className="p-6 text-center">
-            <h3 className="text-lg font-semibold mb-2">Ready to make more impact?</h3>
+            <h3 className="text-lg font-semibold mb-2">
+              Ready to make more impact?
+            </h3>
             <p className="mb-4 opacity-90">
               Discover new campaigns that align with your values and interests
             </p>

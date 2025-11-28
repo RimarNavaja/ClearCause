@@ -199,10 +199,8 @@ const TrackCampaigns: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Track Campaigns
-            </h1>
-            <p className="text-gray-600">Monitor campaigns you've supported</p>
+            
+            <p className="text-gray-600 text-base">Monitor campaigns you've supported</p>
           </div>
         </div>
 

@@ -118,7 +118,10 @@ export default {
 				display: ['Montserrat', 'sans-serif'],
 				redhatbold:['RedHatBold', 'sans-serif'],
 				redhatregular:['RedHatRegular', 'sans-serif'],
-				interregular:['InterRegular','sans-serif']
+				interregular:['InterRegular','sans-serif'],
+				poppinsregular:['PoppinsRegular','sans-serif'],
+				robotoregular:['RobotoRegular','sans-serif'],
+				robotobold:['RobotoBold','sans-serif'],
 			}
 		}
 	},

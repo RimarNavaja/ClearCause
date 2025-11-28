@@ -89,10 +89,14 @@ const Navbar: React.FC = () => {
     <nav className="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          <div className="flex">
+          <div className="flex font-poppinsregular font-medium ">
             <div className="flex-shrink-0 flex items-center">
               <Link to="/" className="flex items-center">
-                <img src="/logo.png" alt="ClearCause" className="h-8 w-auto" />
+                <img
+                  src="/CLEARCAUSE-logo.svg"
+                  alt="ClearCause"
+                  className="h-[23px] w-auto "
+                />
               </Link>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
@@ -112,12 +116,12 @@ const Navbar: React.FC = () => {
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-3">
             <Link to="/login">
-              <Button className="bg-clearcause-primary hover:text-white rounded-full px-10 font-redhatbold text-xs">
+              <Button className="bg-clearcause-primary hover:text-white hover:bg-blue-700 rounded-full px-10 font-redhatbold text-xs">
                 Log In
               </Button>
             </Link>
             <Link to="/signup">
-              <Button className="bg-clearcause-primary hover:bg-clearcause-secondary rounded-full  px-10 font-redhatbold text-xs">
+              <Button className="bg-clearcause-primary hover:bg-blue-700 rounded-full  px-10 font-redhatbold text-xs">
                 Sign Up
               </Button>
             </Link>
