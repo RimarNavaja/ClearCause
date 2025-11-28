@@ -246,18 +246,18 @@ const Index: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
               <div className="font-sans">
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-6 ">
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold font-robotobold text-gray-900 leading-tight mb-6 ">
                   Donate with confidence.
                   <br />
                   <span className="text-blue-600">Track every pesos</span>, see
                   the impact.
                 </h1>
-                <p className="text-lg md:text-xl text-gray-600 mb-8 leading-relaxed font-sans">
+                <p className="text-lg md:text-xl text-gray-600 mb-8 font-poppinsregular">
                   ClearCause is the first donation platform focused on radical
                   transparency, providing verifiable, real-time impact tracking
                   to restore trust in charitable giving.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex flex-col sm:flex-row gap-4 font-redhatbold">
                   <Link to="/campaigns">
                     <Button
                       size="lg"
@@ -330,10 +330,10 @@ const Index: React.FC = () => {
             </div>
             {/* Decorative Elements */}
             <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              <h2 className="text-3xl md:text-4xl font-robotobold tracking-normal text-gray-900 mb-4">
                 How ClearCause Works
               </h2>
-              <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
+              <p className="text-lg md:text-xl font-poppinsregular text-gray-600 max-w-3xl mx-auto">
                 We're revolutionizing the way charitable giving works through
                 transparency and accountability
               </p>
@@ -344,10 +344,10 @@ const Index: React.FC = () => {
                 <div className="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
                   <Shield className="h-8 w-8 text-white" />
                 </div>
-                <h3 className="text-xl font-bold mb-4 text-gray-900">
+                <h3 className="text-xl font-bold mb-4 text-gray-900 font-robotobold">
                   Verified Campaigns
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
+                <p className="text-gray-600 leading-relaxed font-poppinsregular">
                   Every campaign on our platform goes through a rigorous
                   verification process to ensure legitimacy and impact.
                 </p>
@@ -357,10 +357,10 @@ const Index: React.FC = () => {
                 <div className="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
                   <BarChart4 className="h-8 w-8 text-white" />
                 </div>
-                <h3 className="text-xl font-bold mb-4 text-gray-900">
+                <h3 className="text-xl font-bold mb-4 text-gray-900 font-robotobold">
                   Real-time Tracking
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
+                <p className="text-gray-600 leading-relaxed font-poppinsregular">
                   Track the impact of your donation in real-time with detailed
                   metrics and updates from the field.
                 </p>
@@ -370,10 +370,10 @@ const Index: React.FC = () => {
                 <div className="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
                   <CreditCard className="h-8 w-8 text-white" />
                 </div>
-                <h3 className="text-xl font-bold mb-4 text-gray-900">
+                <h3 className="text-xl font-bold mb-4 text-gray-900 font-robotobold">
                   Milestone-Based Funding
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
+                <p className="text-gray-600 leading-relaxed font-poppinsregular">
                   Funds are released to campaigns only after milestone
                   completion is verified by ClearCause.
                 </p>
@@ -383,7 +383,7 @@ const Index: React.FC = () => {
             <div className="mt-12 text-center">
               <Link
                 to="/how-it-works"
-                className="inline-flex items-center text-blue-600 hover:text-blue-700 font-semibold text-lg transition-colors"
+                className="inline-flex items-center text-blue-600 hover:text-blue-700 font-semibold text-lg transition-colors font-robotoregular"
               >
                 Learn more about our process
                 <ChevronRight className="ml-2 h-5 w-5" />
@@ -397,19 +397,19 @@ const Index: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center mb-12">
               <div>
-                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 font-robotobold">
                   Featured Campaigns
                 </h2>
-                <p className="text-lg text-gray-600">
+                <p className="text-lg text-gray-600 font-poppinsregular">
                   Support these verified campaigns making a real difference
                 </p>
               </div>
               <Link
                 to="/campaigns"
-                className="text-blue-600 hover:text-blue-700 font-semibold flex items-center text-lg"
+                className="text-blue-600 hover:text-blue-700 font-semibold flex items-center text-lg font-robotoregular"
               >
                 View all campaigns
-                <ChevronRight className="ml-2 h-5 w-5" />
+                <ChevronRight className="ml-2 h-6 w-6 text-blue-700" />
               </Link>
             </div>
 
@@ -437,8 +437,8 @@ const Index: React.FC = () => {
 
             <div className="bg-gradient-to-r from-blue-700 to-purple-700 rounded-3xl overflow-hidden shadow-2xl">
               <div className="grid grid-cols-1 lg:grid-cols-2">
-                <div className="p-8 md:p-12 lg:p-16">
-                  <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+                <div className="p-8 md:p-12 lg:p-16 font-poppinsregular">
+                  <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 font-robotobold tracking-wide">
                     Our Transparency Promise
                   </h2>
                   <p className="text-white/90 text-lg mb-8 leading-relaxed">
@@ -475,18 +475,18 @@ const Index: React.FC = () => {
                     <Link to="/about">
                       <Button
                         size="lg"
-                        className="bg-white text-blue-600 hover:bg-gray-100 font-semibold px-8 py-4 rounded-lg"
+                        className="bg-white text-blue-600 hover:bg-gray-100 font-semibold px-8 py-4 rounded-lg font-redhatbold"
                       >
                         Learn More
                       </Button>
                     </Link>
                   </div>
                 </div>
-                <div className="hidden lg:block relative">
+                <div className="hidden lg:block relative ">
                   <img
                     src="https://images.unsplash.com/photo-1579208570378-8c970854bc23?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
                     alt="Transparency in action"
-                    className="absolute inset-0 h-full w-full object-cover bg-blue-700 bg-blend-multiply ..."
+                    className="absolute inset-0 h-full w-full shadow-lg object-cover bg-blue-700 bg-blend-multiply ..."
                   />
                 </div>
               </div>
@@ -507,14 +507,14 @@ const Index: React.FC = () => {
             <img src="/DecorationPink.svg" alt="" className="w-44 h-30" />
           </div>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 font-robotobold">
               Ready to make a transparent impact?
             </h2>
-            <p className="text-lg md:text-xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-lg md:text-xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed font-poppinsregular">
               Join thousands of donors who are tracking their impact in
               real-time and restoring trust in charitable giving.
             </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-6">
+            <div className="flex flex-col sm:flex-row justify-center gap-6 font-redhatbold">
               <Link to="/campaigns">
                 <Button
                   size="lg"

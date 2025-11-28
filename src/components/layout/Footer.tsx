@@ -9,41 +9,41 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-1">
             <Link to="/" className="flex items-center">
-              <img src="/logo.png" alt="ClearCause" className="h-14 w-auto" />
+              <img src="/CLEARCAUSE-logo.svg" alt="ClearCause" className="h-9 w-auto" />
             </Link>
-            <p className="mt-4 text-sm text-gray-500">
+            <p className="mt-4 text-sm text-gray-500 font-poppinsregular">
               Donate with confidence. Track every dollar, see the impact, in
               real time.
             </p>
             <div className="flex space-x-4 mt-6">
               <a
                 href="#"
-                className="text-gray-400 hover:text-clearcause-primary"
+                className="text-blue-400 hover:text-clearcause-primary"
               >
                 <Facebook size={20} />
               </a>
               <a
                 href="#"
-                className="text-gray-400 hover:text-clearcause-primary"
+                className="text-blue-400 hover:text-clearcause-primary"
               >
                 <Twitter size={20} />
               </a>
               <a
                 href="#"
-                className="text-gray-400 hover:text-clearcause-primary"
+                className="text-blue-400 hover:text-clearcause-primary"
               >
                 <Instagram size={20} />
               </a>
               <a
                 href="#"
-                className="text-gray-400 hover:text-clearcause-primary"
+                className="text-blue-400 hover:text-clearcause-primary"
               >
                 <Youtube size={20} />
               </a>
             </div>
           </div>
 
-          <div className="col-span-1">
+          <div className="col-span-1 font-poppinsregular">
             <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">
               Platform
             </h3>
@@ -83,7 +83,7 @@ const Footer: React.FC = () => {
             </ul>
           </div>
 
-          <div className="col-span-1">
+          <div className="col-span-1 font-poppinsregular">
             <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">
               Support
             </h3>
@@ -123,7 +123,7 @@ const Footer: React.FC = () => {
             </ul>
           </div>
 
-          <div className="col-span-1">
+          <div className="col-span-1 font-poppinsregular">
             <h3 className="text-sm font-semibold text-gray-900 tracking-wider uppercase">
               Subscribe
             </h3>
@@ -140,7 +140,7 @@ const Footer: React.FC = () => {
                 <div className="mt-3 sm:mt-0 sm:ml-3">
                   <button
                     type="submit"
-                    className="w-full bg-clearcause-primary hover:bg-clearcause-secondary flex items-center justify-center font-redhatregular border border-transparent rounded-md py-2 px-4 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-clearcause-primary"
+                    className="w-full bg-blue-600 hover:bg-blue-700 flex items-center justify-center font-redhatbold border border-transparent rounded-md py-2 px-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-clearcause-primary"
                   >
                     Subscribe
                   </button>

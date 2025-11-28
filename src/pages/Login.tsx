@@ -254,7 +254,7 @@ const Login: React.FC = () => {
                     type="button"
                     onClick={handleGoogleLogin}
                     variant="outline"
-                    className="w-full hover:bg-blue-600"
+                    className="w-full hover:bg-blue-700"
                     disabled={isSubmitting}
                   >
                     <svg

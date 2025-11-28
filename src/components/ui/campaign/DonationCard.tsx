@@ -102,7 +102,7 @@ const DonationCard: React.FC<DonationCardProps> = ({
                   onClick={() => setDonationAmount(amount)}
                   className={`rounded-md py-2 text-sm font-medium transition-colors ${
                     donationAmount === amount
-                      ? "bg-clearcause-primary text-white"
+                      ? "bg-blue-600 text-white"
                       : "bg-gray-100 text-gray-800 hover:bg-gray-200"
                   }`}
                 >
@@ -130,7 +130,7 @@ const DonationCard: React.FC<DonationCardProps> = ({
           </div>
 
           <Link to={`/donate/${campaign.id}`} className="block">
-            <Button className="w-full bg-blue-500 hover:bg-blue-500/90 mb-4 font-interregular  tracking-wider">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700/90 mb-4 font-interregular  tracking-wider">
               Donate
             </Button>
           </Link>

@@ -245,7 +245,7 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
   const roleContent = getRoleContent();
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto font-sans">
       {/* Progress Bar */}
       <div className="mb-6">
         <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
@@ -310,13 +310,13 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
           )}
 
           {/* Account Type Selector */}
-          <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
+          <div className="flex mb-6 bg-gray-100 rounded-lg p-1.5">
             <button
               type="button"
               onClick={() => setAccountType("donor")}
               className={`flex-1 flex items-center justify-center py-3 px-4 rounded-md transition-all duration-200 ${
                 accountType === "donor"
-                  ? "bg-white text-clearcause-primary shadow-sm"
+                  ? "bg-blue-600  text-white shadow-sm"
                   : "text-gray-600 hover:text-gray-800"
               }`}
             >
@@ -327,7 +327,7 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
               onClick={() => setAccountType("charity")}
               className={`flex-1 flex items-center justify-center py-3 px-4 rounded-md transition-all duration-200 ${
                 accountType === "charity"
-                  ? "bg-white text-clearcause-primary shadow-sm"
+                  ? "bg-blue-600  text-white shadow-sm"
                   : "text-gray-600 hover:text-gray-800"
               }`}
             >
@@ -339,7 +339,6 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
             {/* Contact Person Section */}
             <div className="border-b pb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <User className="h-5 w-5 mr-2" />
                 Personal Information
               </h3>
 
@@ -576,7 +575,7 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
             <div>
               <Button
                 type="submit"
-                className="w-full bg-clearcause-accent hover:bg-clearcause-accent/90 py-3 px-4 text-base"
+                className="w-full bg-blue-600 hover:bg-blue-700 py-3 px-4 text-base"
                 disabled={
                   isSubmitting || success || Object.keys(fieldErrors).length > 0
                 }

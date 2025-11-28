@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -77,14 +76,19 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-display font-semibold tracking-tight;
   }
 
   .verified-badge {
     @apply flex items-center gap-1 text-sm bg-clearcause-success/10 text-clearcause-success py-1 px-2 rounded-full;
   }
-  
+
   .pending-badge {
     @apply flex items-center gap-1 text-sm bg-clearcause-warning/10 text-clearcause-warning py-1 px-2 rounded-full;
   }
@@ -127,17 +131,35 @@
 @font-face {
   font-family: "RedHatRegular";
   src: local("RedHatText-Regular"),
-  url('./assets/fonts/RedHatText-Regular.ttf') format("truetype");
+    url("./assets/fonts/RedHatText-Regular.ttf") format("truetype");
 }
 
 @font-face {
   font-family: "RedHatBold";
   src: local("RedHatText-Bold"),
-  url('./assets/fonts/RedHatText-Bold.ttf') format("truetype");
+    url("./assets/fonts/RedHatText-Bold.ttf") format("truetype");
 }
 
-@font-face{
-   font-family: "InterRegular";
+@font-face {
+  font-family: "InterRegular";
   src: local("Inter-Regular"),
-  url('./assets/fonts/Inter_18pt-Regular.ttf') format("truetype");
+    url("./assets/fonts/Inter_18pt-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "PoppinsRegular";
+  src: local("Poppins-Regular"),
+    url("./assets/fonts/Poppins-Variable.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "RobotoRegular";
+  src: local("Roboto-Regular"),
+    url("./assets/fonts/Roboto-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "RobotoBold";
+  src: local("Roboto-Bold"),
+    url("./assets/fonts/Roboto-Bold.ttf") format("truetype");
 }

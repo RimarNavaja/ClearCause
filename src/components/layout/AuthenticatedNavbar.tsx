@@ -73,7 +73,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
   // Get link classes with active state
   const getLinkClasses = (path: string) => {
     const baseClasses =
-      "inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors";
+      "inline-flex items-center px-1 pt-1 border-b-2 text-sm font-poppinsregular font-medium transition-colors";
     const activeClasses = "border-clearcause-primary text-clearcause-primary";
     const inactiveClasses =
       "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300";
@@ -294,7 +294,11 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
                 to={getDashboardLink(user.role)}
                 className="flex items-center"
               >
-                <img src="/CLEARCAUSE-logo.svg" alt="ClearCause" className="h-8 w-auto" />
+                <img
+                  src="/CLEARCAUSE-logo.svg"
+                  alt="ClearCause"
+                  className="h-[23px] w-auto"
+                />
               </Link>
             </div>
 
