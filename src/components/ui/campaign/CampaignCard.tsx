@@ -88,7 +88,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
     switch (realtimeData.status) {
       case "active":
         return isExpired ? (
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="text-xs px-1">
             <Calendar className="w-3 h-3 mr-1" />
             Ended
           </Badge>
@@ -200,6 +200,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
               <VerificationBadge
                 status={realtimeData.charity.verificationStatus as any}
                 size="sm"
+                
               />
             )}
           </div>

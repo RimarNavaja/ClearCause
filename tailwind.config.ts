@@ -65,8 +65,8 @@ export default {
 				},
 				// ClearCause brand colors
 				clearcause: {
-					primary: '#2B7FFF', // Teal
-					secondary: '#0E7490', // Darker Teal
+					primary: '#1d4ed8', // Blue 700 shade
+					secondary: '#0284c7', // BLue 600 shade
 					accent: '#F97316', // Orange for CTAs
 					muted: '#E0F2FE', // Light blue
 					"light-blue": '#BAE6FD',

@@ -22,13 +22,13 @@ const CampaignHeader: React.FC<CampaignHeaderProps> = ({
   daysLeft,
 }) => {
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
+    <div className="bg-white rounded-xl shadow-md p-6 font-poppinsregular">
       <div className="flex items-center mb-4">
-        <span className="bg-clearcause-muted capitalize text-clearcause-primary text-xs font-bold px-2.5 py-1 rounded-full mr-2">
+        <span className="bg-white font-redhatbold capitalize shadow-md backdrop-blur-sm text-xs font-medium px-2.5 py-1 rounded-full mr-3 ">
           {category}
         </span>
         {verified && (
-          <div className="verified-badge text-green-500">
+          <div className="verified-badge text-white bg-blue-700 shadow-lg text-xs font-redhatregular font-semibold">
             <Check size={14} />
             <span>Verified Campaign</span>
           </div>
