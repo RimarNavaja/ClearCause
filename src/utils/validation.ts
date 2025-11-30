@@ -48,6 +48,7 @@ export const campaignStatusSchema = z.enum(['draft', 'pending', 'active', 'pause
 export const donationStatusSchema = z.enum(['pending', 'completed', 'failed', 'refunded'] as const);
 export const verificationStatusSchema = z.enum(['pending', 'under_review', 'approved', 'rejected', 'resubmission_required'] as const);
 export const milestoneStatusSchema = z.enum(['pending', 'in_progress', 'completed', 'verified'] as const);
+export const achievementCategorySchema = z.enum(['donation_milestones', 'donation_frequency', 'campaign_diversity', 'platform_engagement'] as const);
 
 // ===== AUTHENTICATION SCHEMAS =====
 
@@ -241,6 +242,27 @@ export const fileUploadSchema = z.object({
 export const documentUploadSchema = fileUploadSchema.extend({
   allowedTypes: z.array(z.string()).default(['application/pdf', 'image/jpeg', 'image/png']),
   maxSize: z.number().positive().default(10 * 1024 * 1024), // 10MB for documents
+});
+
+// ===== ACHIEVEMENT VALIDATION SCHEMAS =====
+
+export const achievementCreateSchema = z.object({
+  name: z.string().min(3, 'Name must be at least 3 characters').max(100, 'Name is too long'),
+  slug: z.string().min(3).max(100).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase with hyphens only'),
+  description: z.string().min(10, 'Description must be at least 10 characters').max(500, 'Description is too long'),
+  icon_url: urlSchema,
+  category: achievementCategorySchema,
+  criteria: z.record(z.any()),
+  display_order: z.number().int().min(0).optional(),
+  is_active: z.boolean().optional(),
+});
+
+export const achievementUpdateSchema = achievementCreateSchema.partial();
+
+export const achievementFilterSchema = z.object({
+  category: achievementCategorySchema.optional(),
+  is_active: z.boolean().optional(),
+  donor_id: z.string().uuid().optional(),
 });
 
 // ===== VALIDATION UTILITIES =====

@@ -334,15 +334,15 @@ const DonorDashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               {recentDonations.length === 0 ? (
-                <div className="text-center py-8">
+                <div className="text-center py-8 font-poppinsregular">
                   <Gift className="mx-auto h-12 w-12 text-gray-300" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">
+                  <h3 className="mt-2 text-sm font-poppinsregular text-gray-900">
                     No donations yet
                   </h3>
                   <p className="mt-1 text-sm text-gray-500">
                     Start making a difference today
                   </p>
-                  <Button className="mt-4" asChild>
+                  <Button className="mt-4 bg-blue-700 hover:bg-blue-600" asChild>
                     <Link to="/campaigns">Browse Campaigns</Link>
                   </Button>
                 </div>

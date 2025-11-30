@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 
 import DonorLayout from '@/components/layout/DonorLayout';
 import ProfileImageUpload from '@/components/ui/ProfileImageUpload';
@@ -17,23 +18,21 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import * as userService from '@/services/userService';
 import { donorProfileSchema } from '@/utils/validation';
+import { getDonorAchievements } from '@/services/achievementService';
+import { DonorAchievement } from '@/lib/types';
+import { AchievementBadge } from '@/components/ui/achievements/AchievementBadge';
 
 // Form schema for the profile page
 const formSchema = donorProfileSchema;
 type FormData = z.infer<typeof formSchema>;
 
-// Mock data for badges
-const sampleBadges = [
-  { id: "b1", name: "First Donation", icon: "🎖️", description: "Made your first donation" },
-  { id: "b2", name: "Regular Giver", icon: "⭐", description: "Donated consistently for 3 months" },
-  { id: "b3", name: "Water Advocate", icon: "💧", description: "Supported 3 water-related campaigns" }
-];
-
 const DonorProfile: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
+  const [recentAchievements, setRecentAchievements] = useState<DonorAchievement[]>([]);
 
   // Fetch user profile data using React Query
   const { data: profile, isLoading: isLoadingProfile, isError } = useQuery({
@@ -116,6 +115,19 @@ const DonorProfile: React.FC = () => {
       });
     }
   }, [profile, form]);
+
+  // Fetch recent achievements
+  useEffect(() => {
+    const fetchRecentAchievements = async () => {
+      if (!user) return;
+      const result = await getDonorAchievements(user.id);
+      if (result.success && result.data) {
+        // Show most recent 6
+        setRecentAchievements(result.data.slice(0, 6));
+      }
+    };
+    fetchRecentAchievements();
+  }, [user]);
 
   const handleSubmit = (data: FormData) => {
     updateProfileMutation.mutate({
@@ -313,30 +325,46 @@ const DonorProfile: React.FC = () => {
           </Card>
         </div>
 
-        {/* Badges Section */}
+        {/* Achievements Section */}
         <div className="lg:col-span-3">
-            <Card className="bg-white shadow-sm">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Award className="h-5 w-5 text-clearcause-primary" />
-                        Achievements
-                    </CardTitle>
-                    <CardDescription>Badges earned through your giving journey.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        {sampleBadges.map((badge) => (
-                            <div key={badge.id} className="flex items-center space-x-4 rounded-md border p-4">
-                                <div className="text-3xl">{badge.icon}</div>
-                                <div className="flex-1 space-y-1">
-                                    <p className="text-sm font-medium leading-none">{badge.name}</p>
-                                    <p className="text-sm text-muted-foreground">{badge.description}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
+          <Card className="bg-white shadow-sm">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                   
+                    Recent Achievements
+                  </CardTitle>
+                  <CardDescription>Badges earned through your giving journey</CardDescription>
+                </div>
+                <Button
+                  variant="link"
+                  onClick={() => navigate('/donor/achievements')}
+                >
+                  View All
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {recentAchievements.length > 0 ? (
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+                  {recentAchievements.map((da) => (
+                    <AchievementBadge
+                      key={da.id}
+                      achievement={da.achievement!}
+                      earned={true}
+                      earnedAt={da.earned_at}
+                      size="md"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-4">
+                  No achievements yet. Make your first donation to get started!
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </DonorLayout>

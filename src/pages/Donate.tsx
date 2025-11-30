@@ -226,10 +226,10 @@ const Donate: React.FC = () => {
                 {campaignError || "Campaign not found"}
               </AlertDescription>
             </Alert>
-            <div className="mt-6 text-center">
+            <div className="mt-6 text-center font-redhatbold">
               <Link to="/campaigns">
-                <Button variant="outline">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
+                <Button variant="outline" className="bg-blue-700 hover:bg-blue-600 text-white">
+                  <ArrowLeft className="h-4 w-4 mr-2 " />
                   Browse Other Campaigns
                 </Button>
               </Link>

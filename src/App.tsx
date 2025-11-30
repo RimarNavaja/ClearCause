@@ -37,6 +37,7 @@ import DonorProfile from "./pages/donor/DonorProfile";
 import DonorSettings from "./pages/donor/DonorSettings";
 import TrackCampaigns from "./pages/donor/TrackCampaigns";
 import DonorFeedback from "./pages/donor/DonorFeedback";
+import DonorAchievements from "./pages/donor/DonorAchievements";
 import CharityApplicationForm from "./pages/CharityApplicationForm";
 import CharityApplicationStatus from "./pages/CharityApplicationStatus";
 import CharityDashboard from "./pages/charity/CharityDashboard";
@@ -170,6 +171,11 @@ const App = () => (
           <Route path="/donor/feedback" element={
             <DonorRoute>
               <DonorFeedback />
+            </DonorRoute>
+          } />
+          <Route path="/donor/achievements" element={
+            <DonorRoute>
+              <DonorAchievements />
             </DonorRoute>
           } />
 

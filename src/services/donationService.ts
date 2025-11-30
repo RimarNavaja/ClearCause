@@ -4,20 +4,20 @@
  */
 
 import { supabase } from '../lib/supabase';
-import { 
-  Donation, 
-  ApiResponse, 
-  PaginatedResponse, 
-  PaginationParams, 
+import {
+  Donation,
+  ApiResponse,
+  PaginatedResponse,
+  PaginationParams,
   DonationCreateData,
   DonationFilters,
   DonationStatus,
-  ClearCauseError 
+  ClearCauseError
 } from '../lib/types';
-import { 
-  validateData, 
-  donationCreateSchema, 
-  donationUpdateSchema, 
+import {
+  validateData,
+  donationCreateSchema,
+  donationUpdateSchema,
   donationFilterSchema,
   paginationSchema
 } from '../utils/validation';
@@ -26,6 +26,7 @@ import { createPaginatedResponse } from '../utils/helpers';
 import { logAuditEvent } from './adminService';
 import { getUserProfile } from './userService';
 import { getCampaignById } from './campaignService';
+import { checkAndAwardAchievements } from './achievementService';
 
 /**
  * Create donation
@@ -211,6 +212,33 @@ const processDonationPayment = async (
         donationId,
         { amount: updatedDonation.amount }
       );
+
+      // Check and award achievements
+      try {
+        // Get campaign details for achievement context
+        const { data: campaign } = await supabase
+          .from('campaigns')
+          .select('*')
+          .eq('id', updatedDonation.campaign_id)
+          .single();
+
+        await checkAndAwardAchievements(
+          updatedDonation.user_id,
+          'donation',
+          {
+            donationId: donationId,
+            amount: updatedDonation.amount,
+            campaign_id: updatedDonation.campaign_id,
+            campaign: campaign,
+            donated_at: new Date().toISOString(),
+            // TODO: Implement milestone detection
+            triggered_milestone: false,
+          }
+        );
+      } catch (error) {
+        console.error('Error checking achievements:', error);
+        // Don't fail the donation if achievement check fails
+      }
     }
   } catch (error) {
     console.error('Payment processing error:', error);

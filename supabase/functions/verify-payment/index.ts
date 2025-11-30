@@ -148,6 +148,8 @@ serve(async (req) => {
     const sourceId = paymentSession.provider_source_id;
     console.log('Checking PayMongo source status:', sourceId);
 
+
+    
     const sourceResponse = await fetch(`${PAYMONGO_API_URL}/sources/${sourceId}`, {
       method: 'GET',
       headers: {
