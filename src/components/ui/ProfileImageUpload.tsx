@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { Upload, Camera, X, Loader2 } from "lucide-react";
+import { Upload, Camera, X, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,6 +26,7 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -35,7 +36,7 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
     lg: "h-32 w-32",
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -61,18 +62,23 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
       return;
     }
 
+    // Store the file and create preview
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPreviewUrl(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveImage = async () => {
+    if (!selectedFile) return;
+
     try {
       setIsUploading(true);
 
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setPreviewUrl(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-
       // Upload file
-      const result = await onImageUpload(file);
+      const result = await onImageUpload(selectedFile);
 
       if (result.success) {
         toast({
@@ -81,8 +87,11 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
             imageType === "avatar" ? "Profile picture" : "Logo"
           } updated successfully.`,
         });
+        // Clear the selected file after successful upload
+        setSelectedFile(null);
       } else {
         setPreviewUrl(null);
+        setSelectedFile(null);
         toast({
           title: "Upload failed",
           description:
@@ -92,6 +101,7 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
       }
     } catch (error) {
       setPreviewUrl(null);
+      setSelectedFile(null);
       toast({
         title: "Upload failed",
         description: "An unexpected error occurred. Please try again.",
@@ -105,12 +115,16 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
     }
   };
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
+  const handleCancelUpload = () => {
+    setPreviewUrl(null);
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
-  const clearPreview = () => {
-    setPreviewUrl(null);
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
   };
 
   const displayImageUrl = previewUrl || currentImageUrl;
@@ -134,16 +148,10 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
               </AvatarFallback>
             </Avatar>
 
-            {previewUrl && (
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
-                onClick={clearPreview}
-              >
-                <X className="h-3 w-3" />
-              </Button>
+            {previewUrl && selectedFile && (
+              <div className="absolute -top-2 -right-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded-full">
+                Preview
+              </div>
             )}
           </div>
 
@@ -157,34 +165,62 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
             </p>
           </div>
 
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleUploadClick}
-              disabled={isUploading}
-              className="flex items-center gap-2 hover:bg-blue-600"
-            >
-              {isUploading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Camera className="h-4 w-4" />
-              )}
-              {isUploading ? "Uploading..." : "Change"}
-            </Button>
+          {/* Show Save/Cancel buttons when a file is selected */}
+          {selectedFile && previewUrl ? (
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="default"
+                onClick={handleSaveImage}
+                disabled={isUploading}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+              >
+                {isUploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
+                {isUploading ? "Saving..." : "Save"}
+              </Button>
 
-            {displayImageUrl && (
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => window.open(displayImageUrl, "_blank")}
+                onClick={handleCancelUpload}
+                disabled={isUploading}
+                className="flex items-center gap-2 hover:bg-red-50 hover:text-red-600"
+              >
+                <X className="h-4 w-4" />
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            /* Show Change/View buttons when no file is selected */
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleUploadClick}
+                disabled={isUploading}
                 className="flex items-center gap-2 hover:bg-blue-600"
               >
-                <Upload className="h-4 w-4" />
-                View
+                <Camera className="h-4 w-4" />
+                Change
               </Button>
-            )}
-          </div>
+
+              {currentImageUrl && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.open(currentImageUrl, "_blank")}
+                  className="flex items-center gap-2 hover:bg-blue-600"
+                >
+                  <Upload className="h-4 w-4" />
+                  View
+                </Button>
+              )}
+            </div>
+          )}
 
           <div className="text-xs text-gray-400 text-center">
             <p>Supported formats: JPEG, PNG, WebP</p>
