@@ -94,7 +94,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ title = 'Dashboard', children
           description: "You have been signed out of your admin account.",
         });
         // Use enhanced complete logout for session isolation
-        await performCompleteLogout('/admin/login');
+        await performCompleteLogout('/login');
       } else {
         toast({
           title: "Logout failed",
@@ -110,7 +110,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ title = 'Dashboard', children
         variant: "destructive",
       });
       // Force cleanup even on error
-      await performCompleteLogout('/admin/login');
+      await performCompleteLogout('/login');
     } finally {
       setIsLoggingOut(false);
     }
@@ -218,13 +218,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ title = 'Dashboard', children
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to="/admin/settings" className="w-full">
+                    <Link to="/admin/settings" className="w-full cursor-pointer">
                       <User className="mr-2 h-4 w-4" />
                       <span>Profile Settings</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/admin/settings" className="w-full">
+                    <Link to="/admin/settings" className="w-full cursor-pointer">
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Admin Settings</span>
                     </Link>
@@ -233,7 +233,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ title = 'Dashboard', children
                   <DropdownMenuItem
                     onClick={handleLogoutClick}
                     disabled={isLoggingOut}
-                    className="w-full text-red-600 focus:text-red-600"
+                    className="w-full text-red-600 focus:text-red-600 cursor-pointer"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>{isLoggingOut ? 'Signing out...' : 'Sign out'}</span>

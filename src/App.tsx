@@ -54,7 +54,6 @@ import OrganizationProfile from "./pages/charity/OrganizationProfile";
 import CharitySettings from "./pages/charity/CharitySettings";
 import CharityMilestones from "./pages/charity/CharityMilestones";
 import CharityAnalytics from "./pages/charity/CharityAnalytics";
-import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import VerificationQueue from "./pages/admin/VerificationQueue";
 import VerificationDetail from "./pages/admin/VerificationDetail";
@@ -102,7 +101,6 @@ const App = () => (
           {/* Guest only routes (redirect if authenticated) */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/admin/login" element={<AdminLogin />} />
           
           {/* Auth callback route */}
           <Route path="/auth/callback" element={<AuthCallback />} />
