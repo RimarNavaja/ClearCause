@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getDonorAchievementProgress } from '@/services/achievementService';
 import { AchievementProgress } from '@/lib/types';
 import { AchievementList } from '@/components/ui/achievements/AchievementList';
+import { ShareAchievementDialog } from '@/components/ui/achievements/ShareAchievementDialog';
 import DonorLayout from '@/components/layout/DonorLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,6 +14,8 @@ const DonorAchievements: React.FC = () => {
   const [achievements, setAchievements] = useState<AchievementProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [selectedAchievement, setSelectedAchievement] = useState<AchievementProgress | null>(null);
 
   useEffect(() => {
     const fetchAchievements = async () => {
@@ -40,6 +43,11 @@ const DonorAchievements: React.FC = () => {
   const earnedCount = achievements.filter(a => a.earned).length;
   const totalCount = achievements.length;
 
+  const handleShareClick = (achievement: AchievementProgress) => {
+    setSelectedAchievement(achievement);
+    setShareDialogOpen(true);
+  };
+
   return (
     <DonorLayout title="Your Achievements">
       <div className="container mx-auto py-8 px-4 font-poppinsregular">
@@ -57,7 +65,7 @@ const DonorAchievements: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
-              <div className="text-4xl font-bold text-yellow-500">{earnedCount}</div>
+              <div className="text-4xl font-bold text-blue-700">{earnedCount}</div>
               <div className="text-gray-600">
                 / {totalCount} achievements earned ({totalCount > 0 ? Math.round((earnedCount / totalCount) * 100) : 0}%)
               </div>
@@ -82,13 +90,20 @@ const DonorAchievements: React.FC = () => {
             </TabsList>
 
             <TabsContent value="all">
-              <AchievementList achievements={achievements} showProgress={true} />
+              <AchievementList
+                achievements={achievements}
+                showProgress={true}
+                showShareButton={true}
+                onShareClick={handleShareClick}
+              />
             </TabsContent>
 
             <TabsContent value="earned">
               <AchievementList
                 achievements={achievements.filter(a => a.earned)}
                 showProgress={false}
+                showShareButton={true}
+                onShareClick={handleShareClick}
               />
             </TabsContent>
 
@@ -96,9 +111,21 @@ const DonorAchievements: React.FC = () => {
               <AchievementList
                 achievements={achievements.filter(a => !a.earned)}
                 showProgress={true}
+                showShareButton={false}
               />
             </TabsContent>
           </Tabs>
+        )}
+
+        {/* Share Achievement Dialog */}
+        {selectedAchievement && (
+          <ShareAchievementDialog
+            achievement={selectedAchievement.achievement}
+            open={shareDialogOpen}
+            onOpenChange={setShareDialogOpen}
+            donorName={user?.fullName}
+            earnedAt={selectedAchievement.earned_at}
+          />
         )}
       </div>
     </DonorLayout>

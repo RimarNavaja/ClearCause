@@ -185,7 +185,7 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
 
         {/* Main content */}
         <main className="flex-grow p-4 md:p-8">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-5xl mx-auto">
             <h1 className="text-2xl md:text-3xl font-robotobold  text-gray-900 mb-6">
               {title}
             </h1>

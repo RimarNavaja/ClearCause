@@ -9,6 +9,8 @@ interface AchievementListProps {
   achievements: AchievementProgress[];
   groupByCategory?: boolean;
   showProgress?: boolean;
+  showShareButton?: boolean;
+  onShareClick?: (achievement: AchievementProgress) => void;
   className?: string;
 }
 
@@ -16,6 +18,8 @@ export const AchievementList: React.FC<AchievementListProps> = ({
   achievements,
   groupByCategory = true,
   showProgress = true,
+  showShareButton = false,
+  onShareClick,
   className,
 }) => {
   if (!groupByCategory) {
@@ -27,13 +31,17 @@ export const AchievementList: React.FC<AchievementListProps> = ({
         )}
       >
         {achievements.map((ap) => (
-          <div key={ap.achievement.id} className="flex flex-col items-center">
-            <AchievementBadge
-              achievement={ap.achievement}
-              earned={ap.earned}
-              earnedAt={ap.earned_at}
-              showLabel={true}
-            />
+          <div key={ap.achievement.id} className="flex flex-col items-center justify-start h-full">
+            <div className="flex-shrink-0">
+              <AchievementBadge
+                achievement={ap.achievement}
+                earned={ap.earned}
+                earnedAt={ap.earned_at}
+                showLabel={true}
+                showShareButton={showShareButton}
+                onShareClick={onShareClick ? () => onShareClick(ap) : undefined}
+              />
+            </div>
             {showProgress && !ap.earned && ap.progress && (
               <div className="mt-2 w-full">
                 <Progress value={ap.progress.percentage} className="h-1" />
@@ -75,14 +83,18 @@ export const AchievementList: React.FC<AchievementListProps> = ({
               {categoryAchievements.map((ap) => (
                 <div
                   key={ap.achievement.id}
-                  className="flex flex-col items-center"
+                  className="flex flex-col items-center justify-start h-full"
                 >
-                  <AchievementBadge
-                    achievement={ap.achievement}
-                    earned={ap.earned}
-                    earnedAt={ap.earned_at}
-                    showLabel={true}
-                  />
+                  <div className="flex-shrink-0">
+                    <AchievementBadge
+                      achievement={ap.achievement}
+                      earned={ap.earned}
+                      earnedAt={ap.earned_at}
+                      showLabel={true}
+                      showShareButton={showShareButton}
+                      onShareClick={onShareClick ? () => onShareClick(ap) : undefined}
+                    />
+                  </div>
                   {showProgress && !ap.earned && ap.progress && (
                     <div className="mt-2 w-full">
                       <Progress
