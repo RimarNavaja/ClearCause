@@ -245,7 +245,7 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
   const roleContent = getRoleContent();
 
   return (
-    <div className="max-w-3xl mx-auto font-sans">
+    <div className="max-w-3xl mx-auto font-poppinsregular">
       {/* Progress Bar */}
       <div className="mb-6">
         <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
@@ -265,7 +265,7 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
               alt="ClearCause"
               className="h-15 w-23 mb-6"
             />
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 font-robotobold tracking-wide">
               {roleContent.title}
             </h1>
             <p className="text-gray-600 mt-2">{roleContent.subtitle}</p>
@@ -300,17 +300,17 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
                       sign in.
                     </p>
                   </div>
-                  <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                  {/* <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
                     <strong> Tip:</strong> If you don't receive the email within
                     10 minutes, try signing up again or contact support.
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </div>
           )}
 
           {/* Account Type Selector */}
-          <div className="flex mb-6 bg-gray-100 rounded-lg p-1.5">
+          <div className="flex mb-6 bg-gray-100 rounded-lg p-1.5 font-redhatbold">
             <button
               type="button"
               onClick={() => setAccountType("donor")}
@@ -338,7 +338,7 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
           <form className="space-y-6" onSubmit={onSubmit}>
             {/* Contact Person Section */}
             <div className="border-b pb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <h3 className="text-lg  text-gray-900 mb-4 flex items-center font-robotobold tracking-wide">
                 Personal Information
               </h3>
 
@@ -444,7 +444,7 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
 
             {/* Password Fields */}
             <div className="border-b pb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 font-robotobold tracking-wide">
                 Account Credentials
               </h3>
 
@@ -575,7 +575,7 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
             <div>
               <Button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 py-3 px-4 text-base"
+                className="w-full bg-blue-600 hover:bg-blue-700 py-3 px-4 text-base font-redhatbold"
                 disabled={
                   isSubmitting || success || Object.keys(fieldErrors).length > 0
                 }

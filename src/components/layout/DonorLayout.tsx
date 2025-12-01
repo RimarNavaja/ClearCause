@@ -12,6 +12,7 @@ import {
   TrendingUp,
   MessageSquare,
   List,
+  Award,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -115,6 +116,11 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
       icon: <MessageSquare className="w-5 h-5" />,
     },
     {
+      path: "/donor/achievements",
+      label: "Achievements",
+      icon: <Award className="w-5 h-5" />,
+    },
+    {
       path: "/donor/settings",
       label: "Settings",
       icon: <Settings className="w-5 h-5" />,
@@ -180,7 +186,7 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
         {/* Main content */}
         <main className="flex-grow p-4 md:p-8">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-2xl md:text-3xl font-bold  text-gray-900 mb-6">
+            <h1 className="text-2xl md:text-3xl font-robotobold  text-gray-900 mb-6">
               {title}
             </h1>
             {children}

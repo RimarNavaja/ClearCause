@@ -45,7 +45,7 @@ export const CampaignFilters: React.FC<CampaignFiltersProps> = ({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="text-lg flex items-center gap-2 font-robotobold">
             <Filter className="h-5 w-5" />
             Filters
             {activeFilterCount > 0 && (
@@ -70,12 +70,12 @@ export const CampaignFilters: React.FC<CampaignFiltersProps> = ({
       <CardContent className="space-y-6">
         {/* Category Filters */}
         <div>
-          <h3 className="font-medium text-sm text-gray-700 mb-3">Categories</h3>
+          <h3 className="font-semibold text-base  mb-3 font-robotoregular">Categories</h3>
           <div className="space-y-2">
             {categories.map((category) => (
               <label
                 key={category.id}
-                className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors"
+                className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors font-poppinsregular"
               >
                 <input
                   type="checkbox"
@@ -94,12 +94,12 @@ export const CampaignFilters: React.FC<CampaignFiltersProps> = ({
 
         {/* Status Filters */}
         <div>
-          <h3 className="font-medium text-sm text-gray-700 mb-3">Status</h3>
+          <h3 className="text-base mb-3 font-robotoregular font-semibold">Status</h3>
           <div className="space-y-2">
             {STATUS_OPTIONS.map((status) => (
               <label
                 key={status.value}
-                className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors"
+                className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors font-poppinsregular"
               >
                 <input
                   type="checkbox"

@@ -83,7 +83,6 @@ export const config = {
     signup: '/signup',
     admin: {
       dashboard: '/admin/dashboard',
-      login: '/admin/login',
     },
     charity: {
       dashboard: '/charity/dashboard',

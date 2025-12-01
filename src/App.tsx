@@ -37,6 +37,7 @@ import DonorProfile from "./pages/donor/DonorProfile";
 import DonorSettings from "./pages/donor/DonorSettings";
 import TrackCampaigns from "./pages/donor/TrackCampaigns";
 import DonorFeedback from "./pages/donor/DonorFeedback";
+import DonorAchievements from "./pages/donor/DonorAchievements";
 import CharityApplicationForm from "./pages/CharityApplicationForm";
 import CharityApplicationStatus from "./pages/CharityApplicationStatus";
 import CharityDashboard from "./pages/charity/CharityDashboard";
@@ -53,7 +54,6 @@ import OrganizationProfile from "./pages/charity/OrganizationProfile";
 import CharitySettings from "./pages/charity/CharitySettings";
 import CharityMilestones from "./pages/charity/CharityMilestones";
 import CharityAnalytics from "./pages/charity/CharityAnalytics";
-import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import VerificationQueue from "./pages/admin/VerificationQueue";
 import VerificationDetail from "./pages/admin/VerificationDetail";
@@ -101,7 +101,6 @@ const App = () => (
           {/* Guest only routes (redirect if authenticated) */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/admin/login" element={<AdminLogin />} />
           
           {/* Auth callback route */}
           <Route path="/auth/callback" element={<AuthCallback />} />
@@ -170,6 +169,11 @@ const App = () => (
           <Route path="/donor/feedback" element={
             <DonorRoute>
               <DonorFeedback />
+            </DonorRoute>
+          } />
+          <Route path="/donor/achievements" element={
+            <DonorRoute>
+              <DonorAchievements />
             </DonorRoute>
           } />
 

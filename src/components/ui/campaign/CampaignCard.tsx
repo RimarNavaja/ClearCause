@@ -87,12 +87,15 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   const getStatusBadge = () => {
     switch (realtimeData.status) {
       case "active":
-        return isExpired ? (
-          <Badge variant="secondary" className="text-xs">
-            <Calendar className="w-3 h-3 mr-1" />
-            Ended
-          </Badge>
-        ) : null;
+        return isExpired
+          ? // <Badge
+            //   variant="secondary"
+            //   className="text-xs font-redhatbold bg-blue-700/90 py-1 text-center px-1"
+            // >
+            //   <span className="text-center">Ended</span>
+            // </Badge>
+            null
+          : null;
       case "paused":
         return (
           <Badge variant="outline" className="text-xs text-orange-600">
@@ -218,10 +221,14 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         </div>
       </Link>
 
-      <div className={`${compact ? "p-3" : "p-4"} flex flex-col flex-grow`}>
+      <div
+        className={`${
+          compact ? "p-3" : "p-4"
+        } flex flex-col flex-grow font-poppinsregular`}
+      >
         <Link to={`/campaigns/${realtimeData.id}`} className="block">
           <h3
-            className={`font-semibold line-clamp-2 hover:text-clearcause-primary transition-colors mb-1 ${
+            className={`font-semibold line-clamp-2 hover:text-clearcause-primary transition-colors mb-1 font-robotobold ${
               compact ? "text-base" : "text-lg"
             }`}
           >
@@ -270,14 +277,14 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           </div>
 
           {/* Stats Row */}
-          <div className="flex justify-between items-center border-t border-gray-100 pt-3">
+          <div className="flex justify-between items-center border-t border-gray-100 pt-3 font-poppinsregular text-xs">
             {!isExpired ? (
-              <div className="flex items-center text-sm text-gray-500">
+              <div className="flex items-center  text-gray-500 text-xs">
                 <Clock size={14} className="mr-1" />
                 <span>{daysLeft} days left</span>
               </div>
             ) : (
-              <div className="flex items-center text-sm text-red-500">
+              <div className="flex items-center  text-red-500 text-xs">
                 <Calendar size={14} className="mr-1" />
                 <span>Ended</span>
               </div>
@@ -286,7 +293,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
 
           {/* Action Button */}
           <Button
-            className="w-full rounded-full bg-clearcause-primary hover:bg-clearcause-primary/80 disabled:opacity-50"
+            className="w-full rounded-full bg-clearcause-primary  hover:bg-clearcause-primary/80 disabled:opacity-50"
             disabled={isExpired || realtimeData.status !== "active"}
             asChild
           >

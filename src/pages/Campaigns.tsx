@@ -168,21 +168,21 @@ const Campaigns: React.FC = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate(-1)}
-                className="flex items-center gap-2 hover:bg-blue-600"
+                className="flex items-center gap-2 font-redhatbold hover:bg-blue-600"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">Browse Campaigns</h1>
-            <p className="mt-2 text-lg text-gray-600">
+            <h1 className="text-3xl font-bold text-gray-900 font-robotobold">Browse Campaigns</h1>
+            <p className="mt-2 text-lg text-gray-600 font-poppinsregular">
               Discover verified campaigns and track your impact in real-time
             </p>
           </div>
         </section>
 
         {/* Search and Sort */}
-        <section className="bg-gray-50 border-b">
+        <section className="bg-gray-50 border-b font-poppinsregular">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               {/* Search Bar */}
@@ -270,7 +270,7 @@ const Campaigns: React.FC = () => {
             )}
 
             {/* Main Content */}
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-3 font-poppinsregular">
               {/* Results Summary */}
               {!loading && (
                 <div className="mb-6">

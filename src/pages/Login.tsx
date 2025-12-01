@@ -124,9 +124,9 @@ const Login: React.FC = () => {
 
       <main className="flex-grow flex items-center justify-center bg-clearcause-background py-12">
         <div className="max-w-md w-full mx-auto px-4 sm:px-6">
-          <div className="bg-white shadow rounded-lg p-6 md:p-8">
+          <div className="bg-white shadow rounded-lg p-6 md:p-8 font-poppinsregular">
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
+              <h1 className="text-3xl font-bold text-gray-900 font-robotobold">Welcome Back</h1>
               <p className="text-gray-600 mt-2">
                 Sign in to continue to ClearCause
               </p>
@@ -221,7 +221,7 @@ const Login: React.FC = () => {
               <div>
                 <Button
                   type="submit"
-                  className="w-full bg-clearcause-primary hover:bg-blue-700 py-2 px-4"
+                  className="w-full bg-clearcause-primary hover:bg-blue-600 py-2 px-4 font-redhatbold text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-clearcause-primary"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (

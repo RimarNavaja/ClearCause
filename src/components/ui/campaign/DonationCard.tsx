@@ -41,13 +41,13 @@ const DonationCard: React.FC<DonationCardProps> = ({
   const isCharityUser = userRole === "charity";
 
   return (
-    <div className="bg-white rounded-xl shadow-md p-6 sticky top-24">
+    <div className="bg-white rounded-xl shadow-md p-6 sticky top-24 font-poppinsregular">
       <div className="mb-4">
         <div className="flex justify-between mb-2">
-          <span className="text-2xl font-bold">
+          <span className="text-2xl font-bold font-robotobold">
             PHP {campaign.raised.toLocaleString()}
           </span>
-          <span className="text-gray-500">
+          <span className="text-gray-500 font-robotobold">
             of PHP {campaign.goal.toLocaleString()}
           </span>
         </div>

@@ -11,6 +11,7 @@ export type VerificationStatus = 'pending' | 'under_review' | 'approved' | 'reje
 export type MilestoneStatus = 'pending' | 'in_progress' | 'completed' | 'verified';
 export type PaymentProvider = 'paymongo' | 'xendit' | 'maya';
 export type PaymentSessionStatus = 'created' | 'pending' | 'succeeded' | 'failed' | 'expired' | 'cancelled';
+export type AchievementCategory = 'donation_milestones' | 'donation_frequency' | 'campaign_diversity' | 'platform_engagement';
 
 // ===== DATABASE TYPES =====
 export interface Database {
@@ -430,6 +431,25 @@ export interface Database {
           created_at?: string;
         };
       };
+      achievements: {
+        Row: Achievement;
+        Insert: Omit<Achievement, 'id' | 'created_at' | 'updated_at'> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<Achievement, 'id' | 'created_at' | 'updated_at'>>;
+      };
+      donor_achievements: {
+        Row: DonorAchievement;
+        Insert: {
+          donor_id: string;
+          achievement_id: string;
+          earned_at?: string;
+          context?: Record<string, any>;
+        };
+        Update: never;
+      };
     };
     Views: {
       [_ in never]: never;
@@ -443,6 +463,7 @@ export interface Database {
       donation_status: DonationStatus;
       verification_status: VerificationStatus;
       milestone_status: MilestoneStatus;
+      achievement_category: AchievementCategory;
     };
   };
 }
@@ -625,6 +646,42 @@ export interface AuditLog {
   userAgent: string | null;
   createdAt: string;
   user?: User;
+}
+
+// ===== ACHIEVEMENT TYPES =====
+
+export interface Achievement {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  icon_url: string | null;
+  category: AchievementCategory;
+  criteria: Record<string, any>;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DonorAchievement {
+  id: string;
+  donor_id: string;
+  achievement_id: string;
+  earned_at: string;
+  context: Record<string, any> | null;
+  achievement?: Achievement;
+}
+
+export interface AchievementProgress {
+  achievement: Achievement;
+  earned: boolean;
+  earned_at?: string;
+  progress?: {
+    current: number;
+    target: number;
+    percentage: number;
+  };
 }
 
 export interface PlatformSetting {

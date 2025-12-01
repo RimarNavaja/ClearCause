@@ -244,11 +244,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
         });
 
         // Use enhanced complete logout for session isolation
-        if (user.role === "admin") {
-          await performCompleteLogout("/admin/login");
-        } else {
-          await performCompleteLogout("/login");
-        }
+        await performCompleteLogout("/login");
       } else {
         toast({
           title: "Logout failed",
@@ -264,11 +260,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
         variant: "destructive",
       });
       // Force cleanup even on error
-      if (user.role === "admin") {
-        await performCompleteLogout("/admin/login");
-      } else {
-        await performCompleteLogout("/login");
-      }
+      await performCompleteLogout("/login");
     } finally {
       setIsLoggingOut(false);
     }

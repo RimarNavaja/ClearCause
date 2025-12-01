@@ -23,7 +23,7 @@ const VerificationBadge: React.FC<VerificationBadgeProps> = ({
       return (
         <Badge
           variant="secondary"
-          className={`bg-blue-700/75 px-4 py-1 text-white font-redhatregular ${textSize}`}
+          className={`bg-blue-700/75 px-3 py-1 hover:bg-blue-700 text-white font-redhatregular ${textSize}`}
         >
           {showIcon && <Check className={`${iconSize} mr-1`} />}
            Verified
@@ -33,7 +33,7 @@ const VerificationBadge: React.FC<VerificationBadgeProps> = ({
       return (
         <Badge
           variant="secondary"
-          className={`bg-blue-100 px-4 py-1 text-blue-800 font-redhatregular${textSize}`}
+          className={`bg-blue-100 px-3 py-1 text-blue-800 font-redhatregular${textSize}`}
         >
           {showIcon && <Clock className={`${iconSize} mr-1`} />}
           Pending
@@ -43,7 +43,7 @@ const VerificationBadge: React.FC<VerificationBadgeProps> = ({
       return (
         <Badge
           variant="secondary"
-          className={`bg-yellow-100 px-4 py-1 text-yellow-800 font-redhatregular ${textSize}`}
+          className={`bg-yellow-100 px-3 py-1 text-yellow-800 font-redhatregular ${textSize}`}
         >
           {showIcon && <AlertTriangle className={`${iconSize} mr-1`} />}
           Under Review

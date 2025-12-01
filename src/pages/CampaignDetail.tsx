@@ -1,29 +1,29 @@
-
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
-import CampaignBanner from '@/components/ui/campaign/CampaignBanner';
-import CampaignHeader from '@/components/ui/campaign/CampaignHeader';
-import DonationCard from '@/components/ui/campaign/DonationCard';
-import TabNavigation from '@/components/ui/campaign/TabNavigation';
-import TabContent from '@/components/ui/campaign/TabContent';
-import * as campaignService from '@/services/campaignService';
-import * as charityService from '@/services/charityService';
-import { Campaign } from '@/lib/types';
-import { calculateDaysLeft } from '@/utils/helpers';
-import { useAuth } from '@/hooks/useAuth';
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import CampaignBanner from "@/components/ui/campaign/CampaignBanner";
+import CampaignHeader from "@/components/ui/campaign/CampaignHeader";
+import DonationCard from "@/components/ui/campaign/DonationCard";
+import TabNavigation from "@/components/ui/campaign/TabNavigation";
+import TabContent from "@/components/ui/campaign/TabContent";
+import * as campaignService from "@/services/campaignService";
+import * as charityService from "@/services/charityService";
+import { Campaign } from "@/lib/types";
+import { calculateDaysLeft } from "@/utils/helpers";
+import { useAuth } from "@/hooks/useAuth";
 
 // Fallback banner URL for campaigns without images
-const DEFAULT_BANNER_URL = "https://images.unsplash.com/photo-1503387837-b154d5074bd2?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80";
+const DEFAULT_BANNER_URL =
+  "https://images.unsplash.com/photo-1503387837-b154d5074bd2?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80";
 
 const CampaignDetail: React.FC = () => {
   const { campaignId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('about');
+  const [activeTab, setActiveTab] = useState("about");
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +32,7 @@ const CampaignDetail: React.FC = () => {
   useEffect(() => {
     const loadCampaign = async () => {
       if (!campaignId) {
-        setError('No campaign ID provided');
+        setError("No campaign ID provided");
         setLoading(false);
         return;
       }
@@ -44,11 +44,11 @@ const CampaignDetail: React.FC = () => {
         if (result.success && result.data) {
           setCampaign(result.data);
         } else {
-          setError(result.error || 'Campaign not found');
+          setError(result.error || "Campaign not found");
         }
       } catch (err) {
-        setError('Failed to load campaign');
-        console.error('Campaign loading error:', err);
+        setError("Failed to load campaign");
+        console.error("Campaign loading error:", err);
       } finally {
         setLoading(false);
       }
@@ -76,7 +76,7 @@ const CampaignDetail: React.FC = () => {
           setIsOwner(false);
         }
       } catch (err) {
-        console.error('Error checking campaign ownership:', err);
+        console.error("Error checking campaign ownership:", err);
         setIsOwner(false);
       }
     };
@@ -105,10 +105,14 @@ const CampaignDetail: React.FC = () => {
         <Navbar />
         <main className="flex-grow flex items-center justify-center">
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Campaign Not Found</h2>
-            <p className="text-gray-600 mb-4">{error || 'The campaign you are looking for does not exist.'}</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Campaign Not Found
+            </h2>
+            <p className="text-gray-600 mb-4">
+              {error || "The campaign you are looking for does not exist."}
+            </p>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate("/")}
               className="px-4 py-2 bg-clearcause-primary text-white rounded-md hover:bg-clearcause-primary-dark"
             >
               Back to Home
@@ -121,7 +125,10 @@ const CampaignDetail: React.FC = () => {
   }
 
   const daysLeft = calculateDaysLeft(campaign.endDate);
-  const progress = campaign.goalAmount > 0 ? (campaign.currentAmount / campaign.goalAmount) * 100 : 0;
+  const progress =
+    campaign.goalAmount > 0
+      ? (campaign.currentAmount / campaign.goalAmount) * 100
+      : 0;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -139,7 +146,7 @@ const CampaignDetail: React.FC = () => {
             <Button
               variant="ghost"
               onClick={() => navigate(-1)}
-              className="text-white hover:text-white hover:bg-white/20"
+              className="text-white hover:text-white hover:bg-white/20 font-redhatbold"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
@@ -150,11 +157,23 @@ const CampaignDetail: React.FC = () => {
             {/* Left Column - Campaign Info */}
             <div className="lg:col-span-2 space-y-6">
               <CampaignHeader
-                category={campaign.category || 'General'}
-                verified={campaign.status === 'active' && campaign.charity?.verificationStatus === 'approved'}
+                category={campaign.category || "General"}
+                verified={
+                  campaign.status === "active" &&
+                  campaign.charity?.verificationStatus === "approved"
+                }
                 title={campaign.title}
-                charityLogo={campaign.charity?.logoUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(campaign.charity?.organizationName || 'Charity') + '&background=3b82f6&color=fff'}
-                charity={campaign.charity?.organizationName || 'Unknown Organization'}
+                charityLogo={
+                  campaign.charity?.logoUrl ||
+                  "https://ui-avatars.com/api/?name=" +
+                    encodeURIComponent(
+                      campaign.charity?.organizationName || "Charity"
+                    ) +
+                    "&background=3b82f6&color=fff"
+                }
+                charity={
+                  campaign.charity?.organizationName || "Unknown Organization"
+                }
                 charityId={campaign.charityId}
                 daysLeft={daysLeft}
               />
@@ -170,19 +189,21 @@ const CampaignDetail: React.FC = () => {
                   <TabContent
                     activeTab={activeTab}
                     description={campaign.description}
-                    location={campaign.location || 'Not specified'}
-                    milestones={campaign.milestones?.map(m => ({
-                      id: m.id,
-                      title: m.title,
-                      description: m.description || '',
-                      status: m.status,
-                      date: m.createdAt,
-                      amount: m.targetAmount,
-                      evidence: m.evidenceDescription || undefined,
-                    })) || []}
+                    location={campaign.location || "Not specified"}
+                    milestones={
+                      campaign.milestones?.map((m) => ({
+                        id: m.id,
+                        title: m.title,
+                        description: m.description || "",
+                        status: m.status,
+                        date: m.createdAt,
+                        amount: m.targetAmount,
+                        evidence: m.evidenceDescription || undefined,
+                      })) || []
+                    }
                     impactMetrics={[]}
                     recentActivities={[]}
-                    campaignId={campaignId || ''}
+                    campaignId={campaignId || ""}
                     campaignStatus={campaign.status}
                   />
                 </div>
@@ -195,20 +216,28 @@ const CampaignDetail: React.FC = () => {
                 campaign={{
                   id: campaign.id,
                   title: campaign.title,
-                  imageUrl: campaign.imageUrl || '',
-                  charity: campaign.charity?.organizationName || 'Unknown Organization',
+                  imageUrl: campaign.imageUrl || "",
+                  charity:
+                    campaign.charity?.organizationName ||
+                    "Unknown Organization",
                   raised: campaign.currentAmount,
                   goal: campaign.goalAmount,
                   daysLeft: daysLeft,
-                  verified: campaign.charity?.verificationStatus === 'approved',
-                  category: campaign.category || 'General',
+                  verified: campaign.charity?.verificationStatus === "approved",
+                  category: campaign.category || "General",
                   donors: campaign.donorsCount || 0,
-                  location: campaign.location || 'Not specified',
-                  charityLogo: campaign.charity?.logoUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(campaign.charity?.organizationName || 'Charity') + '&background=3b82f6&color=fff',
+                  location: campaign.location || "Not specified",
+                  charityLogo:
+                    campaign.charity?.logoUrl ||
+                    "https://ui-avatars.com/api/?name=" +
+                      encodeURIComponent(
+                        campaign.charity?.organizationName || "Charity"
+                      ) +
+                      "&background=3b82f6&color=fff",
                   transparency: 0,
                   efficiency: 0,
                   description: campaign.description,
-                  bannerUrl: campaign.imageUrl || '',
+                  bannerUrl: campaign.imageUrl || "",
                   status: campaign.status,
                   charityId: campaign.charityId,
                 }}

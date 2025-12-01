@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import TextType from "@/components/ui/reactbits/TextType";
+import AnimatedContent from "@/components/ui/reactbits/AnimatedContent";
 
 import { Campaign, CampaignStatus } from "@/lib/types";
 
@@ -252,11 +254,22 @@ const Index: React.FC = () => {
                   <span className="text-blue-600">Track every pesos</span>, see
                   the impact.
                 </h1>
-                <p className="text-lg md:text-xl text-gray-600 mb-8 font-poppinsregular">
+                <TextType
+                  text={[
+                    "ClearCause is the first donation platform focused on radical transparency, providing verifiable, real-time impact tracking to restore trust in charitable giving.",
+                  ]}
+                  typingSpeed={30}
+                  pauseDuration={100}
+                  loop={false}
+                  showCursor={true}
+                  cursorCharacter="|"
+                  className="text-lg md:text-xl text-gray-600 mb-8 font-poppinsregular"
+                />
+                {/* <p className="text-lg md:text-xl text-gray-600 mb-8 font-poppinsregular">
                   ClearCause is the first donation platform focused on radical
                   transparency, providing verifiable, real-time impact tracking
                   to restore trust in charitable giving.
-                </p>
+                </p> */}
                 <div className="flex flex-col sm:flex-row gap-4 font-redhatbold">
                   <Link to="/campaigns">
                     <Button
@@ -270,7 +283,7 @@ const Index: React.FC = () => {
                     <Button
                       size="lg"
                       variant="outline"
-                      className="text-blue-600 border-blue-600 hover:bg-blue-50 font-semibold px-8 py-4 rounded-lg"
+                      className="text-blue-600 border-blue-600 hover:bg-blue-200 hover:text-blue-700 font-semibold px-8 py-4 rounded-lg"
                     >
                       How It Works
                     </Button>
@@ -393,33 +406,48 @@ const Index: React.FC = () => {
         </section>
 
         {/* Featured Campaigns Section */}
-        <section className="py-20 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center mb-12">
-              <div>
-                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 font-robotobold">
-                  Featured Campaigns
-                </h2>
-                <p className="text-lg text-gray-600 font-poppinsregular">
-                  Support these verified campaigns making a real difference
-                </p>
-              </div>
-              <Link
-                to="/campaigns"
-                className="text-blue-600 hover:text-blue-700 font-semibold flex items-center text-lg font-robotoregular"
-              >
-                View all campaigns
-                <ChevronRight className="ml-2 h-6 w-6 text-blue-700" />
-              </Link>
-            </div>
+        <AnimatedContent
+          distance={150}
+          direction="vertical"
+          reverse={false}
+          duration={1.2}
+          ease="power3.out"
+          initialOpacity={0.2}
+          animateOpacity
+          scale={1.1}
+          threshold={0.2}
+          delay={0}
+        >
+          <div>
+            <section className="py-20 bg-gray-50">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-center mb-12">
+                  <div>
+                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 font-robotobold">
+                      Featured Campaigns
+                    </h2>
+                    <p className="text-lg text-gray-600 font-poppinsregular">
+                      Support these verified campaigns making a real difference
+                    </p>
+                  </div>
+                  <Link
+                    to="/campaigns"
+                    className="text-blue-600 hover:text-blue-700 font-semibold flex items-center text-lg font-robotoregular"
+                  >
+                    View all campaigns
+                    <ChevronRight className="ml-2 h-6 w-6 text-blue-700" />
+                  </Link>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {SAMPLE_CAMPAIGNS.map((campaign) => (
-                <HomeCampaignCard key={campaign.id} campaign={campaign} />
-              ))}
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {SAMPLE_CAMPAIGNS.map((campaign) => (
+                    <HomeCampaignCard key={campaign.id} campaign={campaign} />
+                  ))}
+                </div>
+              </div>
+            </section>
           </div>
-        </section>
+        </AnimatedContent>
 
         {/* Transparency Promise Section */}
         <section className="py-20 bg-white relative">
@@ -507,13 +535,32 @@ const Index: React.FC = () => {
             <img src="/DecorationPink.svg" alt="" className="w-44 h-30" />
           </div>
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 font-robotobold">
-              Ready to make a transparent impact?
-            </h2>
-            <p className="text-lg md:text-xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed font-poppinsregular">
-              Join thousands of donors who are tracking their impact in
-              real-time and restoring trust in charitable giving.
-            </p>
+            <div className="flex flex-col">
+              <TextType
+                text={["Ready to make a transparent impact?"]}
+                typingSpeed={50}
+                pauseDuration={100}
+                showCursor={false}
+                startOnVisible={true}
+                loop={false}
+                cursorCharacter="|"
+                className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 font-robotobold"
+              />
+
+              <TextType
+                text={[
+                  "Join thousands of donors who are tracking their impact in real-time and restoring trust in charitable giving.",
+                ]}
+                typingSpeed={70}
+                pauseDuration={1200}
+                initialDelay={3500}
+                showCursor={true}
+                startOnVisible={true}
+                cursorCharacter="|"
+                className="text-lg md:text-xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed font-poppinsregular"
+              />
+            </div>
+
             <div className="flex flex-col sm:flex-row justify-center gap-6 font-redhatbold">
               <Link to="/campaigns">
                 <Button
