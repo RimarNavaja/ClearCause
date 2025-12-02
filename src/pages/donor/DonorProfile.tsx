@@ -75,9 +75,10 @@ const DonorProfile: React.FC = () => {
       if (!user?.id) throw new Error("User not authenticated");
       return userService.updateUserProfile(user.id, data, user.id);
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (result.success) {
         queryClient.invalidateQueries({ queryKey: ["userProfile", user?.id] });
+        await refreshUser();
         toast({
           title: "Success",
           description: "Profile updated successfully.",

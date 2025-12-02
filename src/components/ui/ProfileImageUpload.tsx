@@ -156,7 +156,7 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
           </div>
 
           <div className="text-center">
-            <h3 className="font-medium text-gray-900">
+            <h3 className="font-robotoregular text-gray-900">
               {imageType === "avatar" ? "Profile Picture" : "Organization Logo"}
             </h3>
             <p className="text-sm text-gray-500 mt-1">

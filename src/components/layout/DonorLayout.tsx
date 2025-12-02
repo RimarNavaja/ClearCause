@@ -134,8 +134,8 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
       <div className="flex-grow flex bg-clearcause-background">
         {/* Sidebar - Fixed to left */}
         <aside className="bg-white w-64 min-h-[calc(100vh-4rem)] shadow-sm fixed left-0 top-16">
-          <div className="p-6 h-full flex flex-col">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">
+          <div className="p-6 h-full flex flex-col font-poppinsregular">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6 font-robotobold">
               Donor Account
             </h2>
 
@@ -185,7 +185,7 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
 
         {/* Main content - With left margin to account for sidebar */}
         <main className="flex-grow p-8">
-          <div className="max-w-7xl mx-auto px-8">
+          <div className="max-w-7xl mx-auto px-8 font-poppinsregular">
             <h1 className="text-3xl font-robotobold text-gray-900 mb-6">
               {title}
             </h1>

@@ -330,7 +330,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
                       {getUserInitials(user.fullName, user.email)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="ml-2 text-sm font-medium text-gray-700 hidden lg:block">
+                  <span className="ml-2 text-sm font-medium text-gray-700 hidden lg:block font-poppinsregular">
                     {getUserDisplayName(user.fullName, user.email)}
                   </span>
                   <ChevronDown className="ml-2 h-4 w-4 text-gray-400" />

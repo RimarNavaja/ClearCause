@@ -73,6 +73,7 @@ import AdminProfile from "./pages/admin/AdminProfile";
 import ActivityMonitor from "./pages/admin/ActivityMonitor";
 import UserManagement from "./pages/admin/UserManagement";
 import ReviewModeration from "./pages/admin/ReviewModeration";
+import ScrollToTop from "@/components/ui/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -355,6 +356,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
+        <ScrollToTop />
       </BrowserRouter>
       <Toaster />
       <Sonner />

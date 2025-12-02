@@ -85,7 +85,7 @@ export const updateProfileSchema = z.object({
 });
 
 export const donorProfileSchema = z.object({
-  fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100, 'Full name is too long'),
+  fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100, 'Full name is too long').regex(/^[a-zA-Z\s\-\.\']+$/, "Full name contains invalid characters"),
   email: emailSchema,
   phone: phoneSchema,
   isAnonymous: z.boolean().optional(),
