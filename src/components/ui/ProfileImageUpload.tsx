@@ -131,7 +131,7 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
 
   return (
     <Card className={`${className}`}>
-      <CardContent className="p-6">
+      <CardContent className="p-6 ">
         <div className="flex flex-col items-center space-y-4">
           <div className="relative">
             <Avatar className={`${sizeClasses[size]} border-2 border-gray-200`}>

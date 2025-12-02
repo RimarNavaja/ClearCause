@@ -1,26 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { Award, Edit2, Save, User } from 'lucide-react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { Award, Edit2, Save, User } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
-import DonorLayout from '@/components/layout/DonorLayout';
-import ProfileImageUpload from '@/components/ui/ProfileImageUpload';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Switch } from '@/components/ui/switch';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import * as userService from '@/services/userService';
-import { donorProfileSchema } from '@/utils/validation';
-import { getDonorAchievements } from '@/services/achievementService';
-import { DonorAchievement } from '@/lib/types';
-import { AchievementBadge } from '@/components/ui/achievements/AchievementBadge';
+import DonorLayout from "@/components/layout/DonorLayout";
+import ProfileImageUpload from "@/components/ui/ProfileImageUpload";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import * as userService from "@/services/userService";
+import { donorProfileSchema } from "@/utils/validation";
+import { getDonorAchievements } from "@/services/achievementService";
+import { DonorAchievement } from "@/lib/types";
+import { AchievementBadge } from "@/components/ui/achievements/AchievementBadge";
 
 // Form schema for the profile page
 const formSchema = donorProfileSchema;
@@ -32,18 +46,24 @@ const DonorProfile: React.FC = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
-  const [recentAchievements, setRecentAchievements] = useState<DonorAchievement[]>([]);
+  const [recentAchievements, setRecentAchievements] = useState<
+    DonorAchievement[]
+  >([]);
 
   // Fetch user profile data using React Query
-  const { data: profile, isLoading: isLoadingProfile, isError } = useQuery({
-    queryKey: ['userProfile', user?.id],
+  const {
+    data: profile,
+    isLoading: isLoadingProfile,
+    isError,
+  } = useQuery({
+    queryKey: ["userProfile", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
       const result = await userService.getUserProfile(user.id);
       if (result.success) {
         return result.data;
       }
-      throw new Error(result.error || 'Failed to fetch profile');
+      throw new Error(result.error || "Failed to fetch profile");
     },
     enabled: !!user?.id, // Only run query if user.id exists
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -57,15 +77,22 @@ const DonorProfile: React.FC = () => {
     },
     onSuccess: (result) => {
       if (result.success) {
-        queryClient.invalidateQueries({ queryKey: ['userProfile', user?.id] });
-        toast({ title: "Success", description: "Profile updated successfully." });
+        queryClient.invalidateQueries({ queryKey: ["userProfile", user?.id] });
+        toast({
+          title: "Success",
+          description: "Profile updated successfully.",
+        });
         setIsEditing(false);
       } else {
         throw new Error(result.error || "Update failed");
       }
     },
     onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -78,18 +105,25 @@ const DonorProfile: React.FC = () => {
     onSuccess: async (result) => {
       if (result.success) {
         // Invalidate the query cache
-        queryClient.invalidateQueries({ queryKey: ['userProfile', user?.id] });
+        queryClient.invalidateQueries({ queryKey: ["userProfile", user?.id] });
 
         // Refresh the user context to update the navbar avatar
         await refreshUser();
 
-        toast({ title: "Success", description: "Avatar updated successfully." });
+        toast({
+          title: "Success",
+          description: "Avatar updated successfully.",
+        });
         return { success: true, url: result.data?.avatarUrl };
       }
       throw new Error(result.error || "Upload failed");
     },
     onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
       return { success: false, error: error.message };
     },
   });
@@ -97,9 +131,9 @@ const DonorProfile: React.FC = () => {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: '',
-      email: '',
-      phone: '',
+      fullName: "",
+      email: "",
+      phone: "",
       isAnonymous: false,
     },
   });
@@ -108,9 +142,9 @@ const DonorProfile: React.FC = () => {
   useEffect(() => {
     if (profile) {
       form.reset({
-        fullName: profile.fullName || '',
-        email: profile.email || '',
-        phone: profile.phone || '',
+        fullName: profile.fullName || "",
+        email: profile.email || "",
+        phone: profile.phone || "",
         isAnonymous: false, // This should come from user preferences in a real app
       });
     }
@@ -140,7 +174,8 @@ const DonorProfile: React.FC = () => {
     return await uploadAvatarMutation.mutateAsync(file);
   };
 
-  const isMutating = updateProfileMutation.isPending || uploadAvatarMutation.isPending;
+  const isMutating =
+    updateProfileMutation.isPending || uploadAvatarMutation.isPending;
 
   // Loading skeleton
   if (isLoadingProfile) {
@@ -182,15 +217,17 @@ const DonorProfile: React.FC = () => {
     return (
       <DonorLayout title="My Profile">
         <div className="text-center py-10">
-          <p className="text-red-500">Failed to load profile data. Please try again later.</p>
+          <p className="text-red-500">
+            Failed to load profile data. Please try again later.
+          </p>
         </div>
       </DonorLayout>
     );
   }
 
   return (
-    <DonorLayout title="My Profile">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <DonorLayout title="My Profile" >
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-poppinsregular">
         {/* Profile Picture Section */}
         <div className="lg:col-span-1">
           <Card className="bg-white shadow-sm">
@@ -198,7 +235,11 @@ const DonorProfile: React.FC = () => {
               <ProfileImageUpload
                 currentImageUrl={profile?.avatarUrl}
                 onImageUpload={handleAvatarUpload}
-                fallbackText={profile?.fullName ? profile.fullName.charAt(0).toUpperCase() : 'D'}
+                fallbackText={
+                  profile?.fullName
+                    ? profile.fullName.charAt(0).toUpperCase()
+                    : "D"
+                }
                 imageType="avatar"
                 size="lg"
               />
@@ -216,15 +257,16 @@ const DonorProfile: React.FC = () => {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  
-                  Personal Details  
+                  Personal Details
                 </CardTitle>
-                <CardDescription >Manage your account information</CardDescription>
+                <CardDescription>
+                  Manage your account information
+                </CardDescription>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                className='bg-blue-600 text-white hover:bg-blue-600/80'
+                className="bg-blue-600 text-white hover:bg-blue-600/80"
                 onClick={() => setIsEditing(!isEditing)}
                 disabled={isMutating}
               >
@@ -234,7 +276,10 @@ const DonorProfile: React.FC = () => {
             </CardHeader>
             <CardContent>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+                <form
+                  onSubmit={form.handleSubmit(handleSubmit)}
+                  className="space-y-6"
+                >
                   <FormField
                     control={form.control}
                     name="fullName"
@@ -242,7 +287,10 @@ const DonorProfile: React.FC = () => {
                       <FormItem>
                         <FormLabel>Full Name</FormLabel>
                         <FormControl>
-                          <Input {...field} disabled={!isEditing || isMutating} />
+                          <Input
+                            {...field}
+                            disabled={!isEditing || isMutating}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -272,7 +320,11 @@ const DonorProfile: React.FC = () => {
                       <FormItem>
                         <FormLabel>Phone Number</FormLabel>
                         <FormControl>
-                          <Input {...field} disabled={!isEditing || isMutating} placeholder="Add a phone number" />
+                          <Input
+                            {...field}
+                            disabled={!isEditing || isMutating}
+                            placeholder="Add a phone number"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -290,12 +342,11 @@ const DonorProfile: React.FC = () => {
                             Hide your name on public donation lists.
                           </FormDescription>
                         </div>
-                        <FormControl >
+                        <FormControl>
                           <Switch
                             checked={field.value}
                             onCheckedChange={field.onChange}
                             disabled={isMutating}
-                            
                           />
                         </FormControl>
                       </FormItem>
@@ -304,16 +355,22 @@ const DonorProfile: React.FC = () => {
 
                   {isEditing && (
                     <div className="flex gap-2 pt-2">
-                      <Button type="submit" disabled={isMutating} className='bg-blue-600 hover:bg-blue-600/80'>
+                      <Button
+                        type="submit"
+                        disabled={isMutating}
+                        className="bg-blue-600 hover:bg-blue-600/80"
+                      >
                         <Save className="h-4 w-4 mr-2" />
-                        {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
+                        {updateProfileMutation.isPending
+                          ? "Saving..."
+                          : "Save Changes"}
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => setIsEditing(false)}
                         disabled={isMutating}
-                        className='hover:bg-blue-600/90'
+                        className="hover:bg-blue-600/90"
                       >
                         Cancel
                       </Button>
@@ -332,14 +389,15 @@ const DonorProfile: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                   
                     Recent Achievements
                   </CardTitle>
-                  <CardDescription>Badges earned through your giving journey</CardDescription>
+                  <CardDescription>
+                    Badges earned through your giving journey
+                  </CardDescription>
                 </div>
                 <Button
                   variant="link"
-                  onClick={() => navigate('/donor/achievements')}
+                  onClick={() => navigate("/donor/achievements")}
                 >
                   View All
                 </Button>

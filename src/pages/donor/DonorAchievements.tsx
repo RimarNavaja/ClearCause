@@ -50,10 +50,10 @@ const DonorAchievements: React.FC = () => {
 
   return (
     <DonorLayout title="Your Achievements">
-      <div className="container mx-auto py-8 px-4 font-poppinsregular">
+      <div className="container mx-auto py-4 px-0 font-poppinsregular">
         <Card className="mb-8">
           <CardHeader>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center">
              
               <div>
                 <CardTitle className='font-robotobold'>Your Achievements</CardTitle>

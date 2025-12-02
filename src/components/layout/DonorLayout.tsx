@@ -131,15 +131,15 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
     <div className="flex flex-col min-h-screen">
       <Navbar />
 
-      <div className="flex-grow flex flex-col md:flex-row bg-clearcause-background">
-        {/* Sidebar */}
-        <aside className="bg-white w-full md:w-64 md:min-h-[calc(100vh-4rem)] shadow-sm">
-          <div className="p-4 md:p-6 h-full">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6 hidden md:block">
+      <div className="flex-grow flex bg-clearcause-background">
+        {/* Sidebar - Fixed to left */}
+        <aside className="bg-white w-64 min-h-[calc(100vh-4rem)] shadow-sm fixed left-0 top-16">
+          <div className="p-6 h-full flex flex-col">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">
               Donor Account
             </h2>
 
-            <div className="flex md:flex-col space-x-4 md:space-x-0 md:space-y-2 overflow-x-auto md:overflow-visible py-2 md:py-0">
+            <div className="flex flex-col space-y-2 flex-grow">
               {navItems.map((item) => (
                 <NavLink
                   key={item.path}
@@ -161,7 +161,7 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
               <button
                 onClick={handleLogoutClick}
                 disabled={isLoggingOut || authLoading}
-                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium mt-8 md:mt-auto w-full text-left transition-colors ${
+                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium mt-auto w-full text-left transition-colors ${
                   isLoggingOut || authLoading
                     ? "text-gray-400 cursor-not-allowed bg-gray-100"
                     : "text-gray-600 hover:text-red-500 hover:bg-red-50"
@@ -183,10 +183,10 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
           </div>
         </aside>
 
-        {/* Main content */}
-        <main className="flex-grow p-4 md:p-8">
-          <div className="max-w-5xl mx-auto">
-            <h1 className="text-2xl md:text-3xl font-robotobold  text-gray-900 mb-6">
+        {/* Main content - With left margin to account for sidebar */}
+        <main className="flex-grow p-8">
+          <div className="max-w-7xl mx-auto px-8">
+            <h1 className="text-3xl font-robotobold text-gray-900 mb-6">
               {title}
             </h1>
             {children}
