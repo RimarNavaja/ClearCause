@@ -31,7 +31,10 @@ export const AchievementList: React.FC<AchievementListProps> = ({
         )}
       >
         {achievements.map((ap) => (
-          <div key={ap.achievement.id} className="flex flex-col items-center justify-start h-full">
+          <div
+            key={ap.achievement.id}
+            className="flex flex-col items-center justify-start h-full"
+          >
             <div className="flex-shrink-0">
               <AchievementBadge
                 achievement={ap.achievement}
@@ -79,20 +82,22 @@ export const AchievementList: React.FC<AchievementListProps> = ({
             <CardTitle>{categoryLabels[category] || category}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {categoryAchievements.map((ap) => (
                 <div
                   key={ap.achievement.id}
                   className="flex flex-col items-center justify-start h-full"
                 >
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 mt-2">
                     <AchievementBadge
                       achievement={ap.achievement}
                       earned={ap.earned}
                       earnedAt={ap.earned_at}
                       showLabel={true}
                       showShareButton={showShareButton}
-                      onShareClick={onShareClick ? () => onShareClick(ap) : undefined}
+                      onShareClick={
+                        onShareClick ? () => onShareClick(ap) : undefined
+                      }
                     />
                   </div>
                   {showProgress && !ap.earned && ap.progress && (

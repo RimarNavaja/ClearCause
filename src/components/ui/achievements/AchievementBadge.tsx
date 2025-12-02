@@ -48,6 +48,14 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({
     achievement.slug === "diamond-guardian" ||
     achievement.name === "Diamond Guardian";
 
+  const isSapphire =
+    achievement.slug === "sapphire-visionary" ||
+    achievement.name === "Sapphire Visionary";
+
+  const isLegend =
+    achievement.slug === "eternal-legend" ||
+    achievement.name === "Eternal Legend";
+
   const badgeContent = (
     <div
       className={cn(
@@ -56,7 +64,11 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({
         earned
           ? isDiamond
             ? "bg-gradient-to-br from-cyan-400 to-blue-600 shadow-lg"
-            : "bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-lg"
+            : isSapphire
+            ? "bg-gradient-to-br from-blue-600 to-indigo-800 shadow-lg"
+            : isLegend
+            ? "bg-gradient-to-br from-amber-300 to-orange-500 shadow-lg"
+            : "bg-white border border-gray-100 shadow-md"
           : "bg-gray-200 opacity-50",
         !earned && "grayscale",
         className
@@ -69,7 +81,7 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({
           className="w-full h-full rounded-full object-cover p-0.5"
         />
       ) : earned ? (
-        <Award size={iconSizes[size]} className="text-white" />
+        <Award size={iconSizes[size]} className="text-blue-700" />
       ) : (
         <Lock size={iconSizes[size]} className="text-gray-400" />
       )}
@@ -92,6 +104,26 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({
               {isDiamond && earned && (
                 <GlowEffect
                   colors={["#E1F5FE", "#B3E5FC", "#81D4FA", "#4FC3F7"]}
+                  mode="static"
+                  blur="soft"
+                  scale={1.2}
+                  duration={5}
+                  className="rounded-full opacity-50"
+                />
+              )}
+              {isSapphire && earned && (
+                <GlowEffect
+                  colors={["#E3F2FD", "#90CAF9", "#42A5F5", "#1E88E5"]}
+                  mode="flowHorizontal"
+                  blur="soft"
+                  scale={1.2}
+                  duration={1}
+                  className="rounded-full opacity-50"
+                />
+              )}
+              {isLegend && earned && (
+                <GlowEffect
+                  colors={["#FFFDE7", "#FFF176", "#FFD54F", "#FFB74D"]}
                   mode="rotate"
                   blur="soft"
                   scale={1.3}

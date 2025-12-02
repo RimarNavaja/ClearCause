@@ -94,7 +94,7 @@ const DonateError: React.FC = () => {
       <Navbar />
 
       <main className="flex-grow bg-clearcause-background">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 font-poppinsregular">
           {/* Error Card */}
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             {/* Header */}
@@ -104,7 +104,7 @@ const DonateError: React.FC = () => {
                   <XCircle className="h-16 w-16 text-white" />
                 </div>
               </div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">Donation Unsuccessful</h1>
+              <h1 className="text-3xl md:text-4xl font-bold mb-2 font-robotobold tracking-wide">Donation Unsuccessful</h1>
               <p className="text-lg text-white/90">
                 We couldn't process your donation
               </p>
@@ -189,7 +189,7 @@ const DonateError: React.FC = () => {
 
               {/* Support Section */}
               <div className="border-t pt-6 text-center">
-                <h3 className="font-semibold text-lg mb-2 text-gray-900">Still Having Issues?</h3>
+                <h3 className="font-semibold text-lg mb-2 text-gray-900 font-robotobold">Still Having Issues?</h3>
                 <p className="text-sm text-gray-600 mb-4">
                   Our support team is ready to help you complete your donation.
                   We're here to make sure your generosity reaches those who need it.
