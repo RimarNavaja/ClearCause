@@ -26,7 +26,7 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({
   achievement,
   earned = false,
   earnedAt,
-  size = "md",
+  size = "lg",
   showLabel = false,
   showShareButton = false,
   onShareClick,
@@ -68,7 +68,7 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({
             ? "bg-gradient-to-br from-blue-600 to-indigo-800 shadow-lg"
             : isLegend
             ? "bg-gradient-to-br from-amber-300 to-orange-500 shadow-lg"
-            : "bg-white border border-gray-100 shadow-md"
+            : "bg-white shadow-[4.0px_8.0px_8.0px_rgba(0,0,0,0.38)]"
           : "bg-gray-200 opacity-50",
         !earned && "grayscale",
         className
