@@ -75,10 +75,12 @@ scratch.*
 TODO.local.md
 NOTES.local.md
 
-# Claude Code directory
+# Claude Code/Gemini directory
 .claude/
 .mcp.json
 CLAUDE.md
+.gemini/
+
 
 # Package manager
 .yarn/cache

@@ -7,6 +7,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { GlowEffect } from "@/components/ui/motion-primitives/glow-effect";
 import { Award, Lock, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -43,13 +44,19 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({
     lg: 48,
   };
 
+  const isDiamond =
+    achievement.slug === "diamond-guardian" ||
+    achievement.name === "Diamond Guardian";
+
   const badgeContent = (
     <div
       className={cn(
         "relative rounded-full flex items-center justify-center transition-all",
         sizeClasses[size],
         earned
-          ? "bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-lg"
+          ? isDiamond
+            ? "bg-gradient-to-br from-cyan-400 to-blue-600 shadow-lg"
+            : "bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-lg"
           : "bg-gray-200 opacity-50",
         !earned && "grayscale",
         className
@@ -81,7 +88,19 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({
         <TooltipTrigger asChild>
           <div className="flex flex-col items-center w-full">
             {/* Badge Icon - Fixed height */}
-            <div className="flex-shrink-0 mb-2">{badgeContent}</div>
+            <div className="flex-shrink-0 mb-2 relative">
+              {isDiamond && earned && (
+                <GlowEffect
+                  colors={["#E1F5FE", "#B3E5FC", "#81D4FA", "#4FC3F7"]}
+                  mode="rotate"
+                  blur="soft"
+                  scale={1.3}
+                  duration={5}
+                  className="rounded-full opacity-50"
+                />
+              )}
+              {badgeContent}
+            </div>
 
             {/* Badge Name - Fixed height */}
             {showLabel && (
