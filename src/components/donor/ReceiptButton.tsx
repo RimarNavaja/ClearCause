@@ -48,7 +48,7 @@ export const ReceiptButton: React.FC<ReceiptButtonProps> = ({
     try {
       setLoading(true);
       const receiptData = getReceiptData();
-      downloadReceipt(receiptData);
+      await downloadReceipt(receiptData);
       toast({
         title: 'Receipt Downloaded',
         description: 'Your donation receipt has been downloaded successfully.',
@@ -69,7 +69,7 @@ export const ReceiptButton: React.FC<ReceiptButtonProps> = ({
     try {
       setLoading(true);
       const receiptData = getReceiptData();
-      previewReceipt(receiptData);
+      await previewReceipt(receiptData);
     } catch (error: any) {
       console.error('Error previewing receipt:', error);
       toast({

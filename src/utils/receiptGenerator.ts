@@ -29,216 +29,275 @@ export interface ReceiptData {
   message?: string;
 }
 
+// ClearCause Brand Colors
+const COLORS = {
+  primary: '#1d4ed8', // Blue 700
+  secondary: '#0284c7', // Blue 600
+  accent: '#0284c7',
+  text: '#334155', // Slate 700
+  textLight: '#64748b', // Slate 500
+  background: '#f8fafc', // Slate 50
+  white: '#ffffff',
+  border: '#e2e8f0', // Slate 200
+};
+
+/**
+ * Helper: Fetch logo and convert to base64
+ */
+const getLogoBase64 = async (): Promise<string | null> => {
+  try {
+    // Try to fetch the PNG logo first
+    const response = await fetch('/CLEARCAUSE-logo.svg');
+    if (!response.ok) throw new Error('Logo not found');
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.warn('Could not load logo for receipt:', error);
+    return null;
+  }
+};
+
 /**
  * Generate a PDF receipt for a donation
  */
-export const generateDonationReceipt = (data: ReceiptData): jsPDF => {
+export const generateDonationReceipt = async (data: ReceiptData): Promise<jsPDF> => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 15;
 
-  // Colors
-  const primaryColor: [number, number, number] = [59, 130, 246]; // Blue
-  const textColor: [number, number, number] = [51, 51, 51]; // Dark gray
-  const lightGray: [number, number, number] = [245, 245, 245];
+  // Load Logo
+  const logoBase64 = await getLogoBase64();
 
-  let yPosition = 20;
+  // ===== HEADER BACKGROUND =====
+  // Add a subtle top colored bar
+  doc.setFillColor(COLORS.primary);
+  doc.rect(0, 0, pageWidth, 6, 'F');
 
-  // ===== HEADER =====
-  // Logo/Title
-  doc.setFillColor(...primaryColor);
-  doc.rect(0, 0, pageWidth, 40, 'F');
+  let yPosition = 25;
 
-  doc.setTextColor(255, 255, 255);
+  // ===== LOGO & BRANDING =====
+  if (logoBase64) {
+    try {
+      // Add logo at top left
+      doc.addImage(logoBase64, 'PNG', margin, 15, 40, 12); // Adjust aspect ratio as needed
+    } catch (e) {
+      // Fallback text if image fails
+      doc.setTextColor(COLORS.primary);
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('ClearCause', margin, 22);
+    }
+  } else {
+    doc.setTextColor(COLORS.primary);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ClearCause', margin, 22);
+  }
+
+  // Company Info (Below Logo)
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(COLORS.textLight);
+  doc.text('Transparent Charity Donation Platform', margin, 32);
+  doc.text('www.clearcause.org', margin, 37);
+
+  // ===== RECEIPT HEADER (Right Side) =====
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text('ClearCause', pageWidth / 2, 20, { align: 'center' });
+  doc.setTextColor(COLORS.primary);
+  doc.text('RECEIPT', pageWidth - margin, 25, { align: 'right' });
 
-  doc.setFontSize(12);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(COLORS.text);
+  doc.text(`Receipt #: ${data.donationId.substring(0, 8).toUpperCase()}`, pageWidth - margin, 35, { align: 'right' });
+
   doc.setFont('helvetica', 'normal');
-  doc.text('Donation Receipt', pageWidth / 2, 30, { align: 'center' });
+  doc.setTextColor(COLORS.textLight);
+  const receiptDate = format(new Date(), 'MMMM dd, yyyy');
+  doc.text(`Date: ${receiptDate}`, pageWidth - margin, 40, { align: 'right' });
 
   yPosition = 55;
 
-  // ===== RECEIPT INFO =====
-  doc.setTextColor(...textColor);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-
-  // Receipt Date
-  const receiptDate = format(new Date(), 'MMMM dd, yyyy');
-  doc.text(`Receipt Date: ${receiptDate}`, 15, yPosition);
-  yPosition += 7;
-
-  // Receipt Number
-  doc.text(`Receipt #: ${data.donationId.substring(0, 8).toUpperCase()}`, 15, yPosition);
+  // ===== DIVIDER =====
+  doc.setDrawColor(COLORS.border);
+  doc.line(margin, yPosition, pageWidth - margin, yPosition);
   yPosition += 15;
 
-  // ===== THANK YOU MESSAGE =====
-  doc.setFillColor(...lightGray);
-  doc.rect(15, yPosition, pageWidth - 30, 25, 'F');
-
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...primaryColor);
-  doc.text('Thank you for your generous donation!', pageWidth / 2, yPosition + 10, {
-    align: 'center',
-  });
-
+  // ===== MAIN CONTENT: DONOR & SUMMARY =====
   doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...textColor);
-  doc.text(
-    'Your contribution makes a real difference in creating positive change.',
-    pageWidth / 2,
-    yPosition + 18,
-    { align: 'center' }
-  );
-
-  yPosition += 35;
-
-  // ===== DONATION DETAILS =====
-  doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('Donation Details', 15, yPosition);
-  yPosition += 8;
+  doc.setTextColor(COLORS.textLight);
+  doc.text('RECEIVED FROM', margin, yPosition);
+  
+  doc.text('AMOUNT RECEIVED', pageWidth / 2 + 10, yPosition);
 
-  // Table data
-  const donationDetails = [
-    ['Donation Amount', `₱${data.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+  yPosition += 7;
+
+  // Donor Name
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(COLORS.text);
+  doc.text(data.isAnonymous ? 'Anonymous Donor' : data.donorName, margin, yPosition);
+
+  // Amount (Large)
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(COLORS.primary);
+  doc.text(`₱${data.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth / 2 + 10, yPosition + 2);
+
+  yPosition += 10;
+  if (!data.isAnonymous && data.donorEmail) {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(COLORS.textLight);
+    doc.text(data.donorEmail, margin, yPosition);
+  }
+
+  yPosition += 20;
+
+  // ===== DONATION DETAILS TABLE =====
+  const detailsBody = [
     ['Transaction ID', data.transactionId || 'N/A'],
     ['Payment Method', formatPaymentMethod(data.paymentMethod)],
-    ['Date & Time', format(new Date(data.donatedAt), 'MMMM dd, yyyy \'at\' h:mm a')],
-    ['Status', data.status.charAt(0).toUpperCase() + data.status.slice(1)],
+    ['Date Paid', format(new Date(data.donatedAt), 'MMMM dd, yyyy h:mm a')],
+    ['Status', data.status.toUpperCase()],
   ];
 
   autoTable(doc, {
     startY: yPosition,
-    head: [],
-    body: donationDetails,
-    theme: 'plain',
-    styles: {
+    head: [['Payment Details', '']],
+    body: detailsBody,
+    theme: 'plain', // Cleaner look
+    headStyles: {
+      fillColor: COLORS.background,
+      textColor: COLORS.text,
+      fontStyle: 'bold',
       fontSize: 10,
-      cellPadding: 5,
+      cellPadding: 8,
+    },
+    bodyStyles: {
+      textColor: COLORS.text,
+      fontSize: 10,
+      cellPadding: 8,
+      lineColor: COLORS.border,
+      lineWidth: { bottom: 0.1 },
     },
     columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 60 },
-      1: { cellWidth: 'auto' },
+      0: { fontStyle: 'bold', cellWidth: 60, textColor: COLORS.textLight },
+      1: { cellWidth: 'auto', fontStyle: 'normal' },
     },
-    margin: { left: 15, right: 15 },
+    margin: { left: margin, right: margin },
   });
 
   yPosition = (doc as any).lastAutoTable.finalY + 15;
 
-  // ===== CAMPAIGN DETAILS =====
-  doc.setFontSize(12);
+  // ===== CAMPAIGN IMPACT =====
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('Campaign Details', 15, yPosition);
-  yPosition += 8;
-
-  const campaignDetails = [
-    ['Campaign', data.campaignTitle],
-    ['Organization', data.charityName],
-  ];
+  doc.setTextColor(COLORS.text);
+  doc.text('Donation Impact', margin, yPosition);
+  yPosition += 3;
 
   autoTable(doc, {
     startY: yPosition,
     head: [],
-    body: campaignDetails,
-    theme: 'plain',
+    body: [
+      ['Campaign', data.campaignTitle],
+      ['Beneficiary Organization', data.charityName],
+    ],
+    theme: 'grid',
     styles: {
       fontSize: 10,
-      cellPadding: 5,
+      cellPadding: 8,
+      lineColor: COLORS.border,
+      lineWidth: 0.1,
     },
+    headStyles: { fillColor: COLORS.primary, textColor: COLORS.white },
     columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 60 },
-      1: { cellWidth: 'auto' },
+      0: { fontStyle: 'bold', cellWidth: 60, fillColor: COLORS.background, textColor: COLORS.textLight },
+      1: { cellWidth: 'auto', textColor: COLORS.text },
     },
-    margin: { left: 15, right: 15 },
+    margin: { left: margin, right: margin },
   });
 
   yPosition = (doc as any).lastAutoTable.finalY + 15;
 
-  // ===== DONOR DETAILS =====
-  if (!data.isAnonymous) {
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Donor Information', 15, yPosition);
-    yPosition += 8;
-
-    const donorDetails = [
-      ['Name', data.donorName],
-      ['Email', data.donorEmail],
-    ];
-
-    autoTable(doc, {
-      startY: yPosition,
-      head: [],
-      body: donorDetails,
-      theme: 'plain',
-      styles: {
-        fontSize: 10,
-        cellPadding: 5,
-      },
-      columnStyles: {
-        0: { fontStyle: 'bold', cellWidth: 60 },
-        1: { cellWidth: 'auto' },
-      },
-      margin: { left: 15, right: 15 },
-    });
-
-    yPosition = (doc as any).lastAutoTable.finalY + 15;
-  }
-
-  // ===== PERSONAL MESSAGE (if any) =====
+  // ===== MESSAGE =====
   if (data.message) {
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('Your Message', 15, yPosition);
-    yPosition += 8;
+    doc.setTextColor(COLORS.text);
+    doc.text('Message', margin, yPosition);
+    yPosition += 6;
 
+    doc.setFillColor(COLORS.background);
+    doc.setDrawColor(COLORS.border);
+    doc.roundedRect(margin, yPosition, pageWidth - (margin * 2), 20, 2, 2, 'FD');
+    
     doc.setFontSize(10);
     doc.setFont('helvetica', 'italic');
-    const messageLines = doc.splitTextToSize(`"${data.message}"`, pageWidth - 40);
-    doc.text(messageLines, 20, yPosition);
-    yPosition += messageLines.length * 5 + 10;
+    doc.setTextColor(COLORS.textLight);
+    doc.text(`"${data.message}"`, margin + 5, yPosition + 8, { maxWidth: pageWidth - (margin * 2) - 10 });
+    
+    yPosition += 30;
+  } else {
+    yPosition += 5;
   }
 
-  // ===== TAX INFORMATION =====
-  yPosition = Math.max(yPosition, pageHeight - 80);
+  // ===== THANK YOU SECTION =====
+  // Ensure space at bottom
+  if (yPosition > pageHeight - 70) {
+    doc.addPage();
+    yPosition = 20;
+  } else {
+    yPosition += 10;
+  }
 
-  doc.setFillColor(...lightGray);
-  doc.rect(15, yPosition, pageWidth - 30, 30, 'F');
-
-  doc.setFontSize(9);
+  // Center aligned thank you
+  const centerY = yPosition + 10;
+  
+  doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...textColor);
-  doc.text('Tax Deduction Notice', 20, yPosition + 8);
-
+  doc.setTextColor(COLORS.primary);
+  doc.text('Thank You!', pageWidth / 2, centerY, { align: 'center' });
+  
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  const taxNotice = doc.splitTextToSize(
-    'This receipt may be used for tax deduction purposes. Please consult with your tax advisor regarding the deductibility of your donation. Keep this receipt for your records.',
-    pageWidth - 50
-  );
-  doc.text(taxNotice, 20, yPosition + 14);
-
-  yPosition += 40;
-
-  // ===== FOOTER =====
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(128, 128, 128);
-  doc.text('ClearCause - Transparent Charity Donation Platform', pageWidth / 2, pageHeight - 20, {
-    align: 'center',
-  });
-  doc.text('For questions, contact support@clearcause.org', pageWidth / 2, pageHeight - 15, {
-    align: 'center',
-  });
+  doc.setTextColor(COLORS.textLight);
   doc.text(
-    `Generated on ${format(new Date(), 'MMMM dd, yyyy \'at\' h:mm a')}`,
+    'Your generosity helps us create lasting change in our community.',
     pageWidth / 2,
-    pageHeight - 10,
+    centerY + 8,
     { align: 'center' }
+  );
+
+  // ===== FOOTER (Bottom of page) =====
+  const footerY = pageHeight - 25;
+  
+  doc.setDrawColor(COLORS.border);
+  doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+
+  doc.setFontSize(8);
+  doc.setTextColor(COLORS.textLight);
+  
+  const footerText = 'ClearCause Inc. | support@clearcause.org';
+  const taxText = 'This is an official receipt for your records. Please consult your tax advisor regarding deductibility.';
+  
+  doc.text(footerText, margin, footerY + 5);
+  doc.text(taxText, margin, footerY + 10);
+  
+  // Generated timestamp
+  doc.text(
+    `Generated: ${format(new Date(), 'MMM dd, yyyy HH:mm:ss')}`,
+    pageWidth - margin,
+    footerY + 5,
+    { align: 'right' }
   );
 
   return doc;
@@ -247,8 +306,8 @@ export const generateDonationReceipt = (data: ReceiptData): jsPDF => {
 /**
  * Download a receipt as PDF
  */
-export const downloadReceipt = (data: ReceiptData): void => {
-  const doc = generateDonationReceipt(data);
+export const downloadReceipt = async (data: ReceiptData): Promise<void> => {
+  const doc = await generateDonationReceipt(data);
   const fileName = `ClearCause_Receipt_${data.donationId.substring(0, 8)}_${format(
     new Date(data.donatedAt),
     'yyyyMMdd'
@@ -259,16 +318,16 @@ export const downloadReceipt = (data: ReceiptData): void => {
 /**
  * Get receipt as blob (for email attachments, etc.)
  */
-export const getReceiptBlob = (data: ReceiptData): Blob => {
-  const doc = generateDonationReceipt(data);
+export const getReceiptBlob = async (data: ReceiptData): Promise<Blob> => {
+  const doc = await generateDonationReceipt(data);
   return doc.output('blob');
 };
 
 /**
  * Get receipt as base64 string
  */
-export const getReceiptBase64 = (data: ReceiptData): string => {
-  const doc = generateDonationReceipt(data);
+export const getReceiptBase64 = async (data: ReceiptData): Promise<string> => {
+  const doc = await generateDonationReceipt(data);
   return doc.output('dataurlstring');
 };
 
@@ -283,6 +342,7 @@ function formatPaymentMethod(method: string): string {
     debit_card: 'Debit Card',
     bank_transfer: 'Bank Transfer',
     cash: 'Cash',
+    card: 'Card Payment',
   };
 
   return methodMap[method.toLowerCase()] || method;
@@ -291,8 +351,8 @@ function formatPaymentMethod(method: string): string {
 /**
  * Preview receipt in new window
  */
-export const previewReceipt = (data: ReceiptData): void => {
-  const doc = generateDonationReceipt(data);
+export const previewReceipt = async (data: ReceiptData): Promise<void> => {
+  const doc = await generateDonationReceipt(data);
   const pdfBlob = doc.output('blob');
   const pdfUrl = URL.createObjectURL(pdfBlob);
   window.open(pdfUrl, '_blank');

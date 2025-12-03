@@ -187,8 +187,8 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
 
         {/* Main content - With left margin to account for sidebar */}
         <main className="flex-grow p-8">
-          <div className="max-w-7xl mx-auto px-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">{title}</h1>
+          <div className="max-w-7xl mx-auto px-8 font-poppinsregular">
+            <h1 className="text-3xl font-bold text-gray-900 mb-6 font-robotobold">{title}</h1>
             {children}
           </div>
         </main>

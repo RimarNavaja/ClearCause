@@ -142,6 +142,7 @@ const ProfileImageUpload: React.FC<ProfileImageUploadProps> = ({
                     ? "Profile picture"
                     : "Organization logo"
                 }
+                className="font-redhatbold"
               />
               <AvatarFallback className="text-lg font-semibold bg-gray-100">
                 {fallbackText}
