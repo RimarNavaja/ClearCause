@@ -161,6 +161,8 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
       case "firstName":
         if (!value.trim()) {
           errors.firstName = "First name is required";
+        } else if (!/^[a-zA-Z\s\-\.\']+$/.test(value)) {
+          errors.firstName = "First name contains invalid characters";
         } else {
           delete errors.firstName;
         }
@@ -168,6 +170,8 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
       case "lastName":
         if (!value.trim()) {
           errors.lastName = "Last name is required";
+        } else if (!/^[a-zA-Z\s\-\.\']+$/.test(value)) {
+          errors.lastName = "Last name contains invalid characters";
         } else {
           delete errors.lastName;
         }

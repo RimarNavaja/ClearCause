@@ -70,6 +70,12 @@ serve(async (req) => {
 
     // 4. Create PayMongo Source for GCash
     const amountInCentavos = Math.round(amount * 100); // Convert PHP to centavos
+
+    // Check for GCash limit (100,000 PHP = 10,000,000 centavos)
+    if (amountInCentavos > 10000000) {
+      throw new Error('Amount exceeds the maximum limit of ₱100,000 for GCash transactions. Please try a smaller amount or use a different payment method.');
+    }
+
     const successUrl = `${Deno.env.get('VITE_APP_URL')}/donate/success?donation_id=${donationId}`;
     const failedUrl = `${Deno.env.get('VITE_APP_URL')}/donate/error?donation_id=${donationId}`;
 

@@ -167,7 +167,7 @@ const DonorCampaigns: React.FC = () => {
     <DonorLayout title="Browse Campaigns">
       <div className="space-y-6">
         {/* Description */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 ">
           <p className="text-sm text-blue-800">
             Discover verified campaigns and make a difference. Campaigns you've supported are highlighted with a badge.
           </p>

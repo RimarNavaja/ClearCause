@@ -515,3 +515,156 @@ BEGIN
   RAISE NOTICE '2. Update their profile role to "admin" in the profiles table';
   RAISE NOTICE '3. Test the authentication flow in your application';
 END $$;
+
+
+
+-- =====================================================
+-- ACHIEVEMENT SYSTEM TABLES
+-- =====================================================
+
+-- Achievement category enum
+CREATE TYPE achievement_category AS ENUM (
+  'donation_milestones',
+  'donation_frequency',
+  'campaign_diversity',
+  'platform_engagement'
+);
+
+-- Achievements table: Defines all possible badges
+CREATE TABLE public.achievements (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  slug TEXT NOT NULL UNIQUE, -- e.g., 'first-spark', 'bronze-contributor'
+  description TEXT NOT NULL,
+  icon_url TEXT,
+  category achievement_category NOT NULL,
+  criteria JSONB NOT NULL, -- Stores achievement conditions as JSON
+  display_order INTEGER DEFAULT 0, -- For sorting in UI
+  is_active BOOLEAN DEFAULT true, -- Can disable achievements
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Donor achievements table: Tracks which donors earned which badges
+CREATE TABLE public.donor_achievements (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  donor_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  achievement_id UUID NOT NULL REFERENCES public.achievements(id) ON DELETE CASCADE,
+  earned_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  context JSONB, -- Additional context about how it was earned
+  UNIQUE (donor_id, achievement_id) -- Prevent duplicate achievements
+);
+
+-- =====================================================
+-- INDEXES FOR ACHIEVEMENTS
+-- =====================================================
+
+CREATE INDEX idx_achievements_category ON public.achievements(category);
+CREATE INDEX idx_achievements_slug ON public.achievements(slug);
+CREATE INDEX idx_achievements_is_active ON public.achievements(is_active);
+CREATE INDEX idx_donor_achievements_donor_id ON public.donor_achievements(donor_id);
+CREATE INDEX idx_donor_achievements_achievement_id ON public.donor_achievements(achievement_id);
+CREATE INDEX idx_donor_achievements_earned_at ON public.donor_achievements(earned_at);
+
+-- =====================================================
+-- TRIGGERS FOR ACHIEVEMENTS
+-- =====================================================
+
+CREATE TRIGGER update_achievements_updated_at
+BEFORE UPDATE ON public.achievements
+FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
+
+-- =====================================================
+-- ROW LEVEL SECURITY FOR ACHIEVEMENTS
+-- =====================================================
+
+ALTER TABLE public.achievements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.donor_achievements ENABLE ROW LEVEL SECURITY;
+
+-- Everyone can read active achievements
+CREATE POLICY "Anyone can view active achievements"
+ON public.achievements FOR SELECT
+USING (is_active = true);
+
+-- Admins can manage achievements
+CREATE POLICY "Admins can manage achievements"
+ON public.achievements FOR ALL
+USING (
+  EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  )
+);
+
+-- Donors can view their own earned achievements
+CREATE POLICY "Donors can view their own achievements"
+ON public.donor_achievements FOR SELECT
+USING (donor_id = auth.uid());
+
+-- Only system can insert achievements (via service role)
+-- No update/delete policies - achievements are immutable once earned
+```
+
+### 3.2 Storage Bucket
+
+Add storage bucket for achievement icons:
+
+```sql
+-- Insert achievement icons bucket
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'achievement-icons',
+  'achievement-icons',
+  true,
+  524288, -- 512KB limit for icons
+  ARRAY['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp']
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage policies for achievement icons
+CREATE POLICY "Public read access to achievement icons"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'achievement-icons');
+
+CREATE POLICY "Admins can upload achievement icons"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'achievement-icons' AND
+  EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  )
+);
+```
+
+### 3.3 Seed Data
+
+```sql
+-- Seed initial achievements
+INSERT INTO public.achievements (name, slug, description, category, criteria, display_order) VALUES
+-- Donation Milestones
+('First Spark', 'first-spark', 'Make your first donation to any campaign', 'donation_milestones', '{"type": "first_donation"}', 1),
+('Bronze Contributor', 'bronze-contributor', 'Reach a total donation amount of ₱500', 'donation_milestones', '{"type": "total_donated", "amount": 500}', 2),
+('Silver Supporter', 'silver-supporter', 'Reach a total donation amount of ₱2,500', 'donation_milestones', '{"type": "total_donated", "amount": 2500}', 3),
+('Gold Patron', 'gold-patron', 'Reach a total donation amount of ₱10,000', 'donation_milestones', '{"type": "total_donated", "amount": 10000}', 4),
+('Platinum Benefactor', 'platinum-benefactor', 'Reach a total donation amount of ₱50,000', 'donation_milestones', '{"type": "total_donated", "amount": 50000}', 5),
+('Diamond Guardian', 'diamond-guardian', 'Reach a total donation amount of ₱100,000+', 'donation_milestones', '{"type": "total_donated", "amount": 100000}', 6),
+
+-- Donation Frequency
+('Consistent Giver', 'consistent-giver', 'Make 3 donations within a 30-day period', 'donation_frequency', '{"type": "donations_in_period", "count": 3, "days": 30}', 10),
+('Monthly Champion', 'monthly-champion', 'Donate at least once per month for 3 consecutive months', 'donation_frequency', '{"type": "consecutive_months", "count": 3}', 11),
+('Quarterly Supporter', 'quarterly-supporter', 'Donate in 4 different quarters', 'donation_frequency', '{"type": "unique_quarters", "count": 4}', 12),
+('Annual Ally', 'annual-ally', 'Donate at least once per year for 2 consecutive years', 'donation_frequency', '{"type": "consecutive_years", "count": 2}', 13),
+
+-- Campaign Diversity
+('Campaign Champion', 'campaign-champion', 'Support 5 unique campaigns', 'campaign_diversity', '{"type": "unique_campaigns", "count": 5}', 20),
+('Cause Explorer', 'cause-explorer', 'Donate to 3 different campaign categories', 'campaign_diversity', '{"type": "unique_categories", "count": 3}', 21),
+('Diversity Donor', 'diversity-donor', 'Support 5 unique charity organizations', 'campaign_diversity', '{"type": "unique_charities", "count": 5}', 22),
+('Launch Supporter', 'launch-supporter', 'Donate within 48 hours of a campaign launch', 'campaign_diversity', '{"type": "early_donation", "hours": 48}', 23),
+('Milestone Maker', 'milestone-maker', 'Your donation helped a campaign reach a milestone', 'campaign_diversity', '{"type": "milestone_trigger"}', 24),
+('Finisher', 'finisher', 'Support a campaign that reached 100% of its goal', 'campaign_diversity', '{"type": "completed_campaign"}', 25),
+
+-- Platform Engagement
+('Profile Pro', 'profile-pro', 'Complete your donor profile with name, phone, and avatar', 'platform_engagement', '{"type": "complete_profile"}', 30),
+('Impact Tracker', 'impact-tracker', 'Track 3 different campaigns for updates', 'platform_engagement', '{"type": "tracked_campaigns", "count": 3}', 31),
+('Feedback Champion', 'feedback-champion', 'Provide feedback on 5 campaigns', 'platform_engagement', '{"type": "submitted_feedback", "count": 5}', 32);

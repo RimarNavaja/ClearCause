@@ -483,15 +483,15 @@ const DonorDashboard: React.FC = () => {
         </Card>
 
         {/* Call to Action */}
-        <Card className="bg-gradient-to-r from-clearcause-primary to-clearcause-secondary text-white">
+        <Card className="bg-gradient-to-r from-blue-700 to-blue-500 text-white">
           <CardContent className="p-6 text-center">
-            <h3 className="text-lg font-semibold mb-2">
+            <h3 className="text-lg font-semibold mb-2 font-robotobold tracking-wide">
               Ready to make more impact?
             </h3>
-            <p className="mb-4 opacity-90">
+            <p className="mb-4 opacity-90 font-poppinsregular">
               Discover new campaigns that align with your values and interests
             </p>
-            <Button variant="secondary" asChild>
+            <Button variant="secondary" asChild className="bg-white text-blue-700 hover:bg-blue-100 border border-1 border-black">
               <Link to="/campaigns">
                 Explore Campaigns
                 <ArrowRight className="ml-2 h-4 w-4" />

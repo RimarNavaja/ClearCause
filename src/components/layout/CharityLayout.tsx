@@ -1,6 +1,5 @@
-
-import React, { useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   ListChecks,
@@ -15,8 +14,8 @@ import {
   Target,
   FileText,
   BarChart3,
-  Settings
-} from 'lucide-react';
+  Settings,
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,12 +25,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import Navbar from './Navbar';
-import Footer from './Footer';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
-import { performCompleteLogout } from '@/utils/sessionManager';
+} from "@/components/ui/alert-dialog";
+import Navbar from "./Navbar";
+import Footer from "./Footer";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
+import { performCompleteLogout } from "@/utils/sessionManager";
 
 interface CharityLayoutProps {
   children: React.ReactNode;
@@ -61,7 +60,7 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
           description: "You have been signed out of your charity account.",
         });
         // Use enhanced complete logout for session isolation
-        await performCompleteLogout('/login');
+        await performCompleteLogout("/login");
       } else {
         toast({
           title: "Logout failed",
@@ -70,14 +69,14 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
         });
       }
     } catch (error) {
-      console.error('[CharityLayout] Logout error:', error);
+      console.error("[CharityLayout] Logout error:", error);
       toast({
         title: "Logout failed",
         description: "An unexpected error occurred.",
         variant: "destructive",
       });
       // Force cleanup even on error
-      await performCompleteLogout('/login');
+      await performCompleteLogout("/login");
     } finally {
       setIsLoggingOut(false);
     }
@@ -86,70 +85,73 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
   const handleLogoutClick = () => {
     setShowLogoutDialog(true);
   };
-  
+
   const navItems = [
     {
-      path: '/charity/dashboard',
-      label: 'Dashboard',
-      icon: <LayoutDashboard className="w-5 h-5" />
+      path: "/charity/dashboard",
+      label: "Dashboard",
+      icon: <LayoutDashboard className="w-5 h-5" />,
     },
     {
-      path: '/charity/campaigns/new',
-      label: 'Create New Campaign',
-      icon: <PlusCircle className="w-5 h-5" />
+      path: "/charity/campaigns/new",
+      label: "Create New Campaign",
+      icon: <PlusCircle className="w-5 h-5" />,
     },
     {
-      path: '/charity/campaigns',
-      label: 'Manage Campaigns',
-      icon: <ListChecks className="w-5 h-5" />
+      path: "/charity/campaigns",
+      label: "Manage Campaigns",
+      icon: <ListChecks className="w-5 h-5" />,
     },
     {
-      path: '/charity/milestones',
-      label: 'Milestones',
-      icon: <Target className="w-5 h-5" />
+      path: "/charity/milestones",
+      label: "Milestones",
+      icon: <Target className="w-5 h-5" />,
     },
     {
-      path: '/charity/analytics',
-      label: 'Analytics',
-      icon: <BarChart3 className="w-5 h-5" />
+      path: "/charity/analytics",
+      label: "Analytics",
+      icon: <BarChart3 className="w-5 h-5" />,
     },
     {
-      path: '/charity/funds',
-      label: 'Funds Management',
-      icon: <DollarSign className="w-5 h-5" />
+      path: "/charity/funds",
+      label: "Funds Management",
+      icon: <DollarSign className="w-5 h-5" />,
     },
     {
-      path: '/charity/profile',
-      label: 'Organization Profile',
-      icon: <Landmark className="w-5 h-5" />
+      path: "/charity/profile",
+      label: "Organization Profile",
+      icon: <Landmark className="w-5 h-5" />,
     },
     {
-      path: '/charity/settings',
-      label: 'Settings',
-      icon: <Settings className="w-5 h-5" />
+      path: "/charity/settings",
+      label: "Settings",
+      icon: <Settings className="w-5 h-5" />,
     },
   ];
 
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      
-      <div className="flex-grow flex flex-col md:flex-row bg-clearcause-background">
-        {/* Sidebar */}
-        <aside className="bg-white w-full md:w-64 md:min-h-[calc(100vh-4rem)] shadow-sm">
-          <div className="p-4 md:p-6 h-full">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6 hidden md:block">Charity Portal</h2>
-            
-            <div className="flex md:flex-col space-x-4 md:space-x-0 md:space-y-2 overflow-x-auto md:overflow-visible py-2 md:py-0">
+
+      <div className="flex-grow flex bg-clearcause-background">
+        {/* Sidebar - Fixed to left */}
+        <aside className="bg-white w-64 min-h-[calc(100vh-4rem)] shadow-sm fixed left-0 top-16">
+          <div className="p-6 h-full flex flex-col">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              Charity Portal
+            </h2>
+
+            <div className="flex flex-col space-y-2 flex-grow">
               {navItems.map((item) => (
                 <NavLink
                   key={item.path}
                   to={item.path}
                   className={({ isActive }) => `
                     flex items-center px-3 py-2 rounded-md text-sm font-medium
-                    ${isActive 
-                      ? 'bg-clearcause-primary/10 text-clearcause-primary' 
-                      : 'text-gray-600 hover:text-clearcause-primary hover:bg-gray-100'
+                    ${
+                      isActive
+                        ? "bg-clearcause-primary/10 text-clearcause-primary"
+                        : "text-gray-600 hover:text-clearcause-primary hover:bg-gray-100"
                     }
                   `}
                 >
@@ -157,14 +159,14 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
                   <span className="ml-3">{item.label}</span>
                 </NavLink>
               ))}
-              
+
               <button
                 onClick={handleLogoutClick}
                 disabled={isLoggingOut || authLoading}
-                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium mt-8 md:mt-auto w-full text-left transition-colors ${
-                  isLoggingOut || authLoading 
-                    ? 'text-gray-400 cursor-not-allowed bg-gray-100' 
-                    : 'text-gray-600 hover:text-red-500 hover:bg-red-50'
+                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium mt-auto w-full text-left transition-colors ${
+                  isLoggingOut || authLoading
+                    ? "text-gray-400 cursor-not-allowed bg-gray-100"
+                    : "text-gray-600 hover:text-red-500 hover:bg-red-50"
                 }`}
               >
                 {isLoggingOut || authLoading ? (
@@ -182,11 +184,11 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
             </div>
           </div>
         </aside>
-        
-        {/* Main content */}
-        <main className="flex-grow p-4 md:p-8">
-          <div className="max-w-4xl mx-auto">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6">{title}</h1>
+
+        {/* Main content - With left margin to account for sidebar */}
+        <main className="flex-grow p-8">
+          <div className="max-w-7xl mx-auto px-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-6">{title}</h1>
             {children}
           </div>
         </main>
@@ -197,22 +199,24 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
       <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <LogOut className="h-5 w-5 text-red-600" />
-              Confirm Sign Out
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to sign out of your charity account? You will need to log in again to access your dashboard.
+            <AlertDialogTitle>Confirm Sign Out</AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              Are you sure you want to sign out of your{" "}
+              <span className="font-semibold">Charity</span> account? You will
+              need to log in again to access your dashboard.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoggingOut}>
+          <AlertDialogFooter className=" gap-2">
+            <AlertDialogCancel
+              disabled={isLoggingOut}
+              className="hover:bg-blue-600 px-6 border-2 border-gray-200 text-blue-700 shadow-sm hover:text-white"
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleLogoutConfirm}
               disabled={isLoggingOut}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              className="bg-red-600 hover:bg-red-700 shadow-sm focus:ring-red-600 px-6"
             >
               {isLoggingOut ? (
                 <>
@@ -220,10 +224,7 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
                   Signing out...
                 </>
               ) : (
-                <>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
-                </>
+                <>Sign out</>
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
