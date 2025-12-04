@@ -46,14 +46,42 @@ const COLORS = {
  */
 const getLogoBase64 = async (): Promise<string | null> => {
   try {
-    // Try to fetch the PNG logo first
+    // Try to fetch the logo first
     const response = await fetch('/CLEARCAUSE-logo.svg');
     if (!response.ok) throw new Error('Logo not found');
     const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+
     return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        // Set canvas size to match image or a reasonable fixed size for the receipt
+        // We use a multiplier to ensure good resolution on the PDF
+        const scale = 4; 
+        // Default to 200x50 aspect ratio if natural dimensions are missing
+        const width = (img.width || 200) * scale;
+        const height = (img.height || 50) * scale;
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const pngData = canvas.toDataURL('image/png');
+          resolve(pngData);
+        } else {
+          resolve(null);
+        }
+        URL.revokeObjectURL(url);
+      };
+      img.onerror = (e) => {
+        console.warn('Error loading SVG image for receipt', e);
+        URL.revokeObjectURL(url);
+        resolve(null);
+      };
+      img.src = url;
     });
   } catch (error) {
     console.warn('Could not load logo for receipt:', error);
@@ -84,7 +112,7 @@ export const generateDonationReceipt = async (data: ReceiptData): Promise<jsPDF>
   if (logoBase64) {
     try {
       // Add logo at top left
-      doc.addImage(logoBase64, 'PNG', margin, 15, 40, 12); // Adjust aspect ratio as needed
+      doc.addImage(logoBase64, 'PNG', margin, 15, 30, 12); // Adjust aspect ratio as needed
     } catch (e) {
       // Fallback text if image fails
       doc.setTextColor(COLORS.primary);

@@ -129,8 +129,12 @@ const DonationCard: React.FC<DonationCardProps> = ({
             </div>
           </div>
 
-          <Link to={`/donate/${campaign.id}`} className="block">
-            <Button className="w-full bg-blue-600 hover:bg-blue-700/90 mb-4 font-interregular  tracking-wider">
+          <Link 
+            to={`/donate/${campaign.id}`} 
+            state={{ amount: donationAmount }}
+            className="block"
+          >
+            <Button className="w-full bg-blue-600 hover:bg-blue-700/90 mb-4 font-interregular tracking-wider">
               Donate
             </Button>
           </Link>

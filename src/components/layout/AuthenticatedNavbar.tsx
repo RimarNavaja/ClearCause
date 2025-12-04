@@ -122,6 +122,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
         ];
       case "charity":
         return [
+          { to: "/campaigns", label: "Browse Campaigns" },
           { to: "/charity/campaigns", label: "My Campaigns" },
           { to: "/charity/dashboard", label: "Dashboard" },
         ];
