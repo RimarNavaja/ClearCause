@@ -61,7 +61,7 @@ export const ReceiptButton: React.FC<ReceiptButtonProps> = ({
     try {
       setLoading(true);
       const receiptData = getReceiptData();
-      downloadReceipt(receiptData);
+      await downloadReceipt(receiptData);
       toast({
         title: '✓ Receipt Downloaded',
         description: 'Your professional donation receipt has been saved as a PDF.',

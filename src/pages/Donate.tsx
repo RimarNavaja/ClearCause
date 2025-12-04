@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   CreditCard,
@@ -28,6 +28,7 @@ const PRESET_AMOUNTS = [500, 1000, 2500, 5000];
 const Donate: React.FC = () => {
   const { campaignId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
 
   // Campaign data
@@ -36,8 +37,14 @@ const Donate: React.FC = () => {
   const [campaignError, setCampaignError] = useState<string | null>(null);
 
   // Donation form state
-  const [amount, setAmount] = useState<number>(1000);
-  const [customAmount, setCustomAmount] = useState<string>("");
+  const [amount, setAmount] = useState<number>(location.state?.amount || 1000);
+  const [customAmount, setCustomAmount] = useState<string>(() => {
+    const passedAmount = location.state?.amount;
+    if (passedAmount && !PRESET_AMOUNTS.includes(passedAmount)) {
+      return passedAmount.toString();
+    }
+    return "";
+  });
   const [paymentMethod, setPaymentMethod] = useState<
     "gcash" | "paymaya" | "card" | "bank"
   >("gcash");

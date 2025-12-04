@@ -36,13 +36,103 @@ export interface ReceiptData {
   message?: string;
 }
 
+// ClearCause Brand Colors
+const COLORS = {
+  primary: '#1d4ed8', // Blue 700
+  secondary: '#0284c7', // Blue 600
+  accent: '#0284c7',
+  text: '#334155', // Slate 700
+  textLight: '#64748b', // Slate 500
+  background: '#f8fafc', // Slate 50
+  white: '#ffffff',
+  border: '#e2e8f0', // Slate 200
+};
+
+/**
+ * Helper: Fetch logo and convert to base64
+ */
+const getLogoBase64 = async (): Promise<string | null> => {
+  try {
+    // Try to fetch the logo first
+    const response = await fetch('/CLEARCAUSE-logo.svg');
+    if (!response.ok) throw new Error('Logo not found');
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        // Set canvas size to match image or a reasonable fixed size for the receipt
+        // We use a multiplier to ensure good resolution on the PDF
+        const scale = 4; 
+        // Default to 200x50 aspect ratio if natural dimensions are missing
+        const width = (img.width || 200) * scale;
+        const height = (img.height || 50) * scale;
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const pngData = canvas.toDataURL('image/png');
+          resolve(pngData);
+        } else {
+          resolve(null);
+        }
+        URL.revokeObjectURL(url);
+      };
+      img.onerror = (e) => {
+        console.warn('Error loading SVG image for receipt', e);
+        URL.revokeObjectURL(url);
+        resolve(null);
+      };
+      img.src = url;
+    });
+  } catch (error) {
+    console.warn('Could not load logo for receipt:', error);
+    return null;
+  }
+};
+
 /**
  * Generate a PDF receipt for a donation
  */
-export const generateDonationReceipt = (data: ReceiptData): jsPDF => {
+export const generateDonationReceipt = async (data: ReceiptData): Promise<jsPDF> => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 15;
+
+  // Load Logo
+  const logoBase64 = await getLogoBase64();
+
+  // ===== HEADER BACKGROUND =====
+  // Add a subtle top colored bar
+  doc.setFillColor(COLORS.primary);
+  doc.rect(0, 0, pageWidth, 6, 'F');
+
+  let yPosition = 25;
+
+  // ===== LOGO & BRANDING =====
+  if (logoBase64) {
+    try {
+      // Add logo at top left
+      doc.addImage(logoBase64, 'PNG', margin, 15, 30, 12); // Adjust aspect ratio as needed
+    } catch (e) {
+      // Fallback text if image fails
+      doc.setTextColor(COLORS.primary);
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('ClearCause', margin, 22);
+    }
+  } else {
+    doc.setTextColor(COLORS.primary);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ClearCause', margin, 22);
+  }
 
   // ClearCause Brand Colors - Matching Design System
   const primaryColor: [number, number, number] = [29, 78, 216]; // #1d4ed8 - ClearCause Primary Blue
@@ -172,8 +262,16 @@ export const generateDonationReceipt = (data: ReceiptData): jsPDF => {
   doc.setTextColor(...textColor);
   doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
-  doc.text('Donation Details', 15, yPosition);
-  yPosition += 8;
+  doc.setTextColor(COLORS.primary);
+  doc.text(`₱${data.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth / 2 + 10, yPosition + 2);
+
+  yPosition += 10;
+  if (!data.isAnonymous && data.donorEmail) {
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(COLORS.textLight);
+    doc.text(data.donorEmail, margin, yPosition);
+  }
 
   // Enhanced table data
   const donationDetails = [
@@ -184,10 +282,18 @@ export const generateDonationReceipt = (data: ReceiptData): jsPDF => {
 
   autoTable(doc, {
     startY: yPosition,
-    head: [],
-    body: donationDetails,
-    theme: 'plain',
-    styles: {
+    head: [['Payment Details', '']],
+    body: detailsBody,
+    theme: 'plain', // Cleaner look
+    headStyles: {
+      fillColor: COLORS.background,
+      textColor: COLORS.text,
+      fontStyle: 'bold',
+      fontSize: 10,
+      cellPadding: 8,
+    },
+    bodyStyles: {
+      textColor: COLORS.text,
       fontSize: 10,
       cellPadding: 7,
       lineColor: borderGray,
@@ -220,25 +326,25 @@ export const generateDonationReceipt = (data: ReceiptData): jsPDF => {
   doc.setTextColor(...textColor);
   doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
-  doc.text('Campaign Details', 15, yPosition);
-  yPosition += 8;
-
-  const campaignDetails = [
-    ['Campaign', data.campaignTitle],
-    ['Organization', data.charityName],
-  ];
+  doc.setTextColor(COLORS.text);
+  doc.text('Donation Impact', margin, yPosition);
+  yPosition += 3;
 
   autoTable(doc, {
     startY: yPosition,
     head: [],
-    body: campaignDetails,
-    theme: 'plain',
+    body: [
+      ['Campaign', data.campaignTitle],
+      ['Beneficiary Organization', data.charityName],
+    ],
+    theme: 'grid',
     styles: {
       fontSize: 10,
       cellPadding: 7,
       lineColor: borderGray,
       lineWidth: 0.5,
     },
+    headStyles: { fillColor: COLORS.primary, textColor: COLORS.white },
     columnStyles: {
       0: {
         fontStyle: 'bold',
@@ -416,7 +522,10 @@ export const generateDonationReceipt = (data: ReceiptData): jsPDF => {
   doc.setLineWidth(0.8);
   doc.roundedRect(15, yPosition, pageWidth - 30, 28, 4, 4, 'FD');
 
-  doc.setFontSize(9);
+  // Center aligned thank you
+  const centerY = yPosition + 10;
+  
+  doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...textColor);
   doc.text('📋 Tax Deduction Notice', 20, yPosition + 7);
@@ -487,8 +596,8 @@ export const generateDonationReceipt = (data: ReceiptData): jsPDF => {
 /**
  * Download a receipt as PDF
  */
-export const downloadReceipt = (data: ReceiptData): void => {
-  const doc = generateDonationReceipt(data);
+export const downloadReceipt = async (data: ReceiptData): Promise<void> => {
+  const doc = await generateDonationReceipt(data);
   const fileName = `ClearCause_Receipt_${data.donationId.substring(0, 8)}_${format(
     new Date(data.donatedAt),
     'yyyyMMdd'
@@ -499,16 +608,16 @@ export const downloadReceipt = (data: ReceiptData): void => {
 /**
  * Get receipt as blob (for email attachments, etc.)
  */
-export const getReceiptBlob = (data: ReceiptData): Blob => {
-  const doc = generateDonationReceipt(data);
+export const getReceiptBlob = async (data: ReceiptData): Promise<Blob> => {
+  const doc = await generateDonationReceipt(data);
   return doc.output('blob');
 };
 
 /**
  * Get receipt as base64 string
  */
-export const getReceiptBase64 = (data: ReceiptData): string => {
-  const doc = generateDonationReceipt(data);
+export const getReceiptBase64 = async (data: ReceiptData): Promise<string> => {
+  const doc = await generateDonationReceipt(data);
   return doc.output('dataurlstring');
 };
 
@@ -523,6 +632,7 @@ function formatPaymentMethod(method: string): string {
     debit_card: 'Debit Card',
     bank_transfer: 'Bank Transfer',
     cash: 'Cash',
+    card: 'Card Payment',
   };
 
   return methodMap[method.toLowerCase()] || method;
@@ -531,8 +641,8 @@ function formatPaymentMethod(method: string): string {
 /**
  * Preview receipt in new window
  */
-export const previewReceipt = (data: ReceiptData): void => {
-  const doc = generateDonationReceipt(data);
+export const previewReceipt = async (data: ReceiptData): Promise<void> => {
+  const doc = await generateDonationReceipt(data);
   const pdfBlob = doc.output('blob');
   const pdfUrl = URL.createObjectURL(pdfBlob);
   window.open(pdfUrl, '_blank');

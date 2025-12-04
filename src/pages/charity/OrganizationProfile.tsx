@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Building,
   FileText,
@@ -10,27 +9,35 @@ import {
   PlusCircle,
   Save,
   Upload,
-  User
-} from 'lucide-react';
-import { format } from 'date-fns';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import CharityLayout from '@/components/layout/CharityLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import ProfileImageUpload from '@/components/ui/ProfileImageUpload';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
-import * as charityService from '@/services/charityService';
-import { CharityRegistrationData } from '@/lib/types';
-import { charityProfileSchema } from '@/utils/validation';
-import { getCharityVerificationData } from '@/services/charityService';
+  User,
+} from "lucide-react";
+import { format } from "date-fns";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import CharityLayout from "@/components/layout/CharityLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import ProfileImageUpload from "@/components/ui/ProfileImageUpload";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import * as charityService from "@/services/charityService";
+import { CharityRegistrationData } from "@/lib/types";
+import { charityProfileSchema } from "@/utils/validation";
+import { getCharityVerificationData } from "@/services/charityService";
 
 // Form schema
 const formSchema = charityProfileSchema;
@@ -41,7 +48,7 @@ interface DocumentFile {
   name: string;
   type: string;
   uploadDate: Date;
-  status: 'Verified' | 'Pending' | 'Expired';
+  status: "Verified" | "Pending" | "Expired";
   url: string;
 }
 
@@ -53,21 +60,21 @@ const OrganizationProfile: React.FC = () => {
 
   const [charityData, setCharityData] = useState<any>(null);
   const [documents, setDocuments] = useState<DocumentFile[]>([]);
-  const [registrationNumber, setRegistrationNumber] = useState<string>('');
+  const [registrationNumber, setRegistrationNumber] = useState<string>("");
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      organizationName: '',
-      description: '',
-      websiteUrl: '',
-      contactEmail: '',
-      contactPhone: '',
-      address: '',
-      registrationNumber: '',
-      contactPersonName: '',
-      contactPersonEmail: '',
-      contactPersonPhone: '',
+      organizationName: "",
+      description: "",
+      websiteUrl: "",
+      contactEmail: "",
+      contactPhone: "",
+      address: "",
+      registrationNumber: "",
+      contactPersonName: "",
+      contactPersonEmail: "",
+      contactPersonPhone: "",
     },
   });
 
@@ -91,26 +98,28 @@ const OrganizationProfile: React.FC = () => {
           const verificationResult = await getCharityVerificationData(user.id);
 
           if (verificationResult.success && verificationResult.data) {
-            const { registrationNumber: regNum, documents: verificationDocs } = verificationResult.data;
-            setRegistrationNumber(regNum || '');
+            const { registrationNumber: regNum, documents: verificationDocs } =
+              verificationResult.data;
+            setRegistrationNumber(regNum || "");
             setDocuments(verificationDocs || []);
           }
 
           form.reset({
-            organizationName: charity.organizationName || '',
-            description: charity.description || '',
-            websiteUrl: charity.websiteUrl || '',
-            contactEmail: charity.contactEmail || user.email || '',
-            contactPhone: charity.contactPhone || '',
-            address: charity.address || '',
-            registrationNumber: verificationResult.data?.registrationNumber || '',
-            contactPersonName: user.fullName || '',
-            contactPersonEmail: charity.contactEmail || user.email || '',
-            contactPersonPhone: charity.contactPhone || '',
+            organizationName: charity.organizationName || "",
+            description: charity.description || "",
+            websiteUrl: charity.websiteUrl || "",
+            contactEmail: charity.contactEmail || user.email || "",
+            contactPhone: charity.contactPhone || "",
+            address: charity.address || "",
+            registrationNumber:
+              verificationResult.data?.registrationNumber || "",
+            contactPersonName: user.fullName || "",
+            contactPersonEmail: charity.contactEmail || user.email || "",
+            contactPersonPhone: charity.contactPhone || "",
           });
         }
       } catch (error) {
-        console.error('Failed to load charity data:', error);
+        console.error("Failed to load charity data:", error);
         toast({
           title: "Error",
           description: "Failed to load organization data. Please try again.",
@@ -128,7 +137,8 @@ const OrganizationProfile: React.FC = () => {
     if (!user || !charityId) {
       toast({
         title: "Error",
-        description: "You must be logged in with a charity organization to save changes.",
+        description:
+          "You must be logged in with a charity organization to save changes.",
         variant: "destructive",
       });
       return;
@@ -146,7 +156,11 @@ const OrganizationProfile: React.FC = () => {
         address: data.address,
       };
 
-      const result = await charityService.updateCharity(charityId, updateData, user.id);
+      const result = await charityService.updateCharity(
+        charityId,
+        updateData,
+        user.id
+      );
 
       if (result.success) {
         setCharityData(result.data);
@@ -156,12 +170,13 @@ const OrganizationProfile: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('Failed to save organization profile:', error);
+      console.error("Failed to save organization profile:", error);
       toast({
         title: "Error",
-        description: error instanceof Error
-          ? error.message
-          : "Failed to save organization profile. Please try again.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to save organization profile. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -171,11 +186,18 @@ const OrganizationProfile: React.FC = () => {
 
   const handleLogoUpload = async (file: File) => {
     if (!user || !charityId) {
-      return { success: false, error: 'User not authenticated or charity not found' };
+      return {
+        success: false,
+        error: "User not authenticated or charity not found",
+      };
     }
 
     try {
-      const result = await charityService.uploadCharityLogo(charityId, file, user.id);
+      const result = await charityService.uploadCharityLogo(
+        charityId,
+        file,
+        user.id
+      );
 
       if (result.success && result.data) {
         // Update local charity state
@@ -185,32 +207,32 @@ const OrganizationProfile: React.FC = () => {
         }));
         return { success: true, url: result.data.logoUrl };
       } else {
-        return { success: false, error: result.error || 'Upload failed' };
+        return { success: false, error: result.error || "Upload failed" };
       }
     } catch (error) {
-      console.error('Logo upload error:', error);
-      return { success: false, error: 'Upload failed' };
+      console.error("Logo upload error:", error);
+      return { success: false, error: "Upload failed" };
     }
   };
-  
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       const newDoc: DocumentFile = {
         id: `new-${Date.now()}`,
         name: file.name,
-        type: 'New Document', // This would typically be selected by the user
+        type: "New Document", // This would typically be selected by the user
         uploadDate: new Date(),
-        status: 'Pending',
-        url: '#'
+        status: "Pending",
+        url: "#",
       };
-      
-      setDocuments(prev => [...prev, newDoc]);
+
+      setDocuments((prev) => [...prev, newDoc]);
       // Reset the file input
-      e.target.value = '';
+      e.target.value = "";
     }
   };
-  
+
   if (loading && !charityData) {
     return (
       <CharityLayout title="Organization Profile">
@@ -232,7 +254,15 @@ const OrganizationProfile: React.FC = () => {
           <ProfileImageUpload
             currentImageUrl={charityData?.logoUrl}
             onImageUpload={handleLogoUpload}
-            fallbackText={charityData?.organizationName ? charityData.organizationName.split(' ').map((n: string) => n[0]).join('').toUpperCase() : 'ORG'}
+            fallbackText={
+              charityData?.organizationName
+                ? charityData.organizationName
+                    .split(" ")
+                    .map((n: string) => n[0])
+                    .join("")
+                    .toUpperCase()
+                : "ORG"
+            }
             imageType="logo"
             size="lg"
           />
@@ -241,7 +271,10 @@ const OrganizationProfile: React.FC = () => {
         {/* Form Section */}
         <div className="lg:col-span-3">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSaveChanges)} className="space-y-8">
+            <form
+              onSubmit={form.handleSubmit(handleSaveChanges)}
+              className="space-y-8"
+            >
               {/* Organization Information Card */}
               <Card>
                 <CardHeader>
@@ -285,7 +318,8 @@ const OrganizationProfile: React.FC = () => {
                             />
                           </FormControl>
                           <FormDescription className="text-xs">
-                            This is from your verification documents and cannot be changed here.
+                            This is from your verification documents and cannot
+                            be changed here.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -386,8 +420,8 @@ const OrganizationProfile: React.FC = () => {
                     )}
                   />
                 </CardContent>
-        </Card>
-        
+              </Card>
+
               {/* Primary Contact Person Card */}
               <Card>
                 <CardHeader>
@@ -455,71 +489,95 @@ const OrganizationProfile: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
-        
-        {/* Verification Documents Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Verification Documents
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600">
-                These documents were used during onboarding. Upload updated documents if necessary.
-              </p>
-              
-              <div className="border rounded-md divide-y">
-                {documents.map((doc) => (
-                  <div key={doc.id} className="p-3 flex items-center justify-between">
-                    <div className="flex items-start space-x-3">
-                      <FileText className="h-5 w-5 text-gray-400 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-sm">{doc.type}</p>
-                        <p className="text-xs text-gray-500">{doc.name} - Uploaded {format(doc.uploadDate, 'MMM d, yyyy')}</p>
-                      </div>
+
+              {/* Verification Documents Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Verification Documents
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-600">
+                      These documents were used during onboarding. Upload
+                      updated documents if necessary.
+                    </p>
+
+                    <div className="border rounded-md divide-y">
+                      {documents.map((doc) => (
+                        <div
+                          key={doc.id}
+                          className="p-3 flex items-center justify-between"
+                        >
+                          <div className="flex items-start space-x-3">
+                            <FileText className="h-5 w-5 text-gray-400 mt-0.5" />
+                            <div>
+                              <p className="font-medium text-sm">{doc.type}</p>
+                              <p className="text-xs text-gray-500">
+                                {doc.name} - Uploaded{" "}
+                                {format(doc.uploadDate, "MMM d, yyyy")}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Badge
+                              variant="outline"
+                              className={
+                                doc.status === "Verified"
+                                  ? "text-green-600 border-green-200 bg-green-50"
+                                  : doc.status === "Pending"
+                                  ? "text-amber-600 border-amber-200 bg-amber-50"
+                                  : "text-red-600 border-red-200 bg-red-50"
+                              }
+                            >
+                              {doc.status}
+                            </Badge>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              asChild
+                              className="hover:bg-blue-600"
+                            >
+                              <a
+                                href={doc.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                View
+                              </a>
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge 
-                        variant="outline" 
-                        className={
-                          doc.status === 'Verified' 
-                            ? 'text-green-600 border-green-200 bg-green-50' 
-                            : doc.status === 'Pending' 
-                              ? 'text-amber-600 border-amber-200 bg-amber-50'
-                              : 'text-red-600 border-red-200 bg-red-50'
-                        }
+                  </div>
+
+                  <div className="pt-2">
+                    <Label htmlFor="new-document" className="mb-2 block">
+                      Upload New/Updated Document
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="new-document"
+                        type="file"
+                        className="max-w-sm"
+                        onChange={handleFileUpload}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="hover:bg-blue-600"
                       >
-                        {doc.status}
-                      </Badge>
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={doc.url} target="_blank" rel="noopener noreferrer">View</a>
+                        <Upload className="h-4 w-4 mr-1" />
+                        Upload
                       </Button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-            
-            <div className="pt-2">
-              <Label htmlFor="new-document" className="mb-2 block">Upload New/Updated Document</Label>
-              <div className="flex gap-2">
-                <Input 
-                  id="new-document" 
-                  type="file" 
-                  className="max-w-sm" 
-                  onChange={handleFileUpload}
-                />
-                <Button type="button" variant="outline">
-                  <Upload className="h-4 w-4 mr-1" />
-                  Upload
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
+                </CardContent>
+              </Card>
+
               {/* Save Button */}
               <div className="flex justify-end gap-2">
                 <Button
@@ -530,9 +588,13 @@ const OrganizationProfile: React.FC = () => {
                 >
                   Reset Changes
                 </Button>
-                <Button type="submit" className="min-w-[120px]" disabled={loading}>
+                <Button
+                  type="submit"
+                  className="min-w-[120px] bg-blue-700 hover:bg-blue-600"
+                  disabled={loading}
+                >
                   <Save className="h-4 w-4 mr-1" />
-                  {loading ? 'Saving...' : 'Save Changes'}
+                  {loading ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
             </form>
