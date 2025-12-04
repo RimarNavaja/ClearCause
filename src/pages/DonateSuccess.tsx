@@ -224,7 +224,14 @@ const DonateSuccess: React.FC = () => {
 
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <p className="text-sm text-gray-600 text-center">
-                    A receipt has been sent to your registered email address.
+                    You can download your receipt anytime from your{' '}
+                    <Link
+                      to="/donor/donations"
+                      className="text-clearcause-primary hover:underline font-medium"
+                    >
+                      donation history
+                    </Link>
+                    .
                   </p>
                 </div>
               </div>

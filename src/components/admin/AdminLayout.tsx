@@ -166,21 +166,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               Verification
             </SidebarGroupLabel>
             <SidebarMenu>
-              <NavItem
-                to="/admin/charity-verifications"
-                icon={<ShieldCheck className="h-4 w-4" />}
-                label="Charity Verifications"
-              />
-              <NavItem
-                to="/admin/verifications"
-                icon={<Target className="h-4 w-4" />}
-                label="Milestone Proofs"
-              />
-              <NavItem
-                to="/admin/payouts"
-                icon={<DollarSign className="h-4 w-4" />}
-                label="Fund Releases"
-              />
+              <NavItem to="/admin/charity-verifications" icon={<ShieldCheck className="h-4 w-4" />} label="Charity Verifications" />
+              <NavItem to="/admin/verifications" icon={<Target className="h-4 w-4" />} label="Milestone Proofs" />
             </SidebarMenu>
           </SidebarGroup>
 
