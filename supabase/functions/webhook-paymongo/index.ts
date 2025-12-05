@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import { createHmac } from 'https://deno.land/std@0.192.0/node/crypto.ts';
+import { crypto } from 'https://deno.land/std@0.168.0/crypto/mod.ts';
 
 const PAYMONGO_SECRET_KEY = Deno.env.get('PAYMONGO_SECRET_KEY');
 const PAYMONGO_WEBHOOK_SECRET = Deno.env.get('PAYMONGO_WEBHOOK_SECRET');
@@ -24,7 +24,7 @@ const getCorsHeaders = (origin: string | null) => {
 };
 
 // Verify webhook signature for security
-function verifyWebhookSignature(payload: string, signature: string | null, secret: string): boolean {
+async function verifyWebhookSignature(payload: string, signature: string | null, secret: string): Promise<boolean> {
   if (!signature || !secret) {
     console.warn('⚠️ Webhook signature verification skipped - missing signature or secret');
     return true; // Allow for now if not configured
@@ -32,9 +32,21 @@ function verifyWebhookSignature(payload: string, signature: string | null, secre
 
   try {
     // PayMongo uses HMAC SHA256 for webhook signatures
-    const hmac = createHmac('sha256', secret);
-    hmac.update(payload);
-    const expectedSignature = hmac.digest('hex');
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const messageData = encoder.encode(payload);
+
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+
+    const signatureBuffer = await crypto.subtle.sign('HMAC', key, messageData);
+    const hashArray = Array.from(new Uint8Array(signatureBuffer));
+    const expectedSignature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
     // Compare signatures
     const isValid = signature === expectedSignature;
@@ -69,7 +81,7 @@ serve(async (req)=>{
 
     // Verify webhook signature for security
     if (PAYMONGO_WEBHOOK_SECRET) {
-      const isValid = verifyWebhookSignature(body, signature, PAYMONGO_WEBHOOK_SECRET);
+      const isValid = await verifyWebhookSignature(body, signature, PAYMONGO_WEBHOOK_SECRET);
       if (!isValid) {
         console.error('❌ Webhook signature verification failed');
         return new Response(JSON.stringify({ error: 'Invalid signature' }), {
@@ -240,13 +252,13 @@ serve(async (req)=>{
             // Update campaign amount using RPC function
             console.log('Incrementing campaign amount...');
             console.log('RPC params:', {
-              p_campaign_id: donation.campaign_id,
-              p_amount: donation.amount
+              campaign_id: donation.campaign_id,
+              amount: donation.amount
             });
 
             const { error: rpcError } = await supabase.rpc('increment_campaign_amount', {
-              p_campaign_id: donation.campaign_id,
-              p_amount: donation.amount
+              campaign_id: donation.campaign_id,
+              amount: donation.amount
             });
 
             if (rpcError) {

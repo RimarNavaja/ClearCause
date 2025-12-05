@@ -97,10 +97,16 @@ const DonorDonations: React.FC = () => {
           sortBy === "oldest" || sortBy === "amount_low" ? "asc" : "desc",
       };
 
+      const filters = {
+        status: statusFilter !== "all" ? [statusFilter] : [],
+        search: searchQuery || undefined,
+      };
+
       const result = await donationService.getDonationsByDonor(
         user.id,
         params,
-        user.id
+        user.id,
+        filters
       );
 
       if (result.success && result.data) {
@@ -470,11 +476,6 @@ const DonorDonations: React.FC = () => {
 
                       <div className="flex items-center gap-2">
                         <ReceiptButton donation={donation} />
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/donor/donations/${donation.id}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
                       </div>
                     </div>
                   </div>

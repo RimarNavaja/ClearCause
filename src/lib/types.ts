@@ -792,6 +792,7 @@ export interface CampaignFilters {
 
 export interface DonationFilters {
   status?: DonationStatus[];
+  search?: string;
   campaignId?: string;
   minAmount?: number;
   maxAmount?: number;

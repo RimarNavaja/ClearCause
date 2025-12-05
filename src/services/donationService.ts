@@ -570,7 +570,8 @@ export const getDonationsByCampaign = withErrorHandling(async (
 export const getDonationsByDonor = withErrorHandling(async (
   donorId: string,
   params: PaginationParams,
-  currentUserId: string
+  currentUserId: string,
+  filters: DonationFilters = {}
 ): Promise<PaginatedResponse<Donation>> => {
   // Validate user IDs
   if (!donorId || donorId === 'undefined' || donorId === 'null' || donorId === undefined || donorId === null || typeof donorId !== 'string' || donorId.trim() === '') {
@@ -592,8 +593,11 @@ export const getDonationsByDonor = withErrorHandling(async (
   const { page, limit, sortBy = 'donated_at', sortOrder = 'desc' } = validatedParams;
   const offset = (page - 1) * limit;
 
-  // Get donations
-  const { data, count, error } = await supabase
+  // Validate filters
+  const validatedFilters = validateData(donationFilterSchema, filters);
+
+  // Build query
+  let query = supabase
     .from('donations')
     .select(`
       *,
@@ -606,9 +610,25 @@ export const getDonationsByDonor = withErrorHandling(async (
         )
       )
     `, { count: 'exact' })
-    .eq('user_id', donorId)
+    .eq('user_id', donorId);
+
+  // Apply status filter
+  if (validatedFilters.status && validatedFilters.status.length > 0) {
+    query = query.in('status', validatedFilters.status);
+  }
+
+  // Apply search filter (search campaign title via join)
+  if (validatedFilters.search) {
+    query = query.or(`campaigns.title.ilike.%${validatedFilters.search}%`);
+  }
+
+  // Apply pagination and sorting
+  query = query
     .order(sortBy, { ascending: sortOrder === 'asc' })
     .range(offset, offset + limit - 1);
+
+  // Execute query
+  const { data, count, error } = await query;
 
   if (error) {
     throw handleSupabaseError(error);

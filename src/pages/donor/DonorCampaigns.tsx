@@ -11,20 +11,10 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import * as campaignService from '@/services/campaignService';
 import * as donationService from '@/services/donationService';
+import * as categoryService from '@/services/categoryService';
 import { Campaign } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import { debounce } from '@/utils/helpers';
-
-const CATEGORIES = [
-  "All Categories",
-  "Clean Water",
-  "Education",
-  "Food Security",
-  "Healthcare",
-  "Environment",
-  "Disaster Relief",
-  "Animal Welfare",
-];
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest First' },
@@ -38,10 +28,11 @@ const SORT_OPTIONS = [
 const DonorCampaigns: React.FC = () => {
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; slug: string; icon?: string }>>([]);
   const [donatedCampaignIds, setDonatedCampaignIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState("All Categories");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
@@ -61,6 +52,18 @@ const DonorCampaigns: React.FC = () => {
     setSearchQuery(query);
     setCurrentPage(1); // Reset to first page when searching
   }, 500);
+
+  // Load campaign categories
+  const loadCategories = async () => {
+    try {
+      const result = await categoryService.getActiveCategories();
+      if (result.success && result.data) {
+        setCategories(result.data);
+      }
+    } catch (err) {
+      console.error('Error loading categories:', err);
+    }
+  };
 
   // Load donor's donation history to highlight supported campaigns
   const loadDonationHistory = async () => {
@@ -93,7 +96,7 @@ const DonorCampaigns: React.FC = () => {
       setError(null);
 
       const filters = {
-        category: selectedCategory !== "All Categories" ? [selectedCategory] : undefined,
+        category: selectedCategory !== "all" ? [selectedCategory] : undefined,
         search: searchQuery || undefined,
         status: ['active'],
       };
@@ -125,8 +128,9 @@ const DonorCampaigns: React.FC = () => {
     }
   };
 
-  // Load donation history once on mount
+  // Load categories and donation history on mount
   useEffect(() => {
+    loadCategories();
     loadDonationHistory();
   }, [user?.id]);
 
@@ -144,7 +148,7 @@ const DonorCampaigns: React.FC = () => {
 
   // Clear all filters
   const clearFilters = () => {
-    setSelectedCategory("All Categories");
+    setSelectedCategory("all");
     setSearchQuery("");
     setSearchInput("");
     setVerifiedOnly(false);
@@ -155,7 +159,7 @@ const DonorCampaigns: React.FC = () => {
   // Get active filter count
   const getActiveFilterCount = () => {
     let count = 0;
-    if (selectedCategory !== "All Categories") count++;
+    if (selectedCategory !== "all") count++;
     if (searchQuery) count++;
     if (verifiedOnly) count++;
     if (sortBy !== "newest") count++;
@@ -168,8 +172,15 @@ const DonorCampaigns: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Use different layouts based on user role
-  const PageContent = () => (
+  // Get current category name for display
+  const getCurrentCategoryName = () => {
+    if (selectedCategory === "all") return "All Categories";
+    const category = categories.find(c => c.slug === selectedCategory);
+    return category ? category.name : "All Categories";
+  };
+
+  // Render page content
+  const pageContent = (
     <div className={isDonor ? "space-y-6" : ""}>
         {/* Description */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 ">
@@ -220,9 +231,10 @@ const DonorCampaigns: React.FC = () => {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.slug}>
+                        {category.icon && `${category.icon} `}{category.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -275,9 +287,10 @@ const DonorCampaigns: React.FC = () => {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.slug}>
+                        {category.icon && `${category.icon} `}{category.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -346,8 +359,8 @@ const DonorCampaigns: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-500">Active filters:</span>
                 <div className="flex gap-1">
-                  {selectedCategory !== "All Categories" && (
-                    <Badge variant="secondary">{selectedCategory}</Badge>
+                  {selectedCategory !== "all" && (
+                    <Badge variant="secondary">{getCurrentCategoryName()}</Badge>
                   )}
                   {verifiedOnly && (
                     <Badge variant="secondary">Verified</Badge>
@@ -430,7 +443,7 @@ const DonorCampaigns: React.FC = () => {
   if (isDonor) {
     return (
       <DonorLayout title="Browse Campaigns">
-        <PageContent />
+        {pageContent}
       </DonorLayout>
     );
   }
@@ -447,7 +460,7 @@ const DonorCampaigns: React.FC = () => {
               Discover verified campaigns and make a difference.
             </p>
           </div>
-          <PageContent />
+          {pageContent}
         </div>
       </main>
       <Footer />
