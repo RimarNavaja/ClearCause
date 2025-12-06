@@ -28,6 +28,14 @@ export const ReceiptButton: React.FC<ReceiptButtonProps> = ({
   const { toast } = useToast();
 
   const getReceiptData = (): ReceiptData => {
+    // Calculate campaign progress if data is available
+    const campaign = donation.campaign;
+    let progressPercentage: number | undefined;
+
+    if (campaign?.currentAmount && campaign?.goalAmount) {
+      progressPercentage = Math.round((campaign.currentAmount / campaign.goalAmount) * 100);
+    }
+
     return {
       donationId: donation.id,
       transactionId: donation.transactionId || 'N/A',
@@ -38,9 +46,14 @@ export const ReceiptButton: React.FC<ReceiptButtonProps> = ({
       donorName: donation.donor?.fullName || 'Anonymous Donor',
       donorEmail: donation.donor?.email || '',
       isAnonymous: donation.isAnonymous,
-      campaignTitle: donation.campaign?.title || 'Unknown Campaign',
-      charityName: donation.campaign?.charity?.organizationName || 'Unknown Organization',
+      campaignTitle: campaign?.title || 'Unknown Campaign',
+      charityName: campaign?.charity?.organizationName || 'Unknown Organization',
       message: donation.message || undefined,
+      // Campaign impact data
+      campaignCurrentAmount: campaign?.currentAmount,
+      campaignGoalAmount: campaign?.goalAmount,
+      progressPercentage: progressPercentage,
+      donorsCount: campaign?.donorsCount,
     };
   };
 
@@ -50,8 +63,8 @@ export const ReceiptButton: React.FC<ReceiptButtonProps> = ({
       const receiptData = getReceiptData();
       await downloadReceipt(receiptData);
       toast({
-        title: 'Receipt Downloaded',
-        description: 'Your donation receipt has been downloaded successfully.',
+        title: '✓ Receipt Downloaded',
+        description: 'Your professional donation receipt has been saved as a PDF.',
       });
     } catch (error: any) {
       console.error('Error downloading receipt:', error);
@@ -69,7 +82,11 @@ export const ReceiptButton: React.FC<ReceiptButtonProps> = ({
     try {
       setLoading(true);
       const receiptData = getReceiptData();
-      await previewReceipt(receiptData);
+      previewReceipt(receiptData);
+      toast({
+        title: 'Opening Preview',
+        description: 'Your receipt is opening in a new window.',
+      });
     } catch (error: any) {
       console.error('Error previewing receipt:', error);
       toast({

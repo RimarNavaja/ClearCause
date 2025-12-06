@@ -5,6 +5,7 @@ import {
   CheckCircle,
   XCircle,
   Download,
+  Eye,
   ArrowLeft,
   FileText,
   Image as ImageIcon
@@ -67,6 +68,46 @@ const VerificationDetail = () => {
     } catch (error) {
       console.error('Error generating signed URL:', error);
       toast.error('Failed to load file. Please try again.');
+    }
+  };
+
+  // Function to handle file download
+  const handleDownloadFile = async (fileUrl: string) => {
+    try {
+      const filePath = extractFilePath(fileUrl);
+      const fileName = fileUrl.split('/').pop() || 'download';
+
+      // Get signed URL from Supabase
+      const { data, error } = await supabase.storage
+        .from('milestone-proofs')
+        .createSignedUrl(filePath, 3600); // URL valid for 1 hour
+
+      if (error) throw error;
+
+      if (data?.signedUrl) {
+        // Fetch the file as a blob
+        const response = await fetch(data.signedUrl);
+        if (!response.ok) throw new Error('Failed to fetch file');
+
+        const blob = await response.blob();
+
+        // Create object URL and trigger download
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+
+        // Cleanup
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+
+        toast.success('File downloaded successfully');
+      }
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      toast.error('Failed to download file. Please try again.');
     }
   };
 
@@ -298,35 +339,25 @@ const VerificationDetail = () => {
                         <p className="font-medium">{fileName}</p>
                         <p className="text-sm text-muted-foreground">{isImage ? 'Image File' : 'Document'}</p>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleViewFile(fileUrl)}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        View File
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleViewFile(fileUrl)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Preview
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDownloadFile(fileUrl)}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
+                      </div>
                     </div>
-
-                    {/* Image Preview for image files */}
-                    {isImage && imagePreviewUrl && (
-                      <div className="border rounded-lg p-4 bg-white">
-                        <p className="text-sm font-medium mb-3">Preview:</p>
-                        <img
-                          src={imagePreviewUrl}
-                          alt="Proof document"
-                          className="max-w-full h-auto rounded-lg shadow-sm max-h-96 object-contain"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      </div>
-                    )}
-                    {isImage && !imagePreviewUrl && (
-                      <div className="border rounded-lg p-4 bg-gray-50 text-center">
-                        <p className="text-sm text-muted-foreground">Loading preview...</p>
-                      </div>
-                    )}
                   </div>
                 );
               })()}

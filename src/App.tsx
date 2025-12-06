@@ -14,7 +14,6 @@ import {
 } from "./middleware/auth";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import Campaigns from "./pages/Campaigns";
 import HowItWorks from "./pages/HowItWorks";
 import About from "./pages/About";
 import ForCharities from "./pages/ForCharities";
@@ -59,7 +58,6 @@ import VerificationQueue from "./pages/admin/VerificationQueue";
 import VerificationDetail from "./pages/admin/VerificationDetail";
 import CharityVerificationDetail from "./pages/admin/CharityVerificationDetail";
 import CharityVerificationQueue from "./pages/admin/CharityVerificationQueue";
-import FundReleaseManagement from "./pages/admin/FundReleaseManagement";
 import CharityManagement from "./pages/admin/CharityManagement";
 import CharityApplicationReview from "./pages/admin/CharityApplicationReview";
 import DonorManagement from "./pages/admin/DonorManagement";
@@ -88,7 +86,7 @@ const App = () => (
           <Routes>
           {/* Public routes */}
           <Route path="/" element={<Index />} />
-          <Route path="/campaigns" element={<Campaigns />} />
+          <Route path="/campaigns" element={<DonorCampaigns />} />
           <Route path="/campaigns/:campaignId" element={<CampaignDetail />} />
           <Route path="/charities/:charityId" element={<CharityProfile />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
@@ -142,11 +140,8 @@ const App = () => (
               <DonorDashboard />
             </DonorRoute>
           } />
-          <Route path="/donor/campaigns" element={
-            <DonorRoute>
-              <DonorCampaigns />
-            </DonorRoute>
-          } />
+          {/* Redirect /donor/campaigns to /campaigns */}
+          <Route path="/donor/campaigns" element={<DonorCampaigns />} />
           <Route path="/donor/donations" element={
             <DonorRoute>
               <DonorDonations />
@@ -279,11 +274,6 @@ const App = () => (
           <Route path="/admin/verifications/charity/:verificationId" element={
             <AdminRoute>
               <CharityVerificationDetail />
-            </AdminRoute>
-          } />
-          <Route path="/admin/payouts" element={
-            <AdminRoute>
-              <FundReleaseManagement />
             </AdminRoute>
           } />
           <Route path="/admin/charities" element={

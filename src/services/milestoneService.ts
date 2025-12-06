@@ -749,16 +749,37 @@ export const approveMilestoneProof = withErrorHandling(async (
   }
 
   // Update charity balance
-  const { error: charityUpdateError } = await supabase
+  const newAvailableBalance = (parseFloat(charity.available_balance) || 0) + releaseAmount;
+  const newTotalReceived = (parseFloat(charity.total_received) || 0) + releaseAmount;
+
+  console.log('Updating charity balance:', {
+    charityId: charity.id,
+    currentAvailableBalance: charity.available_balance,
+    currentTotalReceived: charity.total_received,
+    releaseAmount: releaseAmount,
+    newAvailableBalance: newAvailableBalance,
+    newTotalReceived: newTotalReceived,
+  });
+
+  const { data: charityUpdateData, error: charityUpdateError } = await supabase
     .from('charities')
     .update({
-      available_balance: (parseFloat(charity.available_balance) || 0) + releaseAmount,
-      total_received: (parseFloat(charity.total_received) || 0) + releaseAmount,
+      available_balance: newAvailableBalance,
+      total_received: newTotalReceived,
     })
-    .eq('id', charity.id);
+    .eq('id', charity.id)
+    .select();
+
+  console.log('Charity update result:', { data: charityUpdateData, error: charityUpdateError });
 
   if (charityUpdateError) {
+    console.error('Failed to update charity balance:', charityUpdateError);
     throw handleSupabaseError(charityUpdateError);
+  }
+
+  if (!charityUpdateData || charityUpdateData.length === 0) {
+    console.error('Charity balance update returned no data - possible RLS issue');
+    throw new ClearCauseError('UPDATE_FAILED', 'Failed to update charity balance. Please check permissions.', 500);
   }
 
   // Send notification to charity

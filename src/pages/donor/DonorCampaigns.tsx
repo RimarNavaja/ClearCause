@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DonorLayout from '@/components/layout/DonorLayout';
+import Navbar from '@/components/layout/Navbar';
+import Footer from '@/components/layout/Footer';
 import CampaignGrid from '@/components/ui/campaign/CampaignGrid';
 import { Search, Filter, Check, X, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -50,6 +52,9 @@ const DonorCampaigns: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const { user } = useAuth();
+
+  // Check if user is a donor (has donor role)
+  const isDonor = user?.role === 'donor';
 
   // Debounced search function
   const debouncedSearch = debounce((query: string) => {
@@ -163,9 +168,9 @@ const DonorCampaigns: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  return (
-    <DonorLayout title="Browse Campaigns">
-      <div className="space-y-6">
+  // Use different layouts based on user role
+  const PageContent = () => (
+    <div className={isDonor ? "space-y-6" : ""}>
         {/* Description */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 ">
           <p className="text-sm text-blue-800">
@@ -419,7 +424,34 @@ const DonorCampaigns: React.FC = () => {
           </div>
         )}
       </div>
-    </DonorLayout>
+  );
+
+  // Return with appropriate layout
+  if (isDonor) {
+    return (
+      <DonorLayout title="Browse Campaigns">
+        <PageContent />
+      </DonorLayout>
+    );
+  }
+
+  // Public view (non-donor users)
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Navbar />
+      <main className="flex-grow bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-900">Browse Campaigns</h1>
+            <p className="mt-2 text-gray-600">
+              Discover verified campaigns and make a difference.
+            </p>
+          </div>
+          <PageContent />
+        </div>
+      </main>
+      <Footer />
+    </div>
   );
 };
 

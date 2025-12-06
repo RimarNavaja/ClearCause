@@ -145,11 +145,11 @@ const CampaignDetail: React.FC = () => {
           <div className="mb-4">
             <Button
               variant="ghost"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/campaigns')}
               className="text-white hover:text-white hover:bg-white/20 font-redhatbold"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+              Back to Campaigns
             </Button>
           </div>
 
