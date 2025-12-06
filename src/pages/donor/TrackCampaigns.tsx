@@ -199,8 +199,9 @@ const TrackCampaigns: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            
-            <p className="text-gray-600 text-base">Monitor campaigns you've supported</p>
+            <p className="text-gray-600 text-base">
+              Monitor campaigns you've supported
+            </p>
           </div>
         </div>
 
@@ -356,7 +357,7 @@ const TrackCampaigns: React.FC = () => {
                           <p className="text-sm font-medium text-gray-500">
                             Category
                           </p>
-                          <p className="text-sm">
+                          <p className="text-sm font-poppinsregular">
                             {campaign.category || "General"}
                           </p>
                         </div>
@@ -406,7 +407,9 @@ const TrackCampaigns: React.FC = () => {
                             className="flex items-center justify-between p-3 border rounded-lg"
                           >
                             <div className="flex-1">
-                              <h4 className="font-medium">{milestone.title}</h4>
+                              <h4 className="font-medium font-poppinsregular">
+                                {milestone.title}
+                              </h4>
                               {milestone.description && (
                                 <p className="text-sm text-gray-600 mt-1">
                                   {milestone.description}
