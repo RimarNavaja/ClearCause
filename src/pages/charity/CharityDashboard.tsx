@@ -678,7 +678,7 @@ const CharityDashboard: React.FC = () => {
                     className="flex items-center justify-between p-4 border rounded-lg"
                   >
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">
+                      <h4 className="font-semibold text-gray-900 font-poppinsregular">
                         {campaign.title}
                       </h4>
                       <div className="flex items-center gap-4 mt-2">
@@ -742,7 +742,7 @@ const CharityDashboard: React.FC = () => {
                       {getActivityIcon(activity.type)}
                     </div>
                     <div className="flex-grow">
-                      <p className="text-sm text-gray-700">{activity.title}</p>
+                      <p className="text-sm text-gray-700 font-medium">{activity.title}</p>
                       {activity.description && (
                         <p className="text-xs text-gray-500 mt-1">
                           {activity.description}
@@ -767,7 +767,7 @@ const CharityDashboard: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button className="h-20 flex flex-col gap-2" asChild>
+            <Button className="h-20 flex flex-col gap-2 bg-blue-700" asChild>
               <Link to="/charity/campaigns/new">
                 <PlusCircle className="h-6 w-6" />
                 Create New Campaign

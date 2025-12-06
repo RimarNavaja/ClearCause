@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   CreditCard,
@@ -8,12 +9,24 @@ import {
   LogOut,
   Loader2,
   Search,
-  Heart,
   TrendingUp,
   MessageSquare,
-  List,
   Award,
 } from "lucide-react";
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarInset,
+  SidebarTrigger,
+  SidebarRail,
+} from "@/components/ui/sidebar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +54,24 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
   const { signOut, loading: authLoading } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [open, setOpen] = useState(true);
+
+  // Handle responsive sidebar state (collapse at 1800px)
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 1800) {
+        setOpen(false);
+      } else {
+        setOpen(true);
+      }
+    };
+
+    // Initial check
+    handleResize();
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleLogoutConfirm = async () => {
     if (isLoggingOut) {
@@ -88,113 +119,149 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
     {
       path: "/donor/dashboard",
       label: "Dashboard",
-      icon: <LayoutDashboard className="w-5 h-5" />,
+      icon: <LayoutDashboard className="h-5 w-5" />,
     },
     {
       path: "/donor/profile",
       label: "My Profile",
-      icon: <UserRound className="w-5 h-5" />,
+      icon: <UserRound className="h-5 w-5" />,
     },
     {
       path: "/donor/campaigns",
       label: "Browse Campaigns",
-      icon: <Search className="w-5 h-5" />,
+      icon: <Search className="h-5 w-5" />,
     },
     {
       path: "/donor/donations",
       label: "My Donations",
-      icon: <CreditCard className="w-5 h-5" />,
+      icon: <CreditCard className="h-5 w-5" />,
     },
     {
       path: "/donor/track-campaigns",
       label: "Track Campaigns",
-      icon: <TrendingUp className="w-5 h-5" />,
+      icon: <TrendingUp className="h-5 w-5" />,
     },
     {
       path: "/donor/feedback",
       label: "Feedback/Reviews",
-      icon: <MessageSquare className="w-5 h-5" />,
+      icon: <MessageSquare className="h-5 w-5" />,
     },
     {
       path: "/donor/achievements",
       label: "Achievements",
-      icon: <Award className="w-5 h-5" />,
-    },
-    {
-      path: "/donor/settings",
-      label: "Settings",
-      icon: <Settings className="w-5 h-5" />,
+      icon: <Award className="h-5 w-5" />,
     },
   ];
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen mx-auto">
       <Navbar />
 
-      <div className="flex-grow flex bg-clearcause-background">
-        {/* Sidebar - Fixed to left */}
-        <aside className="bg-white w-64 min-h-[calc(100vh-4rem)] shadow-sm fixed left-0 top-16">
-          <div className="p-6 h-full flex flex-col font-poppinsregular">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6 font-robotobold">
-              Donor Account
-            </h2>
+      <div className="flex-grow flex bg-clearcause-background relative">
+        <SidebarProvider open={open} onOpenChange={setOpen} className="w-full">
+          <Sidebar
+            collapsible="icon"
+            className="top-16 h-[calc(100vh-4rem)] border-r bg-white font-poppinsregular"
+          >
+            <SidebarHeader className="flex flex-row items-center justify-between p-4 pt-6">
+              {open && (
+                <h2 className="text-xl font-semibold text-gray-900 font-robotobold truncate">
+                  Donor Account
+                </h2>
+              )}
+              <SidebarTrigger className="ml-auto hover:bg-blue-600" />
+            </SidebarHeader>
+            <SidebarContent>
+              <SidebarGroup>
+                <SidebarMenu>
+                  {navItems.map((item) => {
+                    const isActive =
+                      location.pathname === item.path ||
+                      location.pathname.startsWith(`${item.path}/`);
+                    return (
+                      <SidebarMenuItem key={item.path}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={isActive}
+                          tooltip={item.label}
+                          className={
+                            isActive
+                              ? "!bg-blue-100 !text-blue-600 hover:bg-blue-200"
+                              : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                          }
+                        >
+                          <Link to={item.path}>
+                            {item.icon}
+                            <span>{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroup>
 
-            <div className="flex flex-col space-y-2 flex-grow">
-              {navItems.map((item) => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  className={({ isActive }) => `
-                    flex items-center px-3 py-2 rounded-md text-sm font-medium
-                    ${
-                      isActive
-                        ? "bg-clearcause-primary/10 text-clearcause-primary"
-                        : "text-gray-600 hover:text-clearcause-primary hover:bg-gray-100"
-                    }
-                  `}
-                >
-                  {item.icon}
-                  <span className="ml-3">{item.label}</span>
-                </NavLink>
-              ))}
+              <div className="mt-auto px-2 pb-4">
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location.pathname === "/donor/settings"}
+                      tooltip="Settings"
+                      className={
+                        location.pathname === "/donor/settings"
+                          ? "!bg-blue-100 !text-blue-600 hover:bg-blue-200"
+                          : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                      }
+                    >
+                      <Link to="/donor/settings">
+                        <Settings className="h-5 w-5" />
+                        <span>Settings</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={handleLogoutClick}
+                      disabled={isLoggingOut || authLoading}
+                      tooltip="Logout"
+                      className={`
+                            ${
+                              isLoggingOut || authLoading
+                                ? "text-gray-400 cursor-not-allowed hover:bg-transparent"
+                                : "text-gray-600 hover:text-red-500 hover:bg-red-50"
+                            }
+                          `}
+                    >
+                      {isLoggingOut || authLoading ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <LogOut className="h-5 w-5" />
+                      )}
+                      <span>{isLoggingOut ? "Signing out..." : "Logout"}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </div>
+            </SidebarContent>
+            <SidebarRail />
+          </Sidebar>
 
-              <button
-                onClick={handleLogoutClick}
-                disabled={isLoggingOut || authLoading}
-                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium mt-auto w-full text-left transition-colors ${
-                  isLoggingOut || authLoading
-                    ? "text-gray-400 cursor-not-allowed bg-gray-100"
-                    : "text-gray-600 hover:text-red-500 hover:bg-red-50"
-                }`}
-              >
-                {isLoggingOut || authLoading ? (
-                  <>
-                    <div className="w-5 h-5 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
-                    <span className="ml-3">Signing out...</span>
-                  </>
-                ) : (
-                  <>
-                    <LogOut className="w-5 h-5" />
-                    <span className="ml-3">Logout</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main content - With left margin to account for sidebar */}
-        <main className="flex-grow p-8">
-          <div className="max-w-7xl mx-auto px-8 font-poppinsregular">
-            <h1 className="text-3xl font-robotobold text-gray-900 mb-6">
-              {title}
-            </h1>
-            {children}
-          </div>
-        </main>
+          <SidebarInset className="flex-1 overflow-y-auto min-h-[calc(100vh-4rem)] bg-clearcause-background">
+            <main className="flex-grow p-8 lg:pl-20">
+              <div className={cn("max-w-7xl px-4 sm:px-6 lg:px-4 lg:pr-10 font-poppinsregular", {
+                "mx-auto": !open
+              })}>
+                <h1 className="text-3xl font-robotobold text-gray-900 mb-6">
+                  {title}
+                </h1>
+                {children}
+              </div>
+            </main>
+            <Footer />
+          </SidebarInset>
+        </SidebarProvider>
       </div>
-
-      <Footer />
 
       {/* Logout Confirmation Dialog */}
       <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
@@ -206,7 +273,7 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
               need to log in again to access your dashboard.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className=" gap-2">
+          <AlertDialogFooter className="gap-2">
             <AlertDialogCancel
               disabled={isLoggingOut}
               className="hover:bg-blue-600 px-6 border-2 border-gray-200 text-blue-700 shadow-sm hover:text-white"

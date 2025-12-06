@@ -228,7 +228,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             <div className="flex items-center gap-2">
               <SidebarTrigger />
               <h1 className="text-lg font-semibold tracking-tight">
-                <span className="text-clearcause-primary">{title}</span>
+                <span className="text-blue-700">{title}</span>
               </h1>
             </div>
             <div className="ml-auto flex items-center gap-3">
