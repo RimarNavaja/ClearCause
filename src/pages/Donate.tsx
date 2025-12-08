@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
@@ -7,6 +7,9 @@ import {
   Heart,
   AlertCircle,
   Loader2,
+  Info,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -22,14 +25,17 @@ import * as campaignService from "@/services/campaignService";
 import * as donationService from "@/services/donationService";
 import { Campaign } from "@/lib/types";
 import { formatCurrency, calculateDaysLeft } from "@/utils/helpers";
+import { calculateFees, getSuggestedTips, validateDonationAmount, setPlatformFeeRate, setMinimumDonation } from "@/utils/feeCalculator";
+import { usePlatformSettings } from "@/contexts/PlatformSettingsContext";
 
-const PRESET_AMOUNTS = [500, 1000, 2500, 5000];
+const BASE_PRESET_AMOUNTS = [500, 1000, 2500, 5000];
 
 const Donate: React.FC = () => {
   const { campaignId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading: authLoading } = useAuth();
+  const { platformFeePercentage, minimumDonationAmount } = usePlatformSettings();
 
   // Campaign data
   const [campaign, setCampaign] = useState<Campaign | null>(null);
@@ -40,7 +46,7 @@ const Donate: React.FC = () => {
   const [amount, setAmount] = useState<number>(location.state?.amount || 1000);
   const [customAmount, setCustomAmount] = useState<string>(() => {
     const passedAmount = location.state?.amount;
-    if (passedAmount && !PRESET_AMOUNTS.includes(passedAmount)) {
+    if (passedAmount && !BASE_PRESET_AMOUNTS.includes(passedAmount)) {
       return passedAmount.toString();
     }
     return "";
@@ -50,10 +56,99 @@ const Donate: React.FC = () => {
   >("gcash");
   const [message, setMessage] = useState<string>("");
   const [isAnonymous, setIsAnonymous] = useState<boolean>(false);
+  const [tipAmount, setTipAmount] = useState<number>(0);
+  const [showFeeBreakdown, setShowFeeBreakdown] = useState<boolean>(false);
+  const [coverFees, setCoverFees] = useState<boolean>(true); // Default: checked (80% of donors)
 
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Validation state for custom amount
+  const [customAmountError, setCustomAmountError] = useState<string | null>(null);
+
+  // Calculate fees in real-time
+  const feeBreakdown = useMemo(() => {
+    return calculateFees(amount, tipAmount, coverFees);
+  }, [amount, tipAmount, coverFees]);
+
+  // Filter preset amounts based on dynamic minimum donation
+  const validPresets = useMemo(() => {
+    return BASE_PRESET_AMOUNTS.filter(preset => preset >= minimumDonationAmount);
+  }, [minimumDonationAmount]);
+
+  const presetAmounts = validPresets.length > 0
+    ? validPresets
+    : [
+        minimumDonationAmount,
+        minimumDonationAmount * 2,
+        minimumDonationAmount * 5,
+        minimumDonationAmount * 10
+      ];
+
+  /**
+   * Validate custom amount input in real-time
+   * Called on blur and on change (debounced)
+   */
+  const validateCustomAmount = useCallback((value: string) => {
+    // Clear error if empty (user is still typing)
+    if (!value || value.trim() === '') {
+      setCustomAmountError(null);
+      return;
+    }
+
+    const numValue = parseFloat(value);
+
+    // Check if valid number
+    if (isNaN(numValue) || numValue <= 0) {
+      setCustomAmountError('Please enter a valid amount');
+      return;
+    }
+
+    // Check minimum donation
+    if (numValue < minimumDonationAmount) {
+      setCustomAmountError(
+        `Amount must be at least ₱${minimumDonationAmount.toLocaleString()}. You entered ₱${numValue.toLocaleString()}.`
+      );
+      return;
+    }
+
+    // Check with fee calculations
+    const validation = validateDonationAmount(numValue, tipAmount, coverFees);
+    if (!validation.valid) {
+      // Parse validation error to make it more specific
+      if (validation.error?.includes('Charity must receive at least')) {
+        const fees = calculateFees(numValue, tipAmount, coverFees);
+        setCustomAmountError(
+          `With fees, charity receives only ₱${fees.netAmount.toFixed(2)}. ` +
+          `Minimum to charity is ₱50. Try ₱${Math.ceil(minimumDonationAmount * 1.15)} or more.`
+        );
+      } else if (validation.error?.includes('GCash limit')) {
+        setCustomAmountError(
+          `Amount too large. Maximum is ₱100,000. You entered ₱${numValue.toLocaleString()}.`
+        );
+      } else {
+        setCustomAmountError(validation.error || 'Invalid amount');
+      }
+      return;
+    }
+
+    // Valid!
+    setCustomAmountError(null);
+  }, [minimumDonationAmount, tipAmount, coverFees]);
+
+  // Update fee calculator when settings change
+  useEffect(() => {
+    setPlatformFeeRate(platformFeePercentage);
+    setMinimumDonation(minimumDonationAmount);
+  }, [platformFeePercentage, minimumDonationAmount]);
+
+  // Re-validate when fees change
+  useEffect(() => {
+    if (customAmount && customAmount.trim() !== '') {
+      validateCustomAmount(customAmount);
+    }
+  }, [validateCustomAmount, customAmount]);
 
   // Load campaign data
   useEffect(() => {
@@ -115,6 +210,15 @@ const Donate: React.FC = () => {
     const value = e.target.value;
     setCustomAmount(value);
     setAmount(parseFloat(value) || 0);
+
+    // Validate immediately (for live feedback as user types)
+    // Only show error if they've entered a complete number
+    if (value && !value.endsWith('.')) {
+      validateCustomAmount(value);
+    } else {
+      // Clear error while typing decimal
+      setCustomAmountError(null);
+    }
   };
 
   const handleProceedToPayment = async () => {
@@ -129,14 +233,16 @@ const Donate: React.FC = () => {
       return;
     }
 
-    // Validation
-    if (amount <= 0) {
-      setError("Please enter a valid donation amount");
-      return;
-    }
+    // Validate donation amount with fees
+    const validation = validateDonationAmount(amount, tipAmount, coverFees);
+    if (!validation.valid) {
+      let errorMsg = validation.error || "Invalid donation amount";
 
-    if (amount < 100) {
-      setError("Minimum donation amount is ₱100");
+      if (amount < minimumDonationAmount) {
+        errorMsg = `Your donation of ₱${amount.toLocaleString()} is below the minimum of ₱${minimumDonationAmount.toLocaleString()}. Please enter at least ₱${minimumDonationAmount.toLocaleString()}.`;
+      }
+
+      setError(errorMsg);
       return;
     }
 
@@ -169,6 +275,8 @@ const Donate: React.FC = () => {
         const paymentResult = await donationService.createGCashPayment(
           donation.id,
           amount,
+          tipAmount,
+          coverFees,
           user.id
         );
 
@@ -188,15 +296,25 @@ const Donate: React.FC = () => {
       }
     } catch (err: any) {
       console.error("Donation error:", err);
-      setError(
-        err.message || "An unexpected error occurred. Please try again."
-      );
+
+      let errorMessage = "An unexpected error occurred. Please try again.";
+
+      if (err.message) {
+        errorMessage = err.message;
+
+        if (err.message.includes('INVALID_AMOUNT')) {
+          errorMessage = `Your donation amount is invalid. Please ensure it meets the minimum of ₱${minimumDonationAmount.toLocaleString()}.`;
+        }
+      }
+
+      setError(errorMessage);
 
       // Navigate to error page for serious errors
       navigate("/donate/error", {
         state: {
-          error: err.message || "An unexpected error occurred",
+          error: errorMessage,
           campaignId,
+          campaignTitle: campaign?.title,
         },
       });
     } finally {
@@ -357,7 +475,7 @@ const Donate: React.FC = () => {
                 </h2>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {PRESET_AMOUNTS.map((preset) => (
+                  {presetAmounts.map((preset) => (
                     <button
                       key={preset}
                       type="button"
@@ -372,6 +490,13 @@ const Donate: React.FC = () => {
                     </button>
                   ))}
                 </div>
+
+                {validPresets.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                    <Info className="h-3 w-3" />
+                    Preset amounts updated to match minimum donation of ₱{minimumDonationAmount.toLocaleString()}
+                  </p>
+                )}
 
                 <div className="pt-2">
                   <Label
@@ -389,14 +514,23 @@ const Donate: React.FC = () => {
                       id="custom-amount"
                       value={customAmount}
                       onChange={handleCustomAmountChange}
+                      onBlur={(e) => validateCustomAmount(e.target.value)}
                       placeholder="Enter amount"
-                      min="100"
-                      className="pl-8 text-base"
+                      min={minimumDonationAmount}
+                      className={`pl-8 text-base ${customAmountError ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Minimum donation: ₱100
-                  </p>
+                  {customAmountError && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {customAmountError}
+                    </p>
+                  )}
+                  {!customAmountError && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Minimum donation: ₱{minimumDonationAmount.toLocaleString()}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -517,18 +651,174 @@ const Donate: React.FC = () => {
                 </Alert>
               )}
 
-              {/* Donation Summary */}
+              {/* Tip Section */}
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <div className="flex items-start gap-2 mb-3">
+                  <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 mb-1">
+                      Support ClearCause (Optional)
+                    </h4>
+                    <p className="text-sm text-gray-600">
+                      Your tip helps us maintain the platform and verify charities. 100% of your donation goes to the campaign.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Tip Amount Buttons */}
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {getSuggestedTips(amount).map((suggestedTip, index) => {
+                    const percentage = index === 0 ? 0 : index * 5;
+                    return (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setTipAmount(suggestedTip)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                          tipAmount === suggestedTip
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:border-blue-400'
+                        }`}
+                      >
+                        {percentage === 0 ? 'No tip' : `${percentage}%`}
+                        {percentage > 0 && (
+                          <div className="text-xs mt-0.5">₱{suggestedTip}</div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom Tip Input */}
+                <div>
+                  <Label className="text-sm text-gray-600 mb-1">Custom tip amount</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="10"
+                    value={tipAmount}
+                    onChange={(e) => setTipAmount(Number(e.target.value) || 0)}
+                    placeholder="Enter custom amount"
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              {/* Donor Covers Fees Checkbox */}
+              <div className="bg-green-50 rounded-lg p-4 border-2 border-green-200">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={coverFees}
+                    onChange={(e) => setCoverFees(e.target.checked)}
+                    className="mt-1 h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900">
+                        Cover transaction fees
+                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                        Recommended
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {coverFees ? (
+                        <>
+                          100% of your <span className="font-semibold">₱{amount.toLocaleString()}</span> donation
+                          will go directly to <span className="font-semibold">{campaign?.title}</span>.
+                          You'll pay <span className="font-semibold">₱{feeBreakdown.totalCharge.toLocaleString()}</span> total
+                          (includes ₱{(feeBreakdown.totalCharge - amount - tipAmount).toFixed(2)} in fees).
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-semibold">₱{feeBreakdown.netAmount.toFixed(2)}</span> will go to
+                          the charity after fees. You'll pay <span className="font-semibold">₱{feeBreakdown.totalCharge.toLocaleString()}</span>.
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Fee Breakdown (Collapsible) */}
+              <div className="bg-gray-50 rounded-lg border border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowFeeBreakdown(!showFeeBreakdown)}
+                  className="w-full px-4 py-3 flex items-center justify-between text-left"
+                >
+                  <span className="font-medium text-gray-900">Fee Breakdown</span>
+                  {showFeeBreakdown ? (
+                    <ChevronUp className="h-5 w-5 text-gray-500" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-gray-500" />
+                  )}
+                </button>
+
+                {showFeeBreakdown && (
+                  <div className="px-4 pb-4 space-y-2 text-sm">
+                    <div className="flex justify-between text-gray-700">
+                      <span>Your donation:</span>
+                      <span className="font-medium">₱{feeBreakdown.grossAmount.toLocaleString()}</span>
+                    </div>
+                    {tipAmount > 0 && (
+                      <div className="flex justify-between text-blue-600">
+                        <span>Your tip to ClearCause:</span>
+                        <span className="font-medium">+₱{tipAmount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {coverFees ? (
+                      <>
+                        <div className="flex justify-between text-green-600">
+                          <span>Transaction fees you're covering:</span>
+                          <span className="font-medium">+₱{(feeBreakdown.platformFee + feeBreakdown.gatewayFee).toFixed(2)}</span>
+                        </div>
+                        <div className="text-xs text-gray-500 ml-4">
+                          • Platform fee ({platformFeePercentage}%): ₱{feeBreakdown.platformFee.toFixed(2)}<br/>
+                          • Payment processing: ₱{feeBreakdown.gatewayFee.toFixed(2)}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-between text-gray-500">
+                          <span>Platform fee ({platformFeePercentage}%):</span>
+                          <span>-₱{feeBreakdown.platformFee.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-500">
+                          <span>Payment processing fee:</span>
+                          <span>-₱{feeBreakdown.gatewayFee.toFixed(2)}</span>
+                        </div>
+                      </>
+                    )}
+                    <div className="border-t border-gray-300 pt-2 mt-2 flex justify-between font-semibold text-green-700 bg-green-50 -mx-4 px-4 py-2 rounded">
+                      <span>Charity receives:</span>
+                      <span>₱{feeBreakdown.netAmount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Summary */}
               <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-5 border border-blue-100">
                 <h3 className="font-semibold text-gray-900 mb-3">
-                  Donation Summary
+                  Payment Summary
                 </h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Amount:</span>
+                    <span className="text-gray-600">Donation amount:</span>
                     <span className="font-semibold text-gray-900">
                       ₱{amount.toLocaleString()}
                     </span>
                   </div>
+                  {tipAmount > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Tip to ClearCause:</span>
+                      <span className="font-semibold text-blue-600">
+                        ₱{tipAmount.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-600">Payment method:</span>
                     <span className="font-medium text-gray-900">
@@ -547,10 +837,13 @@ const Donate: React.FC = () => {
                     </div>
                   )}
                   <div className="border-t border-blue-200 mt-3 pt-3 flex justify-between items-center">
-                    <span className="font-semibold text-gray-900">Total:</span>
+                    <span className="font-semibold text-gray-900">Total charge:</span>
                     <span className="font-bold text-2xl text-clearcause-primary">
-                      ₱{amount.toLocaleString()}
+                      ₱{feeBreakdown.totalCharge.toLocaleString()}
                     </span>
+                  </div>
+                  <div className="text-xs text-gray-500 text-center mt-2">
+                    Charity receives ₱{feeBreakdown.netAmount.toFixed(2)} after fees
                   </div>
                 </div>
               </div>
@@ -559,7 +852,7 @@ const Donate: React.FC = () => {
               <Button
                 onClick={handleProceedToPayment}
                 className="w-full py-6 bg-blue-500 hover:bg-blue-500/80 text-lg font-redhatbold tracking-wide shadow-lg"
-                disabled={amount <= 0 || isSubmitting || !campaign}
+                disabled={amount <= 0 || isSubmitting || !campaign || customAmountError !== null}
               >
                 {isSubmitting ? (
                   <>
@@ -567,10 +860,7 @@ const Donate: React.FC = () => {
                     Processing...
                   </>
                 ) : (
-                  <>
-                    
-                    Donate ₱{amount.toLocaleString()}
-                  </>
+                  `Proceed to Payment • ₱${feeBreakdown.totalCharge.toLocaleString()}`
                 )}
               </Button>
 

@@ -1352,19 +1352,22 @@ export const getMilestoneProofById = withErrorHandling(async (
 
 /**
  * Get all platform settings
+ * @param currentUserId - Optional. If provided, verifies admin role. If not, returns public settings.
  */
 export const getPlatformSettings = withErrorHandling(async (
-  currentUserId: string
+  currentUserId?: string
 ): Promise<ApiResponse<PlatformSetting[]>> => {
-  // Check if current user is admin
-  const { data: currentUser, error: userError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', currentUserId)
-    .single();
+  // If userId provided, check if current user is admin
+  if (currentUserId) {
+    const { data: currentUser, error: userError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', currentUserId)
+      .single();
 
-  if (userError || currentUser?.role !== 'admin') {
-    throw new ClearCauseError('FORBIDDEN', 'Only administrators can access platform settings', 403);
+    if (userError || currentUser?.role !== 'admin') {
+      throw new ClearCauseError('FORBIDDEN', 'Only administrators can access platform settings', 403);
+    }
   }
 
   const { data, error } = await supabase
@@ -1444,6 +1447,52 @@ export const updatePlatformSetting = withErrorHandling(async (
 
   return createSuccessResponse(setting, 'Platform setting updated successfully');
 });
+
+/**
+ * Get platform fee percentage (specialized helper)
+ */
+export const getPlatformFeePercentage = async (): Promise<number> => {
+  try {
+    const { data, error} = await supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'platform_fee_percentage')
+      .single();
+
+    if (error || !data) {
+      console.warn('Failed to fetch platform fee percentage, using default 5%');
+      return 5;
+    }
+
+    return Number(data.value) || 5;
+  } catch (err) {
+    console.error('Error fetching platform fee percentage:', err);
+    return 5;
+  }
+};
+
+/**
+ * Get minimum donation amount (specialized helper)
+ */
+export const getMinimumDonation = async (): Promise<number> => {
+  try {
+    const { data, error } = await supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'minimum_donation_amount')
+      .single();
+
+    if (error || !data) {
+      console.warn('Failed to fetch minimum donation amount, using default ₱100');
+      return 100;
+    }
+
+    return Number(data.value) || 100;
+  } catch (err) {
+    console.error('Error fetching minimum donation amount:', err);
+    return 100;
+  }
+};
 
 // =========================================
 // CAMPAIGN CATEGORIES MANAGEMENT

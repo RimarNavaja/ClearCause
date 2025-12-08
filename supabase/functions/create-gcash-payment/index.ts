@@ -4,9 +4,109 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 const PAYMONGO_SECRET_KEY = Deno.env.get('PAYMONGO_SECRET_KEY')!;
 const PAYMONGO_API_URL = 'https://api.paymongo.com/v1';
 
+// Fee calculation constants
+const GATEWAY_FEE_RATE = 0.025;  // 2.5% PayMongo gateway fee (effective rate)
+const GATEWAY_FIXED_FEE = 10;    // ₱10 PayMongo fixed fee
+
+// Fetch configurable platform fee rate from database
+async function getPlatformFeeRate(supabase: any): Promise<number> {
+  try {
+    const { data, error } = await supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'platform_fee_percentage')
+      .single();
+
+    if (error || !data) {
+      console.warn('⚠️  Failed to fetch platform fee percentage, using default 5%:', error?.message);
+      return 0.05; // Fallback to 5%
+    }
+
+    const percentage = Number(data.value);
+    console.log('✅ Using platform fee rate:', percentage + '%');
+    return percentage / 100; // Convert 5 -> 0.05
+  } catch (err) {
+    console.error('❌ Error fetching platform fee:', err);
+    return 0.05; // Fallback to 5%
+  }
+}
+
+// Fetch configurable minimum donation from database
+async function getMinimumDonation(supabase: any): Promise<number> {
+  try {
+    const { data, error } = await supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'minimum_donation_amount')
+      .single();
+
+    if (error || !data) {
+      console.warn('⚠️  Failed to fetch minimum donation, using default ₱100:', error?.message);
+      return 100; // Fallback to ₱100
+    }
+
+    const amount = Number(data.value);
+    console.log('✅ Using minimum donation:', '₱' + amount);
+    return amount;
+  } catch (err) {
+    console.error('❌ Error fetching minimum donation:', err);
+    return 100; // Fallback to ₱100
+  }
+}
+
+interface FeeBreakdown {
+  grossAmount: number;      // Donor's intended donation
+  platformFee: number;      // ClearCause fee
+  gatewayFee: number;       // PayMongo fee
+  tipAmount: number;        // Optional tip
+  netAmount: number;        // Amount to charity
+  totalCharge: number;      // Total charged to donor
+}
+
+function calculateDonationFees(
+  grossAmount: number,
+  tipAmount: number = 0,
+  coverFees: boolean = true
+): FeeBreakdown {
+  if (coverFees) {
+    // Donor covers fees - use gross-up formula
+    // Charity gets 100% of intended donation
+    const platformFee = Math.round(grossAmount * PLATFORM_FEE_RATE * 100) / 100;
+    const targetNet = grossAmount + platformFee + tipAmount;
+    const totalCharge = Math.round((targetNet / (1 - GATEWAY_FEE_RATE)) * 100) / 100;
+    const gatewayFee = Math.round((totalCharge - targetNet) * 100) / 100;
+
+    return {
+      grossAmount,
+      platformFee,
+      gatewayFee,
+      tipAmount,
+      netAmount: grossAmount,  // Charity gets 100% of donation (tip goes to ClearCause!)
+      totalCharge
+    };
+  } else {
+    // Standard deduction - fees deducted from donation
+    const platformFee = Math.round(grossAmount * PLATFORM_FEE_RATE * 100) / 100;
+    const totalCharge = grossAmount + tipAmount;
+    const gatewayFee = Math.round((totalCharge * GATEWAY_FEE_RATE + GATEWAY_FIXED_FEE) * 100) / 100;
+    const netAmount = grossAmount - platformFee - gatewayFee;  // Charity gets donation minus fees (tip goes to ClearCause!)
+
+    return {
+      grossAmount,
+      platformFee,
+      gatewayFee,
+      tipAmount,
+      netAmount,
+      totalCharge
+    };
+  }
+}
+
 interface CreatePaymentRequest {
   donationId: string;
   amount: number;
+  tipAmount?: number;
+  coverFees?: boolean;
   userId: string;
 }
 
@@ -23,13 +123,15 @@ serve(async (req) => {
 
   try {
     // 1. Parse request
-    const { donationId, amount, userId }: CreatePaymentRequest = await req.json();
+    const { donationId, amount, tipAmount = 0, coverFees = true, userId }: CreatePaymentRequest = await req.json();
 
     console.log('========== CREATE GCASH PAYMENT REQUEST ==========');
     console.log('Timestamp:', new Date().toISOString());
     console.log('Request details:', {
       donationId,
       amount,
+      tipAmount,
+      coverFees,
       userId,
       appUrl: Deno.env.get('VITE_APP_URL')
     });
@@ -39,6 +141,27 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+
+    // 2.5. Fetch configurable platform fee rate
+    const PLATFORM_FEE_RATE = await getPlatformFeeRate(supabase);
+    console.log('Platform fee rate for this donation:', (PLATFORM_FEE_RATE * 100) + '%');
+
+    // 2.6. Fetch minimum donation amount
+    const MIN_DONATION = await getMinimumDonation(supabase);
+    console.log('Minimum donation amount:', '₱' + MIN_DONATION);
+
+    // 2.7. Validate donation amount
+    if (amount < MIN_DONATION) {
+      console.error('❌ Donation amount validation failed:', amount, '< MIN:', MIN_DONATION);
+      return new Response(
+        JSON.stringify({
+          error: 'INVALID_AMOUNT',
+          message: `Minimum donation is ₱${MIN_DONATION}`,
+          details: { minimumRequired: MIN_DONATION, provided: amount }
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // 3. Validate donation exists and is pending
     console.log('Validating donation...');
@@ -68,19 +191,28 @@ serve(async (req) => {
       campaignId: donation.campaign_id
     });
 
-    // 4. Create PayMongo Source for GCash
-    const amountInCentavos = Math.round(amount * 100); // Convert PHP to centavos
+    // 4. Calculate fees
+    const fees = calculateDonationFees(amount, tipAmount, coverFees);
+    console.log('Fee breakdown:', fees);
+
+    // Validate minimum net amount to charity (₱50 minimum)
+    if (fees.netAmount < 50) {
+      throw new Error('Donation amount too low. Charity must receive at least ₱50 after fees.');
+    }
+
+    // Convert total charge to centavos for PayMongo
+    const amountInCentavos = Math.round(fees.totalCharge * 100);
 
     // Check for GCash limit (100,000 PHP = 10,000,000 centavos)
     if (amountInCentavos > 10000000) {
-      throw new Error('Amount exceeds the maximum limit of ₱100,000 for GCash transactions. Please try a smaller amount or use a different payment method.');
+      throw new Error(`Total charge ₱${fees.totalCharge.toLocaleString()} exceeds GCash limit of ₱100,000. Please reduce donation or tip amount.`);
     }
 
     const successUrl = `${Deno.env.get('VITE_APP_URL')}/donate/success?donation_id=${donationId}`;
     const failedUrl = `${Deno.env.get('VITE_APP_URL')}/donate/error?donation_id=${donationId}`;
 
     console.log('Creating PayMongo source...');
-    console.log('Amount:', amountInCentavos, 'centavos (', amount, 'PHP)');
+    console.log('Amount:', amountInCentavos, 'centavos (₱', fees.totalCharge, 'PHP)');
     console.log('Success URL:', successUrl);
     console.log('Failed URL:', failedUrl);
 
@@ -123,7 +255,7 @@ serve(async (req) => {
       checkoutUrl: source.attributes.redirect.checkout_url
     });
 
-    // 5. Save payment session
+    // 5. Save payment session with fee breakdown
     console.log('Saving payment session to database...');
     const sessionData = {
       donation_id: donationId,
@@ -131,7 +263,7 @@ serve(async (req) => {
       provider: 'paymongo',
       provider_session_id: source.id,
       provider_source_id: source.id,
-      amount: amount,
+      amount: fees.grossAmount,
       currency: 'PHP',
       payment_method: 'gcash',
       checkout_url: source.attributes.redirect.checkout_url,
@@ -141,6 +273,16 @@ serve(async (req) => {
       expires_at: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hour expiry
       metadata: {
         source_status: source.attributes.status,
+        fees: {
+          grossAmount: fees.grossAmount,
+          platformFee: fees.platformFee,
+          platformFeePercentage: PLATFORM_FEE_RATE * 100, // Store as percentage for history
+          gatewayFee: fees.gatewayFee,
+          tipAmount: fees.tipAmount,
+          netAmount: fees.netAmount,
+          totalCharge: fees.totalCharge,
+          donorCoversFees: coverFees  // Store the actual checkbox value!
+        }
       },
     };
     console.log('Session data:', sessionData);

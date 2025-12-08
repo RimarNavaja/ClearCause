@@ -5,6 +5,7 @@ import { XCircle, RefreshCw, AlertTriangle, HelpCircle, ArrowLeft, Home } from '
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import { usePlatformSettings } from '@/contexts/PlatformSettingsContext';
 
 interface LocationState {
   error?: string;
@@ -16,6 +17,7 @@ const DonateError: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state as LocationState;
+  const { minimumDonationAmount } = usePlatformSettings();
 
   // Get error details from navigation state or URL query params (from PayMongo redirect)
   const searchParams = new URLSearchParams(location.search);
@@ -27,14 +29,15 @@ const DonateError: React.FC = () => {
   const getErrorCategory = () => {
     const error = errorMessage.toLowerCase();
 
-    if (error.includes('payment') || error.includes('card') || error.includes('insufficient')) {
+    // Check for validation/amount errors FIRST (most specific)
+    if (error.includes('minimum') || error.includes('below') || error.includes('invalid amount') || error.includes('invalid_amount')) {
+      return 'amount';
+    } else if (error.includes('payment') || error.includes('card') || error.includes('insufficient')) {
       return 'payment';
     } else if (error.includes('connection') || error.includes('network') || error.includes('timeout')) {
       return 'connection';
     } else if (error.includes('campaign') || error.includes('inactive') || error.includes('ended')) {
       return 'campaign';
-    } else if (error.includes('minimum') || error.includes('amount')) {
-      return 'amount';
     } else {
       return 'unknown';
     }
@@ -67,7 +70,7 @@ const DonateError: React.FC = () => {
         ];
       case 'amount':
         return [
-          'Ensure your donation meets the minimum amount (₱100)',
+          `Ensure your donation meets the minimum amount (₱${minimumDonationAmount.toLocaleString()})`,
           'Check that the amount is valid',
           'Try entering a different amount',
         ];

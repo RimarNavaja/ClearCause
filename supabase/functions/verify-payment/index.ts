@@ -108,11 +108,16 @@ serve(async (req) => {
     if (paymentSession.status === 'succeeded') {
       console.log('Payment session already succeeded, updating donation...');
 
+      // Copy fee metadata from payment session to donation
       const { error: updateError } = await supabase
         .from('donations')
         .update({
           status: 'completed',
           updated_at: new Date().toISOString(),
+          metadata: {
+            ...donation.metadata,
+            fees: paymentSession?.metadata?.fees || {}
+          }
         })
         .eq('id', donationId);
 
@@ -120,10 +125,19 @@ serve(async (req) => {
         console.error('❌ Failed to update donation:', updateError);
       }
 
-      // Update campaign amount
+      const netAmount = paymentSession?.metadata?.fees?.netAmount || donation.amount;
+
+      console.log('Incrementing campaign with net amount:', {
+        donationId: donation.id,
+        campaignId: donation.campaign_id,
+        grossAmount: donation.amount,
+        netAmount: netAmount
+      });
+
+      // Update campaign amount using net amount
       const { error: rpcError } = await supabase.rpc('increment_campaign_amount', {
         campaign_id: donation.campaign_id,
-        amount: donation.amount,
+        amount: netAmount,
       });
 
       if (rpcError) {
@@ -188,6 +202,15 @@ serve(async (req) => {
     if (source.attributes.status === 'chargeable') {
       console.log('✅ Source is chargeable, creating payment...');
 
+      // Get the total charge from payment session metadata (critical for fee calculation)
+      // This ensures we charge the correct amount that matches the PayMongo source
+      const totalCharge = paymentSession?.metadata?.fees?.totalCharge || donation.amount;
+      console.log('Payment amount calculation:', {
+        donationAmount: donation.amount,
+        totalChargeFromMetadata: totalCharge,
+        willCharge: Math.round(totalCharge * 100) + ' centavos'
+      });
+
       const paymentResponse = await fetch(`${PAYMONGO_API_URL}/payments`, {
         method: 'POST',
         headers: {
@@ -197,7 +220,7 @@ serve(async (req) => {
         body: JSON.stringify({
           data: {
             attributes: {
-              amount: Math.round(donation.amount * 100),
+              amount: Math.round(totalCharge * 100),
               currency: 'PHP',
               source: {
                 id: sourceId,
@@ -218,7 +241,7 @@ serve(async (req) => {
           amount: payment.attributes.amount / 100,
         });
 
-        // Update donation status
+        // Update donation status and copy fee metadata
         console.log('Updating donation status to completed...');
         const { error: donationUpdateError } = await supabase
           .from('donations')
@@ -226,6 +249,10 @@ serve(async (req) => {
             status: 'completed',
             provider_payment_id: payment.id,
             updated_at: new Date().toISOString(),
+            metadata: {
+              ...donation.metadata,
+              fees: paymentSession?.metadata?.fees || {}
+            }
           })
           .eq('id', donation.id);
 
@@ -255,11 +282,21 @@ serve(async (req) => {
           console.log('✅ Payment session updated to succeeded');
         }
 
-        // Update campaign amount using RPC function
+        // Get fee breakdown from payment session
+        const netAmount = paymentSession?.metadata?.fees?.netAmount || donation.amount;
+
+        console.log('Incrementing campaign with net amount:', {
+          donationId: donation.id,
+          campaignId: donation.campaign_id,
+          grossAmount: donation.amount,
+          netAmount: netAmount
+        });
+
+        // Update campaign amount using RPC function with net amount
         console.log('Incrementing campaign amount...');
         const { error: rpcError } = await supabase.rpc('increment_campaign_amount', {
           campaign_id: donation.campaign_id,
-          amount: donation.amount,
+          amount: netAmount,
         });
 
         if (rpcError) {

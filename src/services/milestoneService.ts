@@ -748,27 +748,19 @@ export const approveMilestoneProof = withErrorHandling(async (
     throw handleSupabaseError(campaignUpdateError);
   }
 
-  // Update charity balance
-  const newAvailableBalance = (parseFloat(charity.available_balance) || 0) + releaseAmount;
-  const newTotalReceived = (parseFloat(charity.total_received) || 0) + releaseAmount;
-
-  console.log('Updating charity balance:', {
+  // Update charity balance using database function (bypasses RLS)
+  console.log('Updating charity balance via database function:', {
     charityId: charity.id,
     currentAvailableBalance: charity.available_balance,
     currentTotalReceived: charity.total_received,
     releaseAmount: releaseAmount,
-    newAvailableBalance: newAvailableBalance,
-    newTotalReceived: newTotalReceived,
   });
 
   const { data: charityUpdateData, error: charityUpdateError } = await supabase
-    .from('charities')
-    .update({
-      available_balance: newAvailableBalance,
-      total_received: newTotalReceived,
-    })
-    .eq('id', charity.id)
-    .select();
+    .rpc('update_charity_balance_on_milestone_approval', {
+      p_charity_id: charity.id,
+      p_release_amount: releaseAmount,
+    });
 
   console.log('Charity update result:', { data: charityUpdateData, error: charityUpdateError });
 
@@ -778,8 +770,8 @@ export const approveMilestoneProof = withErrorHandling(async (
   }
 
   if (!charityUpdateData || charityUpdateData.length === 0) {
-    console.error('Charity balance update returned no data - possible RLS issue');
-    throw new ClearCauseError('UPDATE_FAILED', 'Failed to update charity balance. Please check permissions.', 500);
+    console.error('Charity balance update returned no data');
+    throw new ClearCauseError('UPDATE_FAILED', 'Failed to update charity balance. Database function may not exist.', 500);
   }
 
   // Send notification to charity

@@ -552,7 +552,7 @@ export interface Donation {
   id: string;
   userId: string;
   campaignId: string;
-  amount: number;
+  amount: number;                    // Gross amount (base donation)
   paymentMethod: string;
   transactionId: string | null;
   status: DonationStatus;
@@ -565,6 +565,16 @@ export interface Donation {
   paymentSessionId: string | null;
   failureReason: string | null;
   metadata: Record<string, any> | null;
+
+  // Fee breakdown (stored in metadata.fees)
+  grossAmount?: number;
+  platformFee?: number;
+  gatewayFee?: number;
+  tipAmount?: number;
+  netAmount?: number;               // What charity receives after fees
+  totalCharge?: number;             // What donor actually paid (including fees if covered)
+  coverFees?: boolean;              // Whether donor chose to cover fees
+
   donor?: User;
   campaign?: Campaign;
   paymentSession?: PaymentSession;

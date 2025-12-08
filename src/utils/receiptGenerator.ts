@@ -16,6 +16,13 @@ export interface ReceiptData {
   paymentMethod: string;
   status: string;
 
+  // Fee breakdown (optional)
+  platformFee?: number;
+  gatewayFee?: number;
+  tipAmount?: number;
+  netAmount?: number;
+  totalCharge?: number;
+
   // Donor Details
   donorName: string;
   donorEmail: string;
@@ -145,8 +152,6 @@ export const generateDonationReceipt = async (data: ReceiptData): Promise<jsPDF>
   const lightGray: [number, number, number] = [248, 250, 252]; // #F8FAFC - ClearCause Background
   const borderGray: [number, number, number] = [229, 231, 235]; // Gray-200
 
-  let yPosition = 20;
-
   // ===== ENHANCED HEADER - Gradient from Primary to Secondary =====
   // Create gradient effect (primary blue at top, transitioning to secondary blue)
   const headerHeight = 55;
@@ -239,18 +244,19 @@ export const generateDonationReceipt = async (data: ReceiptData): Promise<jsPDF>
   doc.setLineWidth(0.8);
   doc.roundedRect(15, yPosition, pageWidth - 30, 24, 4, 4, 'FD');
 
-  // "You Donated" label
+  // "You Paid" label (show what donor actually paid)
   doc.setTextColor(...textSecondary);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text('You Donated', pageWidth / 2, yPosition + 7, { align: 'center' });
+  doc.text('Total Amount Paid', pageWidth / 2, yPosition + 7, { align: 'center' });
 
-  // Amount in large orange text
+  // Amount in large orange text (use totalCharge if available, fallback to amount)
+  const displayAmount = data.totalCharge || data.amount;
   doc.setTextColor(...accentColor);
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
   doc.text(
-    `₱${data.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    `₱${displayAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     pageWidth / 2,
     yPosition + 18,
     { align: 'center' }
@@ -283,7 +289,7 @@ export const generateDonationReceipt = async (data: ReceiptData): Promise<jsPDF>
   autoTable(doc, {
     startY: yPosition,
     head: [['Payment Details', '']],
-    body: detailsBody,
+    body: donationDetails,
     theme: 'plain', // Cleaner look
     headStyles: {
       fillColor: COLORS.background,
@@ -321,6 +327,56 @@ export const generateDonationReceipt = async (data: ReceiptData): Promise<jsPDF>
   });
 
   yPosition = (doc as any).lastAutoTable.finalY + 15;
+
+  // ===== FEE BREAKDOWN SECTION (if fees available) =====
+  if (data.platformFee || data.gatewayFee || data.tipAmount) {
+    doc.setTextColor(...textColor);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Payment Breakdown', margin, yPosition);
+    yPosition += 8;
+
+    // Check if donor covered fees (net === gross + tip)
+    const totalFees = (data.platformFee || 0) + (data.gatewayFee || 0);
+    const donorCovered = data.netAmount === data.amount + (data.tipAmount || 0);
+
+    const feeBreakdown = [
+      ['Donation Amount', `₱${data.amount.toFixed(2)}`],
+      ...(data.tipAmount && data.tipAmount > 0 ? [['Tip to ClearCause', `₱${data.tipAmount.toFixed(2)}`]] : []),
+      ...(donorCovered ?
+        [['Transaction Fees (Covered by Donor)', `₱${totalFees.toFixed(2)}`]] :
+        [
+          ['Platform Fee (5%)', `-₱${(data.platformFee || 0).toFixed(2)}`],
+          ['Payment Processing Fee', `-₱${(data.gatewayFee || 0).toFixed(2)}`]
+        ]
+      ),
+      [donorCovered ? 'Amount to Charity (100%)' : 'Amount to Charity', `₱${data.netAmount?.toFixed(2)}`],
+    ];
+
+    autoTable(doc, {
+      startY: yPosition,
+      head: [],
+      body: feeBreakdown,
+      theme: 'plain',
+      styles: {
+        fontSize: 10,
+        cellPadding: 5,
+      },
+      columnStyles: {
+        0: { fontStyle: 'normal', textColor: textSecondary, cellWidth: 70 },
+        1: { fontStyle: 'bold', halign: 'right' },
+      },
+      margin: { left: margin, right: margin },
+      didDrawCell: (data) => {
+        // Highlight the "Amount to Charity" row with green background
+        if (data.row.index === feeBreakdown.length - 1) {
+          doc.setFillColor(34, 197, 94, 0.1); // Success green with 10% opacity
+        }
+      },
+    });
+
+    yPosition = (doc as any).lastAutoTable.finalY + 15;
+  }
 
   // ===== CAMPAIGN DETAILS =====
   doc.setTextColor(...textColor);
