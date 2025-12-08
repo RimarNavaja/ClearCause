@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   ListChecks,
@@ -16,6 +17,20 @@ import {
   BarChart3,
   Settings,
 } from "lucide-react";
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarInset,
+  SidebarTrigger,
+  SidebarRail,
+} from "@/components/ui/sidebar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +58,24 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
   const { signOut, loading: authLoading } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [open, setOpen] = useState(true);
+
+  // Handle responsive sidebar state (collapse at 1800px)
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 1800) {
+        setOpen(false);
+      } else {
+        setOpen(true);
+      }
+    };
+
+    // Initial check
+    handleResize();
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleLogoutConfirm = async () => {
     if (isLoggingOut) {
@@ -90,42 +123,37 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
     {
       path: "/charity/dashboard",
       label: "Dashboard",
-      icon: <LayoutDashboard className="w-5 h-5" />,
+      icon: <LayoutDashboard className="h-5 w-5" />,
     },
     {
       path: "/charity/campaigns/new",
       label: "Create New Campaign",
-      icon: <PlusCircle className="w-5 h-5" />,
+      icon: <PlusCircle className="h-5 w-5" />,
     },
     {
       path: "/charity/campaigns",
       label: "Manage Campaigns",
-      icon: <ListChecks className="w-5 h-5" />,
+      icon: <ListChecks className="h-5 w-5" />,
     },
     {
       path: "/charity/milestones",
       label: "Milestones",
-      icon: <Target className="w-5 h-5" />,
+      icon: <Target className="h-5 w-5" />,
     },
     {
       path: "/charity/analytics",
       label: "Analytics",
-      icon: <BarChart3 className="w-5 h-5" />,
+      icon: <BarChart3 className="h-5 w-5" />,
     },
     {
       path: "/charity/funds",
       label: "Funds Management",
-      icon: <DollarSign className="w-5 h-5" />,
+      icon: <DollarSign className="h-5 w-5" />,
     },
     {
       path: "/charity/profile",
       label: "Organization Profile",
-      icon: <Landmark className="w-5 h-5" />,
-    },
-    {
-      path: "/charity/settings",
-      label: "Settings",
-      icon: <Settings className="w-5 h-5" />,
+      icon: <Landmark className="h-5 w-5" />,
     },
   ];
 
@@ -133,67 +161,120 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
     <div className="flex flex-col min-h-screen">
       <Navbar />
 
-      <div className="flex-grow flex bg-clearcause-background">
-        {/* Sidebar - Fixed to left */}
-        <aside className="bg-white w-64 min-h-[calc(100vh-4rem)] shadow-sm fixed left-0 top-16">
-          <div className="p-6 h-full flex flex-col">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">
-              Charity Portal
-            </h2>
+      <div className="flex-grow flex bg-clearcause-background relative">
+        <SidebarProvider open={open} onOpenChange={setOpen} className="w-full font-poppinsregular">
+          <Sidebar
+            collapsible="icon"
+            className="top-16 h-[calc(100vh-4rem)] border-r bg-white"
+          >
+            <SidebarHeader className="flex flex-row items-center justify-between p-4 pt-6">
+              {open && (
+                <h2 className="text-xl font-semibold text-gray-900 font-robotobold truncate">
+                  Charity Portal
+                </h2>
+              )}
+              <SidebarTrigger className="ml-auto hover:bg-blue-600" />
+            </SidebarHeader>
+            <SidebarContent>
+              <SidebarGroup>
+                <SidebarMenu>
+                  {navItems.map((item) => {
+                    let isActive =
+                      location.pathname === item.path ||
+                      location.pathname.startsWith(`${item.path}/`);
 
-            <div className="flex flex-col space-y-2 flex-grow">
-              {navItems.map((item) => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  className={({ isActive }) => `
-                    flex items-center px-3 py-2 rounded-md text-sm font-medium
-                    ${
-                      isActive
-                        ? "bg-clearcause-primary/10 text-clearcause-primary"
-                        : "text-gray-600 hover:text-clearcause-primary hover:bg-gray-100"
+                    // Special case: "Manage Campaigns" should not be active if we are on "Create New Campaign"
+                    if (
+                      item.path === "/charity/campaigns" &&
+                      location.pathname === "/charity/campaigns/new"
+                    ) {
+                      isActive = false;
                     }
-                  `}
-                >
-                  {item.icon}
-                  <span className="ml-3">{item.label}</span>
-                </NavLink>
-              ))}
+                    
+                    return (
+                      <SidebarMenuItem key={item.path}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={isActive}
+                          tooltip={item.label}
+                          className={
+                            isActive
+                              ? "!bg-blue-100 !text-blue-600 hover:bg-blue-200"
+                              : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                          }
+                        >
+                          <Link to={item.path}>
+                            {item.icon}
+                            <span>{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroup>
 
-              <button
-                onClick={handleLogoutClick}
-                disabled={isLoggingOut || authLoading}
-                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium mt-auto w-full text-left transition-colors ${
-                  isLoggingOut || authLoading
-                    ? "text-gray-400 cursor-not-allowed bg-gray-100"
-                    : "text-gray-600 hover:text-red-500 hover:bg-red-50"
-                }`}
-              >
-                {isLoggingOut || authLoading ? (
-                  <>
-                    <div className="w-5 h-5 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
-                    <span className="ml-3">Signing out...</span>
-                  </>
-                ) : (
-                  <>
-                    <LogOut className="w-5 h-5" />
-                    <span className="ml-3">Logout</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </aside>
+              <div className="mt-auto px-2 pb-4">
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location.pathname === "/charity/settings"}
+                      tooltip="Settings"
+                      className={
+                        location.pathname === "/charity/settings"
+                          ? "!bg-blue-100 !text-blue-600 hover:bg-blue-200"
+                          : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                      }
+                    >
+                      <Link to="/charity/settings">
+                        <Settings className="h-5 w-5" />
+                        <span>Settings</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={handleLogoutClick}
+                      disabled={isLoggingOut || authLoading}
+                      tooltip="Logout"
+                      className={`
+                        ${
+                          isLoggingOut || authLoading
+                            ? "text-gray-400 cursor-not-allowed hover:bg-transparent"
+                            : "text-gray-600 hover:text-red-500 hover:bg-red-50"
+                        }
+                      `}
+                    >
+                      {isLoggingOut || authLoading ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <LogOut className="h-5 w-5" />
+                      )}
+                      <span>{isLoggingOut ? "Signing out..." : "Logout"}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </div>
+            </SidebarContent>
+            <SidebarRail />
+          </Sidebar>
 
-        {/* Main content - With left margin to account for sidebar */}
-        <main className="flex-grow p-8">
-          <div className="max-w-7xl mx-auto px-8 font-poppinsregular">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6 font-robotobold">{title}</h1>
-            {children}
-          </div>
-        </main>
+          <SidebarInset className="flex-1 overflow-y-auto min-h-[calc(100vh-4rem)] bg-clearcause-background">
+            <main className="flex-grow p-8">
+              <div className={cn("max-w-7xl px-4 sm:px-6 lg:px-8 font-poppinsregular", {
+                "mx-auto": !open
+              })}>
+                <h1 className="text-3xl font-bold text-gray-900 mb-6 font-robotobold">
+                  {title}
+                </h1>
+                {children}
+              </div>
+            </main>
+            <Footer />
+          </SidebarInset>
+        </SidebarProvider>
       </div>
-      <Footer />
 
       {/* Logout Confirmation Dialog */}
       <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>

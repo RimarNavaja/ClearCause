@@ -152,42 +152,7 @@ const About: React.FC = () => {
         </section>
 
         {/* Stats Section */}
-        <section className="py-16 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Our Impact So Far</h2>
-              <p className="text-lg text-gray-600">
-                Together with our community, we're making a measurable difference
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-clearcause-primary mb-2">$2.5M+</div>
-                <div className="text-gray-600 font-medium">Total Raised</div>
-                <div className="text-sm text-gray-500 mt-1">Verified and tracked</div>
-              </div>
-
-              <div className="text-center">
-                <div className="text-4xl font-bold text-clearcause-primary mb-2">15K+</div>
-                <div className="text-gray-600 font-medium">Active Donors</div>
-                <div className="text-sm text-gray-500 mt-1">Across 50+ countries</div>
-              </div>
-
-              <div className="text-center">
-                <div className="text-4xl font-bold text-clearcause-primary mb-2">500+</div>
-                <div className="text-gray-600 font-medium">Verified Charities</div>
-                <div className="text-sm text-gray-500 mt-1">Rigorous screening process</div>
-              </div>
-
-              <div className="text-center">
-                <div className="text-4xl font-bold text-clearcause-primary mb-2">98%</div>
-                <div className="text-gray-600 font-medium">Milestone Success Rate</div>
-                <div className="text-sm text-gray-500 mt-1">Verified completions</div>
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* 6 */}
 
         {/* Problem We Solve */}
         <section className="py-16 bg-clearcause-background">
