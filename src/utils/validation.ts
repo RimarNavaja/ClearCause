@@ -195,6 +195,7 @@ export const donationUpdateSchema = z.object({
 
 export const donationFilterSchema = z.object({
   status: z.array(donationStatusSchema).optional(),
+  search: z.string().max(100, 'Search term is too long').optional(),
   campaignId: z.string().uuid('Invalid campaign ID').optional(),
   minAmount: nonNegativeNumberSchema.optional(),
   maxAmount: positiveNumberSchema.optional(),
