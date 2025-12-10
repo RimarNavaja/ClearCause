@@ -1,4 +1,5 @@
 
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -77,7 +78,20 @@ import ScrollToTop from "@/components/ui/ScrollToTop";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  useEffect(() => {
+    // Check if we are on the root path with an auth hash
+    // This handles cases where the OAuth redirect lands on / instead of /auth/callback
+    // which can happen if the Site URL is used as the default redirect
+    const { hash, pathname } = window.location;
+    if (pathname === '/' && hash && (hash.includes('access_token') || hash.includes('type=signup') || hash.includes('type=recovery') || hash.includes('error='))) {
+      console.log('Detected auth hash on root path, redirecting to callback handler...');
+      // Manually redirect to the callback route with the hash
+      window.location.replace(`/auth/callback${hash}`);
+    }
+  }, []);
+
+  return (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <PlatformSettingsProvider>
@@ -364,6 +378,7 @@ const App = () => (
       </PlatformSettingsProvider>
     </AuthProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

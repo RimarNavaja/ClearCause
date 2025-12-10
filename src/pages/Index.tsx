@@ -1,15 +1,12 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ChevronRight,
   Clock,
   Shield,
-  Search,
   BarChart4,
   CreditCard,
   Check,
-  Users,
-  Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +14,8 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import TextType from "@/components/ui/reactbits/TextType";
 import AnimatedContent from "@/components/ui/reactbits/AnimatedContent";
+import { useAuth } from "@/hooks/useAuth";
+import { config } from "@/lib/config";
 
 import { Campaign, CampaignStatus } from "@/lib/types";
 
@@ -226,6 +225,30 @@ const HomeCampaignCard: React.FC<{ campaign: Campaign }> = ({ campaign }) => {
 };
 
 const Index: React.FC = () => {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && user) {
+      const role = user.role || "donor";
+      let redirectPath = config.routes.donor.dashboard;
+
+      switch (role) {
+        case "admin":
+          redirectPath = config.routes.admin.dashboard;
+          break;
+        case "charity":
+          redirectPath = config.routes.charity.dashboard;
+          break;
+        default:
+          redirectPath = config.routes.donor.dashboard;
+      }
+      
+      console.log(`[Index] User already authenticated as ${role}, redirecting to ${redirectPath}`);
+      navigate(redirectPath, { replace: true });
+    }
+  }, [user, loading, navigate]);
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />

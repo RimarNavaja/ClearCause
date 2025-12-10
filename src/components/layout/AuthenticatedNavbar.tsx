@@ -37,18 +37,24 @@ import { performCompleteLogout } from "@/utils/sessionManager";
 import NotificationBell from "@/components/notifications/NotificationBell";
 
 interface AuthenticatedNavbarProps {
-  user: UserType;
+  // No props needed as user will be fetched from useAuth
 }
 
-const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = ({ user }) => {
+const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = () => {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const { signOut } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+
+  if (!user) {
+    // If user is not available, don't render the navbar
+    return null;
+  }
 
   // Close user menu when clicking outside
   useEffect(() => {

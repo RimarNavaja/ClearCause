@@ -13,6 +13,12 @@ const AuthCallback: React.FC = () => {
   useEffect(() => {
     let hasProcessed = false; // Prevent multiple executions
 
+    // Safety timeout to prevent hanging indefinitely
+    const timeoutId = setTimeout(() => {
+      console.warn('[AuthCallback] Processing timeout - forcing redirect to home');
+      navigate('/');
+    }, 10000);
+
     const handleAuthCallback = async () => {
       if (hasProcessed) {
         console.log('[AuthCallback] Already processed, skipping...');
@@ -67,6 +73,24 @@ const AuthCallback: React.FC = () => {
 
             if (data.user) {
               console.log('[AuthCallback] Session set successfully for user:', data.user.id);
+
+              // Check if the user is an existing email/password user trying to sign in with Google
+              // Supabase may merge them, but if we want to enforce separation or warn the user:
+              if (data.user.app_metadata.provider === 'email' && type !== 'signup' && type !== 'email_confirmation' && type !== 'magiclink') {
+                 // Check if the current session is actually using Google (OAuth)
+                 // We can check the amr (Authentication Methods References) claim in the JWT if available, 
+                 // or infer from the fact we are in the OAuth callback and the provider is 'email'.
+                 // However, app_metadata.provider usually reflects the *first* provider. 
+                 // If it's 'email', and we are here (OAuth callback), it's a merge attempt or a login to existing account.
+                 
+                 // Note: If you want to STRICTLY prevent Google login for existing email users:
+                 console.warn('[AuthCallback] Detected Google sign-in for existing email user');
+                 setError('This email is already registered with a password. Please log in with your password to access your account.');
+                 await supabase.auth.signOut();
+                 setTimeout(() => navigate('/login'), 4000);
+                 return;
+              }
+
               setStatus('Setting up your profile...');
 
               // Check if profile exists directly
@@ -112,7 +136,8 @@ const AuthCallback: React.FC = () => {
                         full_name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
                         role: data.user.user_metadata?.role || 'donor',
                         is_verified: true, // Email is verified at this point
-                        is_active: true
+                        is_active: true,
+                        onboarding_completed: true
                       })
                       .select()
                       .single();
@@ -159,6 +184,32 @@ const AuthCallback: React.FC = () => {
                 setError('Failed to set up your profile. Please try logging in manually.');
                 setTimeout(() => navigate('/login'), 3000);
                 return;
+              }
+
+              // Auto-fix: If profile exists but onboarding is not marked complete, fix it now
+              // This prevents the infinite loop where users are redirected to onboarding but can't proceed
+              if (userProfile && !userProfile.onboarding_completed) {
+                console.log('[AuthCallback] Profile exists but onboarding incomplete. Auto-fixing...');
+                const { error: updateError } = await supabase
+                  .from('profiles')
+                  .update({ onboarding_completed: true })
+                  .eq('id', userProfile.id);
+                  
+                if (updateError) {
+                  console.warn('[AuthCallback] Failed to auto-fix onboarding status:', updateError);
+                } else {
+                  console.log('[AuthCallback] Onboarding status fixed');
+                  userProfile.onboarding_completed = true;
+                  
+                  // Also try to update user metadata
+                  try {
+                    await supabase.auth.updateUser({
+                      data: { onboarding_completed: true }
+                    });
+                  } catch (metaError) {
+                    console.warn('[AuthCallback] Failed to sync metadata:', metaError);
+                  }
+                }
               }
 
               console.log('[AuthCallback] Profile ready:', userProfile);
@@ -233,6 +284,7 @@ const AuthCallback: React.FC = () => {
     );
   }
 
+  // Loading / processing state
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 font-poppinsregular">
       <div className="max-w-md w-full bg-white shadow rounded-lg p-6">
@@ -242,7 +294,7 @@ const AuthCallback: React.FC = () => {
             {status}
           </h2>
           <p className="text-gray-600">
-            Please wait while we verify your email and set up your account.
+            Please wait while we verify your email.
           </p>
         </div>
       </div>

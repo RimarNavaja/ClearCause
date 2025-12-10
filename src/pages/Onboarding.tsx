@@ -19,6 +19,8 @@ const Onboarding: React.FC = () => {
   const [lastName, setLastName] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [firstNameError, setFirstNameError] = useState<string | null>(null);
+  const [lastNameError, setLastNameError] = useState<string | null>(null);
 
   // Split existing full name if available
   useEffect(() => {
@@ -53,8 +55,34 @@ const Onboarding: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName || !lastName || !selectedRole) {
-      toast.error('Please fill in all fields and select an account type.');
+    setFirstNameError(null);
+    setLastNameError(null);
+
+    let isValid = true;
+    const nameRegex = /^[a-zA-Z\s\-\.\']{2,50}$/; // Adjusted max length to 50
+
+    if (!firstName.trim()) {
+      setFirstNameError('First Name is required.');
+      isValid = false;
+    } else if (!nameRegex.test(firstName)) {
+      setFirstNameError('First Name contains invalid characters');
+      isValid = false;
+    }
+
+    if (!lastName.trim()) {
+      setLastNameError('Last Name is required.');
+      isValid = false;
+    } else if (!nameRegex.test(lastName)) {
+      setLastNameError('Last Name contains invalid characters');
+      isValid = false;
+    }
+
+    if (!selectedRole) {
+      toast.error('Please select an account type.');
+      isValid = false;
+    }
+
+    if (!isValid) {
       return;
     }
 
@@ -64,7 +92,15 @@ const Onboarding: React.FC = () => {
       
       if (result.success) {
         toast.success('Profile setup complete! Welcome to ClearCause.');
-        // Redirect will happen automatically via the useEffect above when user state updates
+        
+        // Force redirect immediately for better UX
+        if (selectedRole === 'charity') {
+          navigate('/charity/dashboard');
+        } else if (selectedRole === 'admin') {
+          navigate('/admin/dashboard');
+        } else {
+          navigate('/donor/dashboard');
+        }
       } else {
         toast.error(result.error || 'Failed to complete setup. Please try again.');
         setIsSubmitting(false);
@@ -117,6 +153,7 @@ const Onboarding: React.FC = () => {
                       placeholder="Enter your first name"
                       required
                     />
+                    {firstNameError && <p className="text-red-500 text-sm mt-1">{firstNameError}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Last Name</Label>
@@ -127,6 +164,7 @@ const Onboarding: React.FC = () => {
                       placeholder="Enter your last name"
                       required
                     />
+                    {lastNameError && <p className="text-red-500 text-sm mt-1">{lastNameError}</p>}
                   </div>
                 </div>
               </div>
