@@ -506,6 +506,7 @@ export interface User {
   isVerified: boolean;
   isActive: boolean;
   onboardingCompleted: boolean;
+  provider?: string;
   createdAt: string;
   updatedAt: string;
 }

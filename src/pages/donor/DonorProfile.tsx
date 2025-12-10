@@ -41,7 +41,7 @@ const formSchema = donorProfileSchema;
 type FormData = z.infer<typeof formSchema>;
 
 const DonorProfile: React.FC = () => {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, updateEmail } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -164,7 +164,34 @@ const DonorProfile: React.FC = () => {
     fetchRecentAchievements();
   }, [user]);
 
-  const handleSubmit = (data: FormData) => {
+  const handleSubmit = async (data: FormData) => {
+    // Handle email update if changed and not Google provider
+    if (data.email && data.email !== profile?.email) {
+      if (user?.provider === 'google') {
+        toast({
+          title: "Cannot Change Email",
+          description: "Email cannot be changed since you signed up with Google.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const result = await updateEmail(data.email);
+      if (result.success) {
+        toast({
+          title: "Verification Required",
+          description: result.message || "Please check your new email to confirm the change.",
+        });
+      } else {
+        toast({
+          title: "Email Update Failed",
+          description: result.error,
+          variant: "destructive"
+        });
+        return; // Stop if email update failed
+      }
+    }
+
     updateProfileMutation.mutate({
       fullName: data.fullName,
       phone: data.phone,
@@ -301,17 +328,25 @@ const DonorProfile: React.FC = () => {
                   <FormField
                     control={form.control}
                     name="email"
-                    render={({ field }) => (
+                    render={({ field }) => {
+                      const isGoogle = user?.provider === 'google';
+                      return (
                       <FormItem>
                         <FormLabel>Email Address</FormLabel>
                         <FormControl>
-                          <Input {...field} type="email" disabled />
+                          <Input
+                            {...field}
+                            type="email"
+                            disabled={!isEditing || isMutating || isGoogle}
+                          />
                         </FormControl>
                         <FormDescription>
-                          Email cannot be changed.
+                          {isGoogle
+                            ? "Email cannot be changed since you signed up with Google."
+                            : "Changing your email will require verification."}
                         </FormDescription>
                       </FormItem>
-                    )}
+                    )}}
                   />
 
                   <FormField

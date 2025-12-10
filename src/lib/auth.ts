@@ -151,6 +151,7 @@ export const signUp = async (userData: SignUpData): Promise<ApiResponse<User>> =
         isVerified: false,
         isActive: true,
         onboardingCompleted: true,
+        provider: 'email',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -244,6 +245,7 @@ export const signIn = async (credentials: SignInData): Promise<ApiResponse<User>
         isVerified: profileData.is_verified,
         isActive: profileData.is_active,
         onboardingCompleted: profileData.onboarding_completed,
+        provider: 'email',
         createdAt: profileData.created_at,
         updatedAt: profileData.updated_at,
       },
@@ -421,6 +423,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
               isVerified: profileData.is_verified,
               isActive: profileData.is_active,
               onboardingCompleted: profileData.onboarding_completed,
+              provider: user.app_metadata?.provider || 'email',
               createdAt: profileData.created_at,
               updatedAt: profileData.updated_at,
             };
@@ -483,6 +486,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
       isVerified: !!user.email_confirmed_at,
       isActive: true,
       onboardingCompleted: user.user_metadata?.onboarding_completed || false,
+      provider: user.app_metadata?.provider || 'email',
       createdAt: user.created_at || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -514,14 +518,18 @@ export const getCurrentUserSimple = async (): Promise<User | null> => {
       isVerified: !!user.email_confirmed_at,
       isActive: true,
       onboardingCompleted: user.user_metadata?.onboarding_completed || false,
+      provider: user.app_metadata?.provider || 'email',
       createdAt: user.created_at || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+
   } catch (error) {
-    console.error('getCurrentUserSimple error:', error);
+    console.error('[getCurrentUser] General error:', error);
     return null;
   }
 };
+
+
 
 /**
  * Reset password
@@ -620,6 +628,32 @@ export const verifyEmail = async (): Promise<ApiResponse<void>> => {
 };
 
 /**
+ * Update email address
+ */
+export const updateEmail = async (email: string): Promise<ApiResponse<void>> => {
+  try {
+    const { error } = await supabase.auth.updateUser({ email });
+    
+    if (error) {
+      throw new ClearCauseError('EMAIL_UPDATE_FAILED', error.message, 400);
+    }
+
+    return {
+      success: true,
+      message: 'Confirmation email sent. Please check your new email address.',
+    };
+  } catch (error) {
+    console.error('Email update error:', error);
+    
+    if (error instanceof ClearCauseError) {
+      return { success: false, error: error.message };
+    }
+    
+    return { success: false, error: 'An unexpected error occurred' };
+  }
+};
+
+/**
  * Update user profile
  */
 export const updateProfile = async (updates: {
@@ -662,6 +696,7 @@ export const updateProfile = async (updates: {
         isVerified: data.is_verified,
         isActive: data.is_active,
         onboardingCompleted: data.onboarding_completed,
+        provider: currentUser.provider,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
       },
@@ -711,6 +746,16 @@ export const completeOnboarding = async (
       fullName
     });
 
+    // Sync onboarding status to auth metadata for resilience
+    // This ensures that even if profile fetch fails, the fallback mechanism works correctly
+    try {
+      await supabase.auth.updateUser({
+        data: { onboarding_completed: true, role: role, full_name: fullName }
+      });
+    } catch (updateError) {
+      console.warn('Failed to sync onboarding status to auth metadata:', updateError);
+    }
+
     return {
       success: true,
       data: {
@@ -722,6 +767,7 @@ export const completeOnboarding = async (
         isVerified: data.is_verified,
         isActive: data.is_active,
         onboardingCompleted: data.onboarding_completed,
+        provider: currentUser.provider,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
       },
@@ -843,6 +889,7 @@ export const handleOAuthCallback = async (): Promise<ApiResponse<User>> => {
           isVerified: existingProfile.is_verified,
           isActive: existingProfile.is_active,
           onboardingCompleted: existingProfile.onboarding_completed,
+          provider: user.app_metadata?.provider || 'email',
           createdAt: existingProfile.created_at,
           updatedAt: existingProfile.updated_at,
         },
@@ -885,6 +932,7 @@ export const handleOAuthCallback = async (): Promise<ApiResponse<User>> => {
         isVerified: newProfile.is_verified,
         isActive: newProfile.is_active,
         onboardingCompleted: newProfile.onboarding_completed,
+        provider: user.app_metadata?.provider || 'email',
         createdAt: newProfile.created_at,
         updatedAt: newProfile.updated_at,
       },
