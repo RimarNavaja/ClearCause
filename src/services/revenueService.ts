@@ -7,14 +7,12 @@ import { supabase } from '@/lib/supabase';
 
 export interface RevenueStats {
   platformFees: number;
-  gatewayFees: number;
   netRevenue: number;
   donationCount: number;
 }
 
 export interface PeriodRevenueStats {
   platformFees: number;
-  gatewayFees: number;
   totalGross: number;
   totalNet: number;
   donationCount: number;
@@ -23,7 +21,6 @@ export interface PeriodRevenueStats {
 export interface RevenueTrend {
   month: string;
   platformFees: number;
-  gatewayFees: number;
   donationCount: number;
 }
 
@@ -32,7 +29,6 @@ export interface CampaignRevenue {
   campaignTitle: string;
   grossAmount: number;
   platformFees: number;
-  gatewayFees: number;
   netToCharity: number;
   donationCount: number;
 }
@@ -52,15 +48,13 @@ export async function getTotalPlatformRevenue(): Promise<RevenueStats> {
   const stats = data.reduce((acc, donation) => {
     const fees = donation.metadata?.fees || {};
     const platformFee = parseFloat(fees.platformFee || 0);
-    const gatewayFee = parseFloat(fees.gatewayFee || 0);
 
     return {
       platformFees: acc.platformFees + platformFee,
-      gatewayFees: acc.gatewayFees + gatewayFee,
-      netRevenue: acc.netRevenue + (platformFee - gatewayFee),
+      netRevenue: acc.netRevenue + platformFee,
       donationCount: acc.donationCount + 1,
     };
-  }, { platformFees: 0, gatewayFees: 0, netRevenue: 0, donationCount: 0 });
+  }, { platformFees: 0, netRevenue: 0, donationCount: 0 });
 
   return stats;
 }
@@ -89,14 +83,12 @@ export async function getPlatformRevenueByPeriod(
     const fees = donation.metadata?.fees || {};
     return {
       platformFees: acc.platformFees + parseFloat(fees.platformFee || 0),
-      gatewayFees: acc.gatewayFees + parseFloat(fees.gatewayFee || 0),
       totalGross: acc.totalGross + parseFloat(fees.grossAmount || donation.amount || 0),
       totalNet: acc.totalNet + parseFloat(fees.netAmount || 0),
       donationCount: acc.donationCount + 1,
     };
   }, {
     platformFees: 0,
-    gatewayFees: 0,
     totalGross: 0,
     totalNet: 0,
     donationCount: 0,
@@ -124,18 +116,16 @@ export async function getRevenueTrends(months: number = 6): Promise<RevenueTrend
   if (error) throw error;
 
   // Group by month
-  const monthlyData = new Map<string, { platformFees: number; gatewayFees: number; count: number }>();
+  const monthlyData = new Map<string, { platformFees: number; count: number }>();
 
   data.forEach(donation => {
     const month = new Date(donation.created_at).toISOString().substring(0, 7); // YYYY-MM
     const fees = donation.metadata?.fees || {};
     const platformFee = parseFloat(fees.platformFee || 0);
-    const gatewayFee = parseFloat(fees.gatewayFee || 0);
 
-    const existing = monthlyData.get(month) || { platformFees: 0, gatewayFees: 0, count: 0 };
+    const existing = monthlyData.get(month) || { platformFees: 0, count: 0 };
     monthlyData.set(month, {
       platformFees: existing.platformFees + platformFee,
-      gatewayFees: existing.gatewayFees + gatewayFee,
       count: existing.count + 1,
     });
   });
@@ -143,7 +133,6 @@ export async function getRevenueTrends(months: number = 6): Promise<RevenueTrend
   return Array.from(monthlyData.entries()).map(([month, data]) => ({
     month,
     platformFees: data.platformFees,
-    gatewayFees: data.gatewayFees,
     donationCount: data.count,
   }));
 }
@@ -167,7 +156,6 @@ export async function getPlatformRevenueByCampaign(): Promise<CampaignRevenue[]>
     const campaignId = donation.campaign_id;
     const fees = donation.metadata?.fees || {};
     const platformFee = parseFloat(fees.platformFee || 0);
-    const gatewayFee = parseFloat(fees.gatewayFee || 0);
     const netAmount = parseFloat(fees.netAmount || 0);
     const grossAmount = parseFloat(fees.grossAmount || donation.amount || 0);
 
@@ -178,7 +166,6 @@ export async function getPlatformRevenueByCampaign(): Promise<CampaignRevenue[]>
       campaignTitle,
       grossAmount: 0,
       platformFees: 0,
-      gatewayFees: 0,
       netToCharity: 0,
       count: 0,
     };
@@ -187,7 +174,6 @@ export async function getPlatformRevenueByCampaign(): Promise<CampaignRevenue[]>
       ...existing,
       grossAmount: existing.grossAmount + grossAmount,
       platformFees: existing.platformFees + platformFee,
-      gatewayFees: existing.gatewayFees + gatewayFee,
       netToCharity: existing.netToCharity + netAmount,
       count: existing.count + 1,
     });
@@ -199,7 +185,6 @@ export async function getPlatformRevenueByCampaign(): Promise<CampaignRevenue[]>
       campaignTitle: data.campaignTitle,
       grossAmount: data.grossAmount,
       platformFees: data.platformFees,
-      gatewayFees: data.gatewayFees,
       netToCharity: data.netToCharity,
       donationCount: data.count,
     }))

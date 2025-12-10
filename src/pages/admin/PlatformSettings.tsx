@@ -50,6 +50,7 @@ const PlatformSettings = () => {
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsValues, setSettingsValues] = useState<Record<string, any>>({});
   const [hasChanges, setHasChanges] = useState(false);
+  const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
 
   // Campaign Categories State
   const [categories, setCategories] = useState<CampaignCategory[]>([]);
@@ -128,6 +129,30 @@ const PlatformSettings = () => {
   const handleSettingChange = (key: string, value: any) => {
     setSettingsValues(prev => ({ ...prev, [key]: value }));
     setHasChanges(true);
+  };
+
+  const validateSettingsValues = (values: Record<string, any>): boolean => {
+    // Check platform fee percentage
+    const platformFee = values['platform_fee_percentage'];
+    if (platformFee === '' || platformFee === null || platformFee === undefined) {
+      return false;
+    }
+    const platformFeeNum = Number(platformFee);
+    if (isNaN(platformFeeNum) || platformFeeNum < 0 || platformFeeNum > 20) {
+      return false;
+    }
+
+    // Check minimum donation amount
+    const minDonation = values['minimum_donation_amount'];
+    if (minDonation === '' || minDonation === null || minDonation === undefined) {
+      return false;
+    }
+    const minDonationNum = Number(minDonation);
+    if (isNaN(minDonationNum) || minDonationNum < 100 || minDonationNum > 10000) {
+      return false;
+    }
+
+    return true;
   };
 
   const handleSaveSettings = async () => {
@@ -302,11 +327,46 @@ const PlatformSettings = () => {
               min={0}
               max={20}
               step={0.01}
-              onChange={(e) => handleSettingChange(setting.key, parseFloat(e.target.value) || 0)}
+              className={invalidFields.has('platform_fee_percentage') ? 'border-red-500 focus:ring-red-500' : ''}
+              onChange={(e) => {
+                const inputValue = e.target.value;
+                const newInvalidFields = new Set(invalidFields);
+
+                if (inputValue === '' || inputValue === '-') {
+                  newInvalidFields.add('platform_fee_percentage');
+                  handleSettingChange('platform_fee_percentage', '');
+                } else {
+                  const parsed = parseFloat(inputValue);
+                  if (isNaN(parsed) || parsed < 0 || parsed > 20) {
+                    newInvalidFields.add('platform_fee_percentage');
+                  } else {
+                    newInvalidFields.delete('platform_fee_percentage');
+                  }
+                  handleSettingChange('platform_fee_percentage', isNaN(parsed) ? '' : parsed);
+                }
+
+                setInvalidFields(newInvalidFields);
+              }}
               onWheel={(e) => e.currentTarget.blur()}
               onBlur={(e) => {
-                const newValue = parseFloat(e.target.value);
-                if (newValue < 0 || newValue > 20) {
+                const inputValue = e.target.value;
+
+                // Don't reset during typing - only when field is completely empty AND user navigates away
+                if (inputValue === '' || inputValue === '-') {
+                  // Reset to previous valid value
+                  const setting = platformSettings.find(s => s.key === 'platform_fee_percentage');
+                  if (setting) {
+                    handleSettingChange('platform_fee_percentage', setting.value);
+                    const newInvalidFields = new Set(invalidFields);
+                    newInvalidFields.delete('platform_fee_percentage');
+                    setInvalidFields(newInvalidFields);
+                  }
+                  return;
+                }
+
+                // Validate range only - don't reset, validation state is already tracked
+                const newValue = parseFloat(inputValue);
+                if (isNaN(newValue) || newValue < 0 || newValue > 20) {
                   toast({
                     title: 'Invalid value',
                     description: 'Platform fee must be between 0% and 20%',
@@ -316,10 +376,18 @@ const PlatformSettings = () => {
                   const setting = platformSettings.find(s => s.key === 'platform_fee_percentage');
                   if (setting) {
                     handleSettingChange('platform_fee_percentage', setting.value);
+                    const newInvalidFields = new Set(invalidFields);
+                    newInvalidFields.delete('platform_fee_percentage');
+                    setInvalidFields(newInvalidFields);
                   }
                 }
               }}
             />
+            {invalidFields.has('platform_fee_percentage') && (
+              <p className="text-xs text-red-600 mt-1">
+                Please enter a valid percentage between 0 and 20
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
               Current: {value}% • Valid range: 0% - 20%
             </p>
@@ -339,24 +407,63 @@ const PlatformSettings = () => {
               value={value}
               min={100}
               max={10000}
-              onChange={(e) => handleSettingChange(setting.key, parseFloat(e.target.value) || 0)}
+              className={invalidFields.has('minimum_donation_amount') ? 'border-red-500 focus:ring-red-500' : ''}
+              onChange={(e) => {
+                const inputValue = e.target.value;
+                const newInvalidFields = new Set(invalidFields);
+
+                if (inputValue === '' || inputValue === '-') {
+                  newInvalidFields.add('minimum_donation_amount');
+                  handleSettingChange('minimum_donation_amount', '');
+                } else {
+                  const parsed = parseFloat(inputValue);
+                  if (isNaN(parsed) || parsed < 100 || parsed > 10000) {
+                    newInvalidFields.add('minimum_donation_amount');
+                  } else {
+                    newInvalidFields.delete('minimum_donation_amount');
+                  }
+                  handleSettingChange('minimum_donation_amount', isNaN(parsed) ? '' : parsed);
+                }
+
+                setInvalidFields(newInvalidFields);
+              }}
               onWheel={(e) => e.currentTarget.blur()}
               onBlur={(e) => {
-                const newValue = parseFloat(e.target.value);
-                if (newValue < 100 || newValue > 10000) {
+                const inputValue = e.target.value;
+
+                if (inputValue === '' || inputValue === '-') {
+                  const setting = platformSettings.find(s => s.key === 'minimum_donation_amount');
+                  if (setting) {
+                    handleSettingChange('minimum_donation_amount', setting.value);
+                    const newInvalidFields = new Set(invalidFields);
+                    newInvalidFields.delete('minimum_donation_amount');
+                    setInvalidFields(newInvalidFields);
+                  }
+                  return;
+                }
+
+                const newValue = parseFloat(inputValue);
+                if (isNaN(newValue) || newValue < 100 || newValue > 10000) {
                   toast({
                     title: 'Invalid value',
                     description: 'Minimum donation must be between ₱100 and ₱10,000',
                     variant: 'destructive',
                   });
-                  // Reset to previous valid value
                   const setting = platformSettings.find(s => s.key === 'minimum_donation_amount');
                   if (setting) {
                     handleSettingChange('minimum_donation_amount', setting.value);
+                    const newInvalidFields = new Set(invalidFields);
+                    newInvalidFields.delete('minimum_donation_amount');
+                    setInvalidFields(newInvalidFields);
                   }
                 }
               }}
             />
+            {invalidFields.has('minimum_donation_amount') && (
+              <p className="text-xs text-red-600 mt-1">
+                Please enter a valid amount between ₱100 and ₱10,000
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
               Current: ₱{value} • Valid range: ₱100 - ₱10,000
             </p>
@@ -442,20 +549,31 @@ const PlatformSettings = () => {
                 ))}
 
                 {hasChanges && (
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        loadPlatformSettings();
-                        setHasChanges(false);
-                      }}
-                    >
-                      Reset
-                    </Button>
-                    <Button onClick={handleSaveSettings}>
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Changes
-                    </Button>
+                  <div className="flex flex-col items-end space-y-2">
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          loadPlatformSettings();
+                          setHasChanges(false);
+                          setInvalidFields(new Set());
+                        }}
+                      >
+                        Reset
+                      </Button>
+                      <Button
+                        onClick={handleSaveSettings}
+                        disabled={!validateSettingsValues(settingsValues)}
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </Button>
+                    </div>
+                    {!validateSettingsValues(settingsValues) && (
+                      <p className="text-sm text-red-600">
+                        Please enter valid values for all required fields
+                      </p>
+                    )}
                   </div>
                 )}
               </>

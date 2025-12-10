@@ -4,10 +4,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 const PAYMONGO_SECRET_KEY = Deno.env.get('PAYMONGO_SECRET_KEY')!;
 const PAYMONGO_API_URL = 'https://api.paymongo.com/v1';
 
-// Fee calculation constants
-const GATEWAY_FEE_RATE = 0.025;  // 2.5% PayMongo gateway fee (effective rate)
-const GATEWAY_FIXED_FEE = 10;    // ₱10 PayMongo fixed fee
-
 // Fetch configurable platform fee rate from database
 async function getPlatformFeeRate(supabase: any): Promise<number> {
   try {
@@ -57,47 +53,44 @@ async function getMinimumDonation(supabase: any): Promise<number> {
 interface FeeBreakdown {
   grossAmount: number;      // Donor's intended donation
   platformFee: number;      // ClearCause fee
-  gatewayFee: number;       // PayMongo fee
   tipAmount: number;        // Optional tip
   netAmount: number;        // Amount to charity
   totalCharge: number;      // Total charged to donor
+  donorCoversFees: boolean; // Whether donor is covering fees
 }
 
 function calculateDonationFees(
   grossAmount: number,
   tipAmount: number = 0,
-  coverFees: boolean = true
+  coverFees: boolean = true,
+  platformFeeRate: number
 ): FeeBreakdown {
   if (coverFees) {
-    // Donor covers fees - use gross-up formula
-    // Charity gets 100% of intended donation
-    const platformFee = Math.round(grossAmount * PLATFORM_FEE_RATE * 100) / 100;
-    const targetNet = grossAmount + platformFee + tipAmount;
-    const totalCharge = Math.round((targetNet / (1 - GATEWAY_FEE_RATE)) * 100) / 100;
-    const gatewayFee = Math.round((totalCharge - targetNet) * 100) / 100;
+    // Donor covers fees - charity gets 100% of intended donation
+    const platformFee = Math.round(grossAmount * platformFeeRate * 100) / 100;
+    const totalCharge = grossAmount + platformFee + tipAmount;
 
     return {
       grossAmount,
       platformFee,
-      gatewayFee,
       tipAmount,
       netAmount: grossAmount,  // Charity gets 100% of donation (tip goes to ClearCause!)
-      totalCharge
+      totalCharge,
+      donorCoversFees: true
     };
   } else {
     // Standard deduction - fees deducted from donation
-    const platformFee = Math.round(grossAmount * PLATFORM_FEE_RATE * 100) / 100;
+    const platformFee = Math.round(grossAmount * platformFeeRate * 100) / 100;
     const totalCharge = grossAmount + tipAmount;
-    const gatewayFee = Math.round((totalCharge * GATEWAY_FEE_RATE + GATEWAY_FIXED_FEE) * 100) / 100;
-    const netAmount = grossAmount - platformFee - gatewayFee;  // Charity gets donation minus fees (tip goes to ClearCause!)
+    const netAmount = grossAmount - platformFee;  // Charity gets donation minus platform fee (tip goes to ClearCause!)
 
     return {
       grossAmount,
       platformFee,
-      gatewayFee,
       tipAmount,
       netAmount,
-      totalCharge
+      totalCharge,
+      donorCoversFees: false
     };
   }
 }
@@ -192,7 +185,7 @@ serve(async (req) => {
     });
 
     // 4. Calculate fees
-    const fees = calculateDonationFees(amount, tipAmount, coverFees);
+    const fees = calculateDonationFees(amount, tipAmount, coverFees, PLATFORM_FEE_RATE);
     console.log('Fee breakdown:', fees);
 
     // Validate minimum net amount to charity (₱50 minimum)
@@ -277,7 +270,6 @@ serve(async (req) => {
           grossAmount: fees.grossAmount,
           platformFee: fees.platformFee,
           platformFeePercentage: PLATFORM_FEE_RATE * 100, // Store as percentage for history
-          gatewayFee: fees.gatewayFee,
           tipAmount: fees.tipAmount,
           netAmount: fees.netAmount,
           totalCharge: fees.totalCharge,

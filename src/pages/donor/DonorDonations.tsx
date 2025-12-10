@@ -466,8 +466,8 @@ const DonorDonations: React.FC = () => {
                           </div>
 
                           {/* Fee breakdown display - only show if there are actual fees */}
-                          {donation.platformFee !== undefined && donation.gatewayFee !== undefined &&
-                           (donation.platformFee > 0 || donation.gatewayFee > 0 || donation.coverFees) ? (
+                          {donation.platformFee !== undefined &&
+                           (donation.platformFee > 0 || donation.coverFees) ? (
                             <div className="space-y-0.5 text-sm bg-gray-50 p-2 rounded border">
                               {/* Base donation */}
                               <div className="flex justify-between items-center">

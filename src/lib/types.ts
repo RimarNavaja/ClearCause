@@ -574,7 +574,6 @@ export interface Donation {
   // Fee breakdown (stored in metadata.fees)
   grossAmount?: number;
   platformFee?: number;
-  gatewayFee?: number;
   tipAmount?: number;
   netAmount?: number;               // What charity receives after fees
   totalCharge?: number;             // What donor actually paid (including fees if covered)
