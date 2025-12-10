@@ -151,6 +151,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
+  // Redirect to onboarding if user is logged in but hasn't completed onboarding
+  // and is not already on the onboarding page
+  if (user && !user.onboardingCompleted && location.pathname !== '/onboarding') {
+    console.debug('ProtectedRoute: User pending onboarding, redirecting to /onboarding');
+    return <Navigate to="/onboarding" replace />;
+  }
+
   // Check role requirements
   if (requireRoles.length > 0 && !hasAnyRole(requireRoles)) {
     return (

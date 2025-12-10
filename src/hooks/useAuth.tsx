@@ -22,7 +22,9 @@ interface AuthContextType {
   signOut: () => Promise<ApiResponse<void>>;
   resetPassword: (email: string) => Promise<ApiResponse<void>>;
   updatePassword: (newPassword: string) => Promise<ApiResponse<void>>;
+  updateEmail: (email: string) => Promise<ApiResponse<void>>;
   updateProfile: (updates: { fullName?: string; avatarUrl?: string }) => Promise<ApiResponse<User>>;
+  completeOnboarding: (firstName: string, lastName: string, role: UserRole) => Promise<ApiResponse<User>>;
   refreshUser: () => Promise<void>;
   hasRole: (requiredRole: UserRole) => boolean;
   hasAnyRole: (requiredRoles: UserRole[]) => boolean;
@@ -388,6 +390,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     role: userRole as 'donor' | 'charity' | 'admin',
                     isVerified: !!session.user.email_confirmed_at,
                     isActive: true,
+                    onboardingCompleted: session.user.user_metadata?.onboarding_completed || false,
                     createdAt: session.user.created_at || new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                   };
@@ -763,8 +766,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return authService.updatePassword(newPassword);
   };
 
+  const updateEmail = async (email: string): Promise<ApiResponse<void>> => {
+    return authService.updateEmail(email);
+  };
+
   const updateProfile = async (updates: { fullName?: string; avatarUrl?: string }): Promise<ApiResponse<User>> => {
     const result = await authService.updateProfile(updates);
+    if (result.success && result.data) {
+      setUser(result.data);
+    }
+    return result;
+  };
+
+  const completeOnboarding = async (firstName: string, lastName: string, role: UserRole): Promise<ApiResponse<User>> => {
+    const result = await authService.completeOnboarding(firstName, lastName, role);
     if (result.success && result.data) {
       setUser(result.data);
     }
@@ -797,7 +812,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     signOut,
     resetPassword,
     updatePassword,
+    updateEmail,
     updateProfile,
+    completeOnboarding,
     refreshUser,
     hasRole,
     hasAnyRole,

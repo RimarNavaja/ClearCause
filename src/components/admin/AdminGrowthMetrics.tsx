@@ -18,7 +18,7 @@ const AdminGrowthMetrics: React.FC<AdminGrowthMetricsProps> = ({ stats }) => {
       total: stats.totalUsers,
       icon: Users,
       color: "text-blue-600",
-      bgColor: "bg-blue-50",
+      bgColor: "bg-blue-500",
     },
     {
       title: "New Campaigns This Month",
@@ -26,7 +26,7 @@ const AdminGrowthMetrics: React.FC<AdminGrowthMetricsProps> = ({ stats }) => {
       total: stats.totalCampaigns,
       icon: Target,
       color: "text-purple-600",
-      bgColor: "bg-purple-50",
+      bgColor: "bg-purple-500",
     },
     {
       title: "Donations This Month",
@@ -34,7 +34,7 @@ const AdminGrowthMetrics: React.FC<AdminGrowthMetricsProps> = ({ stats }) => {
       total: stats.totalDonations,
       icon: TrendingUp,
       color: "text-green-600",
-      bgColor: "bg-green-50",
+      bgColor: "bg-green-500",
     },
     {
       title: "Amount Raised This Month",
@@ -42,7 +42,7 @@ const AdminGrowthMetrics: React.FC<AdminGrowthMetricsProps> = ({ stats }) => {
       total: stats.totalAmountRaised,
       icon: DollarSign,
       color: "text-emerald-600",
-      bgColor: "bg-emerald-50",
+      bgColor: "bg-emerald-500",
       isCurrency: true,
     },
   ];
@@ -58,7 +58,7 @@ const AdminGrowthMetrics: React.FC<AdminGrowthMetricsProps> = ({ stats }) => {
             <Card key={index} className="overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
-                <div className={`p-2 rounded-lg ${metric.bgColor}`}>
+                <div className="p-2 rounded-lg " >
                   <metric.icon className={`h-4 w-4 ${metric.color}`} />
                 </div>
               </CardHeader>

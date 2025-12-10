@@ -30,6 +30,7 @@ import DonateError from "./pages/DonateError";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import AuthCallback from "./pages/AuthCallback";
+import Onboarding from "./pages/Onboarding";
 import DonorDashboard from "./pages/donor/DonorDashboard";
 import DonorCampaigns from "./pages/donor/DonorCampaigns";
 import DonorDonations from "./pages/donor/DonorDonations";
@@ -105,6 +106,13 @@ const App = () => (
           
           {/* Auth callback route */}
           <Route path="/auth/callback" element={<AuthCallback />} />
+          
+          {/* Onboarding route */}
+          <Route path="/onboarding" element={
+            <ProtectedRoute>
+              <Onboarding />
+            </ProtectedRoute>
+          } />
 
           {/* Protected donation routes */}
           <Route path="/donate/:campaignId" element={

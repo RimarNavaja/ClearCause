@@ -172,8 +172,15 @@ const DonorCampaigns: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Get current category name for display
+  const getCurrentCategoryName = () => {
+    if (selectedCategory === "all") return "All Categories";
+    const category = categories.find(c => c.slug === selectedCategory);
+    return category ? category.name : selectedCategory;
+  };
+
   // Use different layouts based on user role
-  const PageContent = () => (
+  const pageContent = (
     <div className={isDonor ? "space-y-6" : "space-y-6"}>
         {/* Description */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

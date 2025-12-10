@@ -219,7 +219,7 @@ const AuthCallback: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 font-poppinsregular">
         <div className="max-w-md w-full bg-white shadow rounded-lg p-6">
           <div className="text-center">
             <div className="text-red-500 text-lg font-medium mb-2">
@@ -234,11 +234,11 @@ const AuthCallback: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 font-poppinsregular">
       <div className="max-w-md w-full bg-white shadow rounded-lg p-6">
         <div className="text-center">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-clearcause-primary mb-4" />
-          <h2 className="text-lg font-medium text-gray-900 mb-2">
+          <h2 className="text-lg font-medium text-gray-900 mb-2 font-robotobold">
             {status}
           </h2>
           <p className="text-gray-600">

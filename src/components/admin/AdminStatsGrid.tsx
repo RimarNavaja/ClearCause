@@ -129,7 +129,7 @@ const AdminStatsGrid = () => {
               <p className="text-xs text-muted-foreground mb-3">{stat.change}</p>
               {/* Mini progress bar based on relative value */}
               <div className="mt-2">
-                <div className="h-2 w-full rounded bg-muted relative overflow-hidden">
+                {/* <div className="h-2 w-full rounded bg-muted relative overflow-hidden">
                   <div
                     className="h-2 rounded animate-progress-fill"
                     style={{
@@ -137,7 +137,7 @@ const AdminStatsGrid = () => {
                       backgroundColor: stat.barColor
                     }}
                   />
-                </div>
+                </div> */}
               </div>
             </CardContent>
           </Card>

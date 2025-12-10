@@ -1,25 +1,5 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import {
-  Eye,
-  EyeOff,
-  Loader2,
-  CheckCircle,
-  Info,
-  Users,
-  Heart,
-  Building2,
-  ArrowRight,
-  Shield,
-  Upload,
-  User,
-  MapPin,
-  FileText,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Card, CardContent } from "@/components/ui/card";
-import { organizationTypes } from "@/types/ApplyToCauseTypes";
+import { config } from "@/lib/config";
+import { signInWithGoogle } from "@/lib/auth";
 
 interface UploadedDocuments {
   secCertificate: File | null;
@@ -28,6 +8,7 @@ interface UploadedDocuments {
 }
 
 interface EnhancedSignupFormProps {
+  // ... existing props
   accountType: "donor" | "charity";
   setAccountType: (type: "donor" | "charity") => void;
   firstName: string;
@@ -74,6 +55,7 @@ interface EnhancedSignupFormProps {
 }
 
 const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
+  // ... existing props
   accountType,
   setAccountType,
   firstName,
@@ -124,9 +106,11 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [googleError, setGoogleError] = useState("");
 
   // Real-time validation
   const validateField = (field: string, value: string) => {
+    // ... existing validation
     const errors = { ...fieldErrors };
 
     switch (field) {
@@ -203,8 +187,22 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
     });
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      setGoogleError("");
+      const result = await signInWithGoogle();
+
+      if (!result.success) {
+        setGoogleError(result.error || "Google sign up failed. Please try again.");
+      }
+    } catch (error) {
+      setGoogleError("Google sign up failed. Please try again.");
+    }
+  };
+
   // Role-specific content
   const getRoleContent = () => {
+    // ... existing content
     if (accountType === "charity") {
       return {
         icon: <Building2 className="h-8 w-8 text-clearcause-primary" />,
@@ -281,6 +279,13 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
               <span>{error}</span>
             </div>
           )}
+          
+          {googleError && (
+             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-start">
+              <Info className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+              <span>{googleError}</span>
+            </div>
+          )}
 
           {success && (
             <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg mb-6">
@@ -304,10 +309,6 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
                       sign in.
                     </p>
                   </div>
-                  {/* <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-                    <strong> Tip:</strong> If you don't receive the email within
-                    10 minutes, try signing up again or contact support.
-                  </div> */}
                 </div>
               </div>
             </div>
@@ -605,6 +606,56 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
               </Button>
             </div>
           </form>
+
+          {config.features.socialLogin && (
+            <div className="mt-8 text-center">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <Button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  variant="outline"
+                  className="w-full hover:bg-blue-700"
+                  disabled={isSubmitting}
+                >
+                  <svg
+                    className="w-5 h-5 mr-2"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M22.56 12.25C22.56 11.47 22.49 10.72 22.36 10H12V14.26H17.92C17.66 15.63 16.88 16.78 15.71 17.55V20.25H19.28C21.36 18.31 22.56 15.57 22.56 12.25Z"
+                      fill="#4285F4"
+                    />
+                    <path
+                      d="M12 23C14.97 23 17.46 22.01 19.28 20.25L15.71 17.55C14.73 18.19 13.48 18.58 12 18.58C9.09 18.58 6.63 16.65 5.72 14.04H2.05V16.82C3.87 20.42 7.62 23 12 23Z"
+                      fill="#34A853"
+                    />
+                    <path
+                      d="M5.72 14.04C5.5 13.41 5.37 12.73 5.37 12.01C5.37 11.29 5.5 10.61 5.72 9.98002V7.20002H2.05C1.23 8.95002 0.77 10.92 0.77 12.01C0.77 13.1 1.23 15.07 2.05 16.82L5.72 14.04Z"
+                      fill="#FBBC05"
+                    />
+                    <path
+                      d="M12 5.42C13.62 5.42 15.06 5.99 16.21 7.07L19.36 3.92C17.45 2.14 14.97 1 12 1C7.62 1 3.87 3.58 2.05 7.18L5.72 9.96C6.63 7.35 9.09 5.42 12 5.42Z"
+                      fill="#EA4335"
+                    />
+                  </svg>
+                  Continue with Google
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="mt-6 text-center text-sm">
             <span className="text-gray-600">Already have an account?</span>

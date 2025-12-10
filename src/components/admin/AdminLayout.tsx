@@ -232,19 +232,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               </h1>
             </div>
             <div className="ml-auto flex items-center gap-3">
-              <div className="hidden md:block w-64">
-                <Input placeholder="Search…" className="h-8" />
-              </div>
-              <Link to={`/${user?.role || "admin"}/settings`}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="hidden md:inline-flex"
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
-                </Button>
-              </Link>
+             
+    
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
