@@ -686,7 +686,6 @@ export const getDonationsByDonor = withErrorHandling(async (
     const totalCharge = fees.totalCharge ? Number(fees.totalCharge) : donation.amount;
     const netAmount = fees.netAmount ? Number(fees.netAmount) : donation.amount;
     const platformFee = fees.platformFee ? Number(fees.platformFee) : 0;
-    const gatewayFee = fees.gatewayFee ? Number(fees.gatewayFee) : 0;
     const tipAmount = fees.tipAmount ? Number(fees.tipAmount) : 0;
     const grossAmount = fees.grossAmount ? Number(fees.grossAmount) : donation.amount;
 
@@ -720,7 +719,6 @@ export const getDonationsByDonor = withErrorHandling(async (
       netAmount,
       coverFees: fees.donorCoversFees ?? false, // Use stored value from metadata
       platformFee,
-      gatewayFee,
       tipAmount,
       grossAmount,
 

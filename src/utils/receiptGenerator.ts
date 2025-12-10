@@ -18,7 +18,6 @@ export interface ReceiptData {
 
   // Fee breakdown (optional)
   platformFee?: number;
-  gatewayFee?: number;
   tipAmount?: number;
   netAmount?: number;
   totalCharge?: number;

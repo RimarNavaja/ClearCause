@@ -18,7 +18,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import * as adminService from '@/services/adminService';
 import { PlatformStatistics } from '@/lib/types';
-import { DollarSign, TrendingUp, CreditCard, PiggyBank } from 'lucide-react';
+import { DollarSign, TrendingUp, PiggyBank } from 'lucide-react';
 import {
   getTotalPlatformRevenue,
   getPlatformRevenueByPeriod,
@@ -34,7 +34,6 @@ const AdminDashboard = () => {
   // Revenue stats state
   const [revenueStats, setRevenueStats] = useState({
     totalPlatformFees: 0,
-    totalGatewayFees: 0,
     netRevenue: 0,
     monthlyPlatformFees: 0,
     monthlyGrowth: 0,
@@ -89,7 +88,6 @@ const AdminDashboard = () => {
 
         setRevenueStats({
           totalPlatformFees: totalRevenue.platformFees,
-          totalGatewayFees: totalRevenue.gatewayFees,
           netRevenue: totalRevenue.netRevenue,
           monthlyPlatformFees: monthlyRevenue.platformFees,
           monthlyGrowth: growth,
@@ -154,7 +152,7 @@ const AdminDashboard = () => {
               ))}
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Platform Revenue</CardTitle>
@@ -185,19 +183,6 @@ const AdminDashboard = () => {
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Gateway Fees Paid</CardTitle>
-                  <CreditCard className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    ₱{revenueStats.totalGatewayFees.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </div>
-                  <p className="text-xs text-muted-foreground">Total PayMongo fees</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Net Revenue</CardTitle>
                   <PiggyBank className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
@@ -205,7 +190,7 @@ const AdminDashboard = () => {
                   <div className="text-2xl font-bold">
                     ₱{revenueStats.netRevenue.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  <p className="text-xs text-muted-foreground">Platform fees - Gateway fees</p>
+                  <p className="text-xs text-muted-foreground">All platform fees are net revenue</p>
                 </CardContent>
               </Card>
             </div>

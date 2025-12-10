@@ -139,6 +139,10 @@ const Donate: React.FC = () => {
 
   // Update fee calculator when settings change
   useEffect(() => {
+    console.log('💰 [Donate] Updating fee calculator:', {
+      platformFeePercentage,
+      minimumDonationAmount
+    });
     setPlatformFeeRate(platformFeePercentage);
     setMinimumDonation(minimumDonationAmount);
   }, [platformFeePercentage, minimumDonationAmount]);
@@ -771,12 +775,8 @@ const Donate: React.FC = () => {
                     {coverFees ? (
                       <>
                         <div className="flex justify-between text-green-600">
-                          <span>Transaction fees you're covering:</span>
-                          <span className="font-medium">+₱{(feeBreakdown.platformFee + feeBreakdown.gatewayFee).toFixed(2)}</span>
-                        </div>
-                        <div className="text-xs text-gray-500 ml-4">
-                          • Platform fee ({platformFeePercentage}%): ₱{feeBreakdown.platformFee.toFixed(2)}<br/>
-                          • Payment processing: ₱{feeBreakdown.gatewayFee.toFixed(2)}
+                          <span>Platform fee you're covering ({platformFeePercentage}%):</span>
+                          <span className="font-medium">+₱{feeBreakdown.platformFee.toFixed(2)}</span>
                         </div>
                       </>
                     ) : (
@@ -784,10 +784,6 @@ const Donate: React.FC = () => {
                         <div className="flex justify-between text-gray-500">
                           <span>Platform fee ({platformFeePercentage}%):</span>
                           <span>-₱{feeBreakdown.platformFee.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-gray-500">
-                          <span>Payment processing fee:</span>
-                          <span>-₱{feeBreakdown.gatewayFee.toFixed(2)}</span>
                         </div>
                       </>
                     )}
