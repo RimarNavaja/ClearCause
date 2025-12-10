@@ -23,6 +23,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<ApiResponse<void>>;
   updatePassword: (newPassword: string) => Promise<ApiResponse<void>>;
   updateProfile: (updates: { fullName?: string; avatarUrl?: string }) => Promise<ApiResponse<User>>;
+  completeOnboarding: (firstName: string, lastName: string, role: UserRole) => Promise<ApiResponse<User>>;
   refreshUser: () => Promise<void>;
   hasRole: (requiredRole: UserRole) => boolean;
   hasAnyRole: (requiredRoles: UserRole[]) => boolean;
@@ -771,6 +772,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return result;
   };
 
+  const completeOnboarding = async (firstName: string, lastName: string, role: UserRole): Promise<ApiResponse<User>> => {
+    const result = await authService.completeOnboarding(firstName, lastName, role);
+    if (result.success && result.data) {
+      setUser(result.data);
+    }
+    return result;
+  };
+
   const refreshUser = async (): Promise<void> => {
     if (session?.user) {
       await loadUserProfile(session.user.id);
@@ -798,6 +807,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     resetPassword,
     updatePassword,
     updateProfile,
+    completeOnboarding,
     refreshUser,
     hasRole,
     hasAnyRole,

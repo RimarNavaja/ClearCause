@@ -54,6 +54,7 @@ export const signUp = async (userData: SignUpData): Promise<ApiResponse<User>> =
             data: {
               full_name: fullName,
               role: role,
+              onboarding_completed: true,
             },
             emailRedirectTo: import.meta.env.VITE_REDIRECT_URL || `${window.location.origin}/auth/callback`,
           },
@@ -148,6 +149,8 @@ export const signUp = async (userData: SignUpData): Promise<ApiResponse<User>> =
         avatarUrl: null,
         role: role,
         isVerified: false,
+        isActive: true,
+        onboardingCompleted: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -239,6 +242,8 @@ export const signIn = async (credentials: SignInData): Promise<ApiResponse<User>
         avatarUrl: profileData.avatar_url,
         role: profileData.role,
         isVerified: profileData.is_verified,
+        isActive: profileData.is_active,
+        onboardingCompleted: profileData.onboarding_completed,
         createdAt: profileData.created_at,
         updatedAt: profileData.updated_at,
       },
@@ -415,6 +420,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
               role: profileData.role,
               isVerified: profileData.is_verified,
               isActive: profileData.is_active,
+              onboardingCompleted: profileData.onboarding_completed,
               createdAt: profileData.created_at,
               updatedAt: profileData.updated_at,
             };
@@ -476,6 +482,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
       role: (user.user_metadata?.role || 'donor') as 'donor' | 'charity' | 'admin',
       isVerified: !!user.email_confirmed_at,
       isActive: true,
+      onboardingCompleted: user.user_metadata?.onboarding_completed || false,
       createdAt: user.created_at || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -505,6 +512,8 @@ export const getCurrentUserSimple = async (): Promise<User | null> => {
       avatarUrl: user.user_metadata?.avatar_url || null,
       role: (user.user_metadata?.role || 'donor') as 'donor' | 'charity' | 'admin',
       isVerified: !!user.email_confirmed_at,
+      isActive: true,
+      onboardingCompleted: user.user_metadata?.onboarding_completed || false,
       createdAt: user.created_at || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -651,19 +660,81 @@ export const updateProfile = async (updates: {
         avatarUrl: data.avatar_url,
         role: data.role,
         isVerified: data.is_verified,
+        isActive: data.is_active,
+        onboardingCompleted: data.onboarding_completed,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
       },
       message: 'Profile updated successfully',
     };
   } catch (error) {
-    console.error('Profile update error:', error);
+    return { success: false, error: 'An unexpected error occurred' };
+  }
+};
+
+/**
+ * Complete user onboarding
+ */
+export const completeOnboarding = async (
+  firstName: string,
+  lastName: string,
+  role: UserRole
+): Promise<ApiResponse<User>> => {
+  try {
+    const currentUser = await getCurrentUser();
+    
+    if (!currentUser) {
+      throw new ClearCauseError('USER_NOT_FOUND', 'User not authenticated', 401);
+    }
+
+    const fullName = `${firstName.trim()} ${lastName.trim()}`;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: fullName,
+        role: role,
+        onboarding_completed: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', currentUser.id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new ClearCauseError('ONBOARDING_FAILED', error.message, 400);
+    }
+
+    // Log audit event
+    await logAuditEvent(currentUser.id, 'USER_ONBOARDING', 'user', currentUser.id, {
+      role,
+      fullName
+    });
+
+    return {
+      success: true,
+      data: {
+        id: data.id,
+        email: data.email,
+        fullName: data.full_name,
+        avatarUrl: data.avatar_url,
+        role: data.role,
+        isVerified: data.is_verified,
+        isActive: data.is_active,
+        onboardingCompleted: data.onboarding_completed,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      },
+      message: 'Onboarding completed successfully',
+    };
+  } catch (error) {
+    console.error('Onboarding error:', error);
     
     if (error instanceof ClearCauseError) {
       return { success: false, error: error.message };
     }
     
-    return { success: false, error: 'An unexpected error occurred' };
+    return { success: false, error: 'An unexpected error occurred during onboarding' };
   }
 };
 
@@ -770,6 +841,8 @@ export const handleOAuthCallback = async (): Promise<ApiResponse<User>> => {
           avatarUrl: existingProfile.avatar_url,
           role: existingProfile.role,
           isVerified: existingProfile.is_verified,
+          isActive: existingProfile.is_active,
+          onboardingCompleted: existingProfile.onboarding_completed,
           createdAt: existingProfile.created_at,
           updatedAt: existingProfile.updated_at,
         },
@@ -810,6 +883,8 @@ export const handleOAuthCallback = async (): Promise<ApiResponse<User>> => {
         avatarUrl: newProfile.avatar_url,
         role: newProfile.role,
         isVerified: newProfile.is_verified,
+        isActive: newProfile.is_active,
+        onboardingCompleted: newProfile.onboarding_completed,
         createdAt: newProfile.created_at,
         updatedAt: newProfile.updated_at,
       },

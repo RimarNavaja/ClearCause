@@ -27,6 +27,7 @@ export interface Database {
           role: UserRole;
           is_verified: boolean;
           is_active: boolean;
+          onboarding_completed: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -39,6 +40,7 @@ export interface Database {
           role?: UserRole;
           is_verified?: boolean;
           is_active?: boolean;
+          onboarding_completed?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -51,6 +53,7 @@ export interface Database {
           role?: UserRole;
           is_verified?: boolean;
           is_active?: boolean;
+          onboarding_completed?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -502,6 +505,7 @@ export interface User {
   phone: string | null;
   isVerified: boolean;
   isActive: boolean;
+  onboardingCompleted: boolean;
   createdAt: string;
   updatedAt: string;
 }
