@@ -29,6 +29,50 @@ import { getCampaignById } from './campaignService';
 import { checkAndAwardAchievements } from './achievementService';
 
 /**
+ * Parse backend error response and extract user-friendly message
+ * Handles errors from Edge Functions like create-gcash-payment
+ */
+function parseBackendError(error: any): string {
+  // If error is already a string, check if it's a backend error code
+  if (typeof error === 'string') {
+    if (error.includes('INVALID_AMOUNT')) {
+      // Try to extract minimum from error message
+      const match = error.match(/Minimum donation is ₱(\d+)/);
+      if (match) {
+        const minimum = match[1];
+        return `Your donation amount is below the minimum of ₱${parseInt(minimum).toLocaleString()}. Please enter a higher amount.`;
+      }
+      return 'Your donation amount is invalid. Please check the minimum donation amount and try again.';
+    }
+
+    if (error.includes('PAYMENT_ERROR')) {
+      return 'There was a problem processing your payment. Please try again or contact support.';
+    }
+
+    return error;
+  }
+
+  // If error is an object with message/error fields
+  if (error?.message) {
+    return parseBackendError(error.message);
+  }
+
+  if (error?.error) {
+    // Check if error object has details
+    if (error.error === 'INVALID_AMOUNT' && error.details) {
+      const { minimumRequired, provided } = error.details;
+      if (minimumRequired && provided) {
+        return `Your donation of ₱${provided.toLocaleString()} is below the minimum of ₱${minimumRequired.toLocaleString()}. Please enter at least ₱${minimumRequired.toLocaleString()}.`;
+      }
+    }
+
+    return parseBackendError(error.error);
+  }
+
+  return 'An unexpected error occurred. Please try again.';
+}
+
+/**
  * Create donation
  */
 export const createDonation = withErrorHandling(async (
@@ -570,7 +614,8 @@ export const getDonationsByCampaign = withErrorHandling(async (
 export const getDonationsByDonor = withErrorHandling(async (
   donorId: string,
   params: PaginationParams,
-  currentUserId: string
+  currentUserId: string,
+  filters: DonationFilters = {}
 ): Promise<PaginatedResponse<Donation>> => {
   // Validate user IDs
   if (!donorId || donorId === 'undefined' || donorId === 'null' || donorId === undefined || donorId === null || typeof donorId !== 'string' || donorId.trim() === '') {
@@ -592,8 +637,11 @@ export const getDonationsByDonor = withErrorHandling(async (
   const { page, limit, sortBy = 'donated_at', sortOrder = 'desc' } = validatedParams;
   const offset = (page - 1) * limit;
 
-  // Get donations
-  const { data, count, error } = await supabase
+  // Validate filters
+  const validatedFilters = validateData(donationFilterSchema, filters);
+
+  // Build query
+  let query = supabase
     .from('donations')
     .select(`
       *,
@@ -606,27 +654,77 @@ export const getDonationsByDonor = withErrorHandling(async (
         )
       )
     `, { count: 'exact' })
-    .eq('user_id', donorId)
+    .eq('user_id', donorId);
+
+  // Apply status filter
+  if (validatedFilters.status && validatedFilters.status.length > 0) {
+    query = query.in('status', validatedFilters.status);
+  }
+
+  // Apply search filter (search campaign title via join)
+  if (validatedFilters.search) {
+    query = query.or(`campaigns.title.ilike.%${validatedFilters.search}%`);
+  }
+
+  // Apply pagination and sorting
+  query = query
     .order(sortBy, { ascending: sortOrder === 'asc' })
     .range(offset, offset + limit - 1);
+
+  // Execute query
+  const { data, count, error } = await query;
 
   if (error) {
     throw handleSupabaseError(error);
   }
 
-  const donations = data.map(donation => ({
-    id: donation.id,
-    donorId: donation.user_id,
-    campaignId: donation.campaign_id,
-    amount: donation.amount,
-    status: donation.status,
-    paymentMethod: donation.payment_method,
-    transactionId: donation.transaction_id,
-    message: donation.message,
-    isAnonymous: donation.is_anonymous,
-    createdAt: donation.donated_at,
-    updatedAt: donation.updated_at,
-    campaign: donation.campaigns ? {
+  const donations = data.map(donation => {
+    // Extract fee breakdown from metadata
+    const fees = donation.metadata?.fees || {};
+
+    // Convert string values to numbers if needed
+    const totalCharge = fees.totalCharge ? Number(fees.totalCharge) : donation.amount;
+    const netAmount = fees.netAmount ? Number(fees.netAmount) : donation.amount;
+    const platformFee = fees.platformFee ? Number(fees.platformFee) : 0;
+    const gatewayFee = fees.gatewayFee ? Number(fees.gatewayFee) : 0;
+    const tipAmount = fees.tipAmount ? Number(fees.tipAmount) : 0;
+    const grossAmount = fees.grossAmount ? Number(fees.grossAmount) : donation.amount;
+
+    // Debug log for recent donations
+    if (fees.totalCharge) {
+      console.log('Donation with fees:', {
+        id: donation.id,
+        amount: donation.amount,
+        totalCharge,
+        netAmount,
+        coverFees: fees.donorCoversFees ?? false,  // Use stored value
+        fees
+      });
+    }
+
+    return {
+      id: donation.id,
+      donorId: donation.user_id,
+      campaignId: donation.campaign_id,
+      amount: donation.amount,
+      status: donation.status,
+      paymentMethod: donation.payment_method,
+      transactionId: donation.transaction_id,
+      message: donation.message,
+      isAnonymous: donation.is_anonymous,
+      createdAt: donation.donated_at,
+      updatedAt: donation.updated_at,
+
+      // Add fee breakdown fields from metadata
+      totalCharge,
+      netAmount,
+      coverFees: fees.donorCoversFees ?? false, // Use stored value from metadata
+      platformFee,
+      gatewayFee,
+      tipAmount,
+      grossAmount,
+
+      campaign: donation.campaigns ? {
       id: donation.campaigns.id,
       charityId: donation.campaigns.charity_id,
       title: donation.campaigns.title,
@@ -657,7 +755,8 @@ export const getDonationsByDonor = withErrorHandling(async (
         updatedAt: '',
       } : undefined,
     } : undefined,
-  }));
+    };
+  });
 
   return createPaginatedResponse(donations, count || 0, validatedParams);
 });
@@ -1013,6 +1112,8 @@ export const getDonorDonations = getDonationsByDonor;
 export const createGCashPayment = withErrorHandling(async (
   donationId: string,
   amount: number,
+  tipAmount: number = 0,
+  coverFees: boolean = true,
   userId: string
 ): Promise<ApiResponse<{ checkoutUrl: string; sessionId: string }>> => {
   try {
@@ -1021,6 +1122,8 @@ export const createGCashPayment = withErrorHandling(async (
     console.log('Request params:', {
       donationId,
       amount,
+      tipAmount,
+      coverFees,
       userId
     });
 
@@ -1036,7 +1139,7 @@ export const createGCashPayment = withErrorHandling(async (
 
     const apiUrl = `${import.meta.env.VITE_API_URL}/create-gcash-payment`;
     console.log('Calling Edge Function:', apiUrl);
-    console.log('Request body:', { donationId, amount, userId });
+    console.log('Request body:', { donationId, amount, tipAmount, coverFees, userId });
 
     const response = await fetch(
       apiUrl,
@@ -1049,6 +1152,8 @@ export const createGCashPayment = withErrorHandling(async (
         body: JSON.stringify({
           donationId,
           amount,
+          tipAmount,
+          coverFees,
           userId,
         }),
       }
@@ -1061,7 +1166,8 @@ export const createGCashPayment = withErrorHandling(async (
 
     if (!response.ok) {
       console.error('❌ Payment creation failed:', data);
-      throw new ClearCauseError('PAYMENT_ERROR', data.error || 'Failed to create payment', response.status);
+      const userFriendlyError = parseBackendError(data);
+      throw new ClearCauseError('PAYMENT_ERROR', userFriendlyError, response.status);
     }
 
     console.log('✅ Payment session created:', {

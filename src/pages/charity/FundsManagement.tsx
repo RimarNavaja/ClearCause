@@ -16,6 +16,7 @@ import {
   Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { downloadTransactionsCSV } from '@/utils/transactionExport';
 import CharityLayout from '@/components/layout/CharityLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -135,7 +136,7 @@ const FundsManagement: React.FC = () => {
       console.log('[FundsManagement] Loading statistics...');
       const statsResult = await charityService.getCharityStatistics(charity.id, user.id);
       if (statsResult.success && statsResult.data) {
-        setTotalRaised(statsResult.data.totalFundsRaised || 0);
+        setTotalRaised(statsResult.data.totalRaised || 0);
       }
 
       // Get charity fund balances from new columns
@@ -288,8 +289,26 @@ const FundsManagement: React.FC = () => {
   };
 
   // Handle export
-  const handleExport = () => {
-    toast.info('Export functionality coming soon!');
+  const handleExport = async () => {
+    try {
+      // Check if there are transactions to export
+      if (transactions.length === 0) {
+        toast.error('No transactions to export');
+        return;
+      }
+
+      // Get charity name for filename
+      const charityName = charityData?.organizationName || 'Organization';
+
+      // Download CSV
+      downloadTransactionsCSV(transactions, charityName);
+
+      // Success feedback
+      toast.success('Transactions exported successfully!');
+    } catch (error: any) {
+      console.error('Error exporting transactions:', error);
+      toast.error(error.message || 'Failed to export transactions');
+    }
   };
 
   // Loading state

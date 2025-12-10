@@ -16,6 +16,13 @@ export interface ReceiptData {
   paymentMethod: string;
   status: string;
 
+  // Fee breakdown (optional)
+  platformFee?: number;
+  gatewayFee?: number;
+  tipAmount?: number;
+  netAmount?: number;
+  totalCharge?: number;
+
   // Donor Details
   donorName: string;
   donorEmail: string;
@@ -200,7 +207,7 @@ export const generateDonationReceipt = async (data: ReceiptData): Promise<jsPDF>
   autoTable(doc, {
     startY: yPosition,
     head: [['Payment Details', '']],
-    body: detailsBody,
+    body: donationDetails,
     theme: 'plain', // Cleaner look
     headStyles: {
       fillColor: COLORS.background,

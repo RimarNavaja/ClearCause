@@ -292,6 +292,82 @@ const PlatformSettings = () => {
     }
 
     if (type === 'number') {
+      // Special handling for platform_fee_percentage
+      if (setting.key === 'platform_fee_percentage') {
+        return (
+          <div className="space-y-2">
+            <Input
+              type="number"
+              value={value}
+              min={0}
+              max={20}
+              step={0.01}
+              onChange={(e) => handleSettingChange(setting.key, parseFloat(e.target.value) || 0)}
+              onWheel={(e) => e.currentTarget.blur()}
+              onBlur={(e) => {
+                const newValue = parseFloat(e.target.value);
+                if (newValue < 0 || newValue > 20) {
+                  toast({
+                    title: 'Invalid value',
+                    description: 'Platform fee must be between 0% and 20%',
+                    variant: 'destructive',
+                  });
+                  // Reset to previous valid value
+                  const setting = platformSettings.find(s => s.key === 'platform_fee_percentage');
+                  if (setting) {
+                    handleSettingChange('platform_fee_percentage', setting.value);
+                  }
+                }
+              }}
+            />
+            <p className="text-xs text-muted-foreground">
+              Current: {value}% • Valid range: 0% - 20%
+            </p>
+            <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+              ⚠️ Changes apply to new donations only
+            </div>
+          </div>
+        );
+      }
+
+      // Special handling for minimum_donation_amount
+      if (setting.key === 'minimum_donation_amount') {
+        return (
+          <div className="space-y-2">
+            <Input
+              type="number"
+              value={value}
+              min={100}
+              max={10000}
+              onChange={(e) => handleSettingChange(setting.key, parseFloat(e.target.value) || 0)}
+              onWheel={(e) => e.currentTarget.blur()}
+              onBlur={(e) => {
+                const newValue = parseFloat(e.target.value);
+                if (newValue < 100 || newValue > 10000) {
+                  toast({
+                    title: 'Invalid value',
+                    description: 'Minimum donation must be between ₱100 and ₱10,000',
+                    variant: 'destructive',
+                  });
+                  // Reset to previous valid value
+                  const setting = platformSettings.find(s => s.key === 'minimum_donation_amount');
+                  if (setting) {
+                    handleSettingChange('minimum_donation_amount', setting.value);
+                  }
+                }
+              }}
+            />
+            <p className="text-xs text-muted-foreground">
+              Current: ₱{value} • Valid range: ₱100 - ₱10,000
+            </p>
+            <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
+              ℹ️ Setting too high may discourage small donors. Recommended: ₱100-₱500
+            </div>
+          </div>
+        );
+      }
+
+      // Default number input for other settings
       return (
         <Input
           type="number"

@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { PlatformSettingsProvider } from "@/contexts/PlatformSettingsContext";
 import { 
   ProtectedRoute, 
   AdminRoute, 
@@ -78,12 +79,13 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-        <div className="min-h-screen">
-          <Routes>
+      <PlatformSettingsProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+          <div className="min-h-screen">
+            <Routes>
           {/* Public routes */}
           <Route path="/" element={<Index />} />
           <Route path="/campaigns" element={<DonorCampaigns />} />
@@ -351,6 +353,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       </TooltipProvider>
+      </PlatformSettingsProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

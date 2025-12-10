@@ -29,6 +29,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRealtime } from "@/hooks/useRealtime";
 import * as donationService from "@/services/donationService";
 import { formatCurrency, getRelativeTime, debounce } from "@/utils/helpers";
+import { setPlatformFeeRate, setMinimumDonation } from "@/utils/feeCalculator";
+import { usePlatformSettings } from "@/contexts/PlatformSettingsContext";
 
 const STATUS_FILTERS = [
   { value: "all", label: "All Donations" },
@@ -60,6 +62,13 @@ const DonorDonations: React.FC = () => {
 
   const { user } = useAuth();
   const { subscribe } = useRealtime();
+  const { platformFeePercentage, minimumDonationAmount } = usePlatformSettings();
+
+  // Update fee calculator when settings change
+  useEffect(() => {
+    setPlatformFeeRate(platformFeePercentage);
+    setMinimumDonation(minimumDonationAmount);
+  }, [platformFeePercentage, minimumDonationAmount]);
 
   // Debounced search
   const debouncedSearch = debounce((query: string) => {
@@ -97,10 +106,16 @@ const DonorDonations: React.FC = () => {
           sortBy === "oldest" || sortBy === "amount_low" ? "asc" : "desc",
       };
 
+      const filters = {
+        status: statusFilter !== "all" ? [statusFilter] : [],
+        search: searchQuery || undefined,
+      };
+
       const result = await donationService.getDonationsByDonor(
         user.id,
         params,
-        user.id
+        user.id,
+        filters
       );
 
       if (result.success && result.data) {
@@ -437,19 +452,84 @@ const DonorDonations: React.FC = () => {
                           </p>
                         )}
 
-                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                          <span>{getRelativeTime(donation.createdAt)}</span>
-                          <span>•</span>
-                          <span className="font-semibold">
-                            {formatCurrency(donation.amount)}
-                          </span>
-                          {donation.isAnonymous && (
-                            <>
-                              <span>•</span>
-                              <Badge variant="outline" className="text-xs">
-                                Anonymous
-                              </Badge>
-                            </>
+                        <div className="mb-2">
+                          <div className="flex items-center gap-4 text-sm text-gray-600 mb-1">
+                            <span>{getRelativeTime(donation.createdAt)}</span>
+                            {donation.isAnonymous && (
+                              <>
+                                <span>•</span>
+                                <Badge variant="outline" className="text-xs">
+                                  Anonymous
+                                </Badge>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Fee breakdown display - only show if there are actual fees */}
+                          {donation.platformFee !== undefined && donation.gatewayFee !== undefined &&
+                           (donation.platformFee > 0 || donation.gatewayFee > 0 || donation.coverFees) ? (
+                            <div className="space-y-0.5 text-sm bg-gray-50 p-2 rounded border">
+                              {/* Base donation */}
+                              <div className="flex justify-between items-center">
+                                <span className="text-gray-600">Your donation:</span>
+                                <span className="font-semibold">{formatCurrency(donation.amount)}</span>
+                              </div>
+
+                              {/* Show tip if present */}
+                              {donation.tipAmount > 0 && (
+                                <div className="flex justify-between items-center">
+                                  <span className="text-gray-600">+ Tip to ClearCause:</span>
+                                  <span className="font-semibold text-blue-600">
+                                    {formatCurrency(donation.tipAmount)}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Show fees covered OR fees deducted */}
+                              {donation.coverFees ? (
+                                // Fees covered scenario
+                                <>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-gray-600">+ Fees covered:</span>
+                                    <span className="font-semibold text-green-600">
+                                      {formatCurrency((donation.totalCharge || 0) - donation.amount)}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between items-center pt-1 border-t border-gray-300">
+                                    <span className="text-gray-700 font-semibold">Total paid:</span>
+                                    <span className="font-bold text-base">{formatCurrency(donation.totalCharge || 0)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center bg-green-50 -mx-2 px-2 py-1 mt-1 rounded">
+                                    <span className="text-green-700 font-semibold text-xs">To charity (100%):</span>
+                                    <span className="font-bold text-green-700">{formatCurrency(donation.netAmount || 0)}</span>
+                                  </div>
+                                </>
+                              ) : (
+                                // Fees deducted scenario
+                                <>
+                                  <div className="flex justify-between items-center text-xs">
+                                    <span className="text-gray-500">- Platform fee ({platformFeePercentage}%):</span>
+                                    <span className="text-red-600">-{formatCurrency(donation.platformFee || 0)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center pt-1 border-t border-gray-300">
+                                    <span className="text-gray-700 font-semibold">Total paid:</span>
+                                    <span className="font-bold text-base">{formatCurrency(donation.totalCharge || donation.amount)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center bg-green-50 -mx-2 px-2 py-1 mt-1 rounded">
+                                    <span className="text-green-700 font-semibold text-xs">To charity:</span>
+                                    <span className="font-bold text-green-700">{formatCurrency(donation.netAmount || 0)}</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          ) : (
+                            // Fallback for legacy donations without fee metadata
+                            <div className="text-sm">
+                              <span className="text-gray-600">Amount: </span>
+                              <span className="font-semibold text-base">
+                                {formatCurrency(donation.totalCharge || donation.amount)}
+                              </span>
+                            </div>
                           )}
                         </div>
 
@@ -470,11 +550,6 @@ const DonorDonations: React.FC = () => {
 
                       <div className="flex items-center gap-2">
                         <ReceiptButton donation={donation} />
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/donor/donations/${donation.id}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
                       </div>
                     </div>
                   </div>
