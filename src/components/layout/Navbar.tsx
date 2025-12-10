@@ -80,7 +80,7 @@ const Navbar: React.FC = () => {
 
   // If user is authenticated, use the authenticated navbar
   if (user) {
-    return <AuthenticatedNavbar user={user} />;
+    return <AuthenticatedNavbar />;
   }
 
   // Otherwise, show the public navbar

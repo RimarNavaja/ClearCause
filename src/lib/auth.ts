@@ -716,23 +716,29 @@ export const completeOnboarding = async (
   role: UserRole
 ): Promise<ApiResponse<User>> => {
   try {
-    const currentUser = await getCurrentUser();
+    // Use low-level auth user fetch to avoid profile loading issues
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    if (!currentUser) {
+    if (authError || !user) {
       throw new ClearCauseError('USER_NOT_FOUND', 'User not authenticated', 401);
     }
 
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
+    // Use upsert instead of update to handle missing profile rows
     const { data, error } = await supabase
       .from('profiles')
-      .update({
+      .upsert({
+        id: user.id,
+        email: user.email || '',
         full_name: fullName,
         role: role,
         onboarding_completed: true,
         updated_at: new Date().toISOString(),
-      })
-      .eq('id', currentUser.id)
+        // Default values for new rows
+        is_verified: !!user.email_confirmed_at,
+        is_active: true
+      }, { onConflict: 'id' })
       .select()
       .single();
 
@@ -740,11 +746,11 @@ export const completeOnboarding = async (
       throw new ClearCauseError('ONBOARDING_FAILED', error.message, 400);
     }
 
-    // Log audit event
-    await logAuditEvent(currentUser.id, 'USER_ONBOARDING', 'user', currentUser.id, {
+    // Log audit event (fire and forget)
+    logAuditEvent(user.id, 'USER_ONBOARDING', 'user', user.id, {
       role,
       fullName
-    });
+    }).catch(err => console.warn('Audit log failed:', err));
 
     // Sync onboarding status to auth metadata for resilience
     // This ensures that even if profile fetch fails, the fallback mechanism works correctly
@@ -767,7 +773,7 @@ export const completeOnboarding = async (
         isVerified: data.is_verified,
         isActive: data.is_active,
         onboardingCompleted: data.onboarding_completed,
-        provider: currentUser.provider,
+        provider: user.app_metadata?.provider || 'email',
         createdAt: data.created_at,
         updatedAt: data.updated_at,
       },
@@ -833,11 +839,30 @@ export const getRoleDisplayName = (role: UserRole): string => {
  */
 export const signInWithGoogle = async (): Promise<ApiResponse<void>> => {
   try {
+    // Construct robust redirect URL
+    const origin = window.location.origin;
+    const envUrl = import.meta.env.VITE_REDIRECT_URL;
+    
+    let redirectUrl = `${origin}/auth/callback`;
+    if (envUrl) {
+      // Ensure it ends with /auth/callback
+      if (envUrl.includes('/auth/callback')) {
+        redirectUrl = envUrl;
+      } else {
+        redirectUrl = `${envUrl.replace(/\/$/, '')}/auth/callback`;
+      }
+    }
+    
+    console.log('[Auth] Google Sign In redirecting to:', redirectUrl);
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: import.meta.env.VITE_REDIRECT_URL || `${window.location.origin}/auth/callback`,
-      },
+        redirectTo: redirectUrl,
+                            queryParams: {
+                              access_type: 'offline',
+                              prompt: 'consent',
+                            },      },
     });
 
     if (error) {
