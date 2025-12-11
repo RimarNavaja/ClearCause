@@ -856,11 +856,13 @@ const CampaignForm: React.FC = () => {
                   >
                     Campaign Image*
                   </label>
-                  <div className={`mt-1 border-2 border-dashed rounded-md px-6 pt-5 pb-6 transition-colors ${
-                    !imagePreview && !existingImageUrl
-                      ? 'border-red-300 bg-red-50/30'
-                      : 'border-gray-300 bg-white'
-                  }`}>
+                  <div
+                    className={`mt-1 border-2 border-dashed rounded-md px-6 pt-5 pb-6 transition-colors ${
+                      !imagePreview && !existingImageUrl
+                        ? "border-red-300 bg-red-50/30"
+                        : "border-gray-300 bg-white"
+                    }`}
+                  >
                     <div className="space-y-1 text-center">
                       {imagePreview ? (
                         <div className="mb-4">
@@ -919,7 +921,8 @@ const CampaignForm: React.FC = () => {
                       </p>
                       {!imagePreview && !existingImageUrl && (
                         <p className="text-xs text-red-600 mt-2 font-medium">
-                          ⚠️ Campaign image is required to proceed to the next step
+                          ⚠️ Campaign image is required to proceed to the next
+                          step
                         </p>
                       )}
                     </div>
@@ -972,7 +975,7 @@ const CampaignForm: React.FC = () => {
                     htmlFor="endDate"
                     className="block text-sm font-medium text-gray-700 mb-1"
                   >
-                    Campaign End Date (Optional)
+                    Campaign End Date
                   </label>
                   <Input
                     type="date"
@@ -981,6 +984,7 @@ const CampaignForm: React.FC = () => {
                     value={campaignDetails.endDate}
                     onChange={handleInputChange}
                     min={new Date().toISOString().split("T")[0]}
+                    required
                   />
                   <p className="mt-1 text-sm text-gray-500">
                     If not set, your campaign will run until you manually close
@@ -1232,7 +1236,11 @@ const CampaignForm: React.FC = () => {
 
             <div className="space-x-2">
               {currentStep < 4 ? (
-                <Button type="button" onClick={goToNextStep}>
+                <Button
+                  type="button"
+                  onClick={goToNextStep}
+                  className="bg-blue-700 hover:bg-blue-600"
+                >
                   Next Step <ChevronRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (

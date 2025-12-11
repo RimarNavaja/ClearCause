@@ -30,7 +30,8 @@ import { waitForAuthReady } from '@/utils/authHelper';
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Campaigns' },
   { value: 'active', label: 'Active' },
-  { value: 'draft', label: 'Pending Review' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'pending', label: 'Pending Review' },
   { value: 'paused', label: 'Paused' },
   { value: 'completed', label: 'Completed' },
   { value: 'cancelled', label: 'Cancelled' },
