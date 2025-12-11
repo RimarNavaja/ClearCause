@@ -67,7 +67,7 @@ export default {
 				clearcause: {
 					primary: '#1d4ed8', // Blue 700 shade
 					secondary: '#0284c7', // BLue 600 shade
-					accent: '#0284c7', // Orange for CTAs
+					accent: '#1d4ed8', // Orange for CTAs
 					muted: '#E0F2FE', // Light blue
 					"light-blue": '#BAE6FD',
 					"dark-blue": '#0369A1',

@@ -1,3 +1,18 @@
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  Eye,
+  EyeOff,
+  Building2,
+  Heart,
+  Loader2,
+  CheckCircle,
+  ArrowRight,
+  Info,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Card, CardContent } from "@/components/ui/card";
 import { config } from "@/lib/config";
 import { signInWithGoogle } from "@/lib/auth";
 
@@ -661,7 +676,7 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
             <span className="text-gray-600">Already have an account?</span>
             <Link
               to="/login"
-              className="ml-1 font-medium text-clearcause-primary hover:text-clearcause-secondary"
+              className="ml-1 font-medium text-blue-700 hover:text-blue-600 transform transition-transform duration-200 ease-out hover:scale-110 inline-block"
             >
               Sign in
             </Link>
