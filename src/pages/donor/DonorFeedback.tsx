@@ -1,84 +1,127 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { MessageSquare, Star, Send, ThumbsUp, Flag } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MessageSquare, Star, Send, ThumbsUp, Flag, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import DonorLayout from '@/components/layout/DonorLayout';
 import { useAuth } from '@/hooks/useAuth';
+import * as reviewService from '@/services/reviewService';
+import * as donationService from '@/services/donationService';
+import { CampaignReview } from '@/services/reviewService';
+import { Campaign } from '@/lib/types';
 
-interface Feedback {
+interface EligibleCampaign {
   id: string;
-  campaignTitle: string;
+  title: string;
   charityName: string;
-  rating: number;
-  comment: string;
-  createdAt: string;
-  status: 'published' | 'pending' | 'flagged';
 }
 
 const DonorFeedback: React.FC = () => {
   const { user } = useAuth();
-  const [selectedCampaign, setSelectedCampaign] = useState('');
+  const [selectedCampaignId, setSelectedCampaignId] = useState('');
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  const [myReviews, setMyReviews] = useState<CampaignReview[]>([]);
+  const [eligibleCampaigns, setEligibleCampaigns] = useState<EligibleCampaign[]>([]);
 
-  // Mock feedback data
-  const [myFeedback] = useState<Feedback[]>([
-    {
-      id: '1',
-      campaignTitle: 'Clean Water Project',
-      charityName: 'Water for Life',
-      rating: 5,
-      comment: 'Amazing transparency! I can see exactly where my donation is going.',
-      createdAt: '2025-01-15',
-      status: 'published',
-    },
-  ]);
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user?.id) return;
+      
+      setLoading(true);
+      try {
+        // 1. Fetch my reviews
+        const reviewsResult = await reviewService.getUserReviews(
+          user.id,
+          { page: 1, limit: 100 },
+          user.id
+        );
+        
+        const reviews = reviewsResult.success && reviewsResult.data ? reviewsResult.data : [];
+        setMyReviews(reviews);
+        
+        // 2. Fetch my donations to find eligible campaigns
+        const donationsResult = await donationService.getDonationsByDonor(
+          user.id,
+          { page: 1, limit: 100 },
+          user.id
+        );
+        
+        if (donationsResult.success && donationsResult.data) {
+          const reviewedCampaignIds = new Set(reviews.map(r => r.campaignId));
+          const uniqueCampaigns = new Map<string, EligibleCampaign>();
+          
+          donationsResult.data.forEach((donation: any) => {
+            if (
+              donation.status === 'completed' && 
+              donation.campaign && 
+              !reviewedCampaignIds.has(donation.campaign.id)
+            ) {
+              uniqueCampaigns.set(donation.campaign.id, {
+                id: donation.campaign.id,
+                title: donation.campaign.title,
+                charityName: donation.campaign.charity?.organizationName || 'Unknown Charity'
+              });
+            }
+          });
+          
+          setEligibleCampaigns(Array.from(uniqueCampaigns.values()));
+        }
+      } catch (error) {
+        console.error('Error fetching feedback data:', error);
+        toast.error('Failed to load your feedback data');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Mock campaigns I've donated to
-  const donatedCampaigns = [
-    { id: '1', title: 'Clean Water Project', charity: 'Water for Life' },
-    { id: '2', title: 'School Rebuilding', charity: 'Education First' },
-  ];
+    fetchData();
+  }, [user?.id]);
 
   const handleSubmitFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedCampaign || !comment.trim() || rating === 0) {
-      toast({
-        title: 'Missing information',
-        description: 'Please select a campaign, rating, and write a review',
-        variant: 'destructive',
-      });
+    if (!user?.id) return;
+
+    if (!selectedCampaignId || !comment.trim() || rating === 0) {
+      toast.error('Please select a campaign, rating, and write a review');
       return;
     }
 
     setSubmitting(true);
 
     try {
-      // Mock submission - replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const result = await reviewService.createReview({
+        campaignId: selectedCampaignId,
+        rating,
+        comment
+      }, user.id);
 
-      toast({
-        title: 'Feedback submitted!',
-        description: 'Thank you for sharing your experience',
-      });
-
-      // Reset form
-      setSelectedCampaign('');
-      setRating(0);
-      setComment('');
-    } catch (error) {
-      toast({
-        title: 'Submission failed',
-        description: 'Please try again later',
-        variant: 'destructive',
-      });
+      if (result.success && result.data) {
+        toast.success('Review submitted successfully! It will be visible after approval.');
+        
+        // Add new review to list (it will be pending)
+        setMyReviews([result.data, ...myReviews]);
+        
+        // Remove campaign from eligible list
+        setEligibleCampaigns(prev => prev.filter(c => c.id !== selectedCampaignId));
+        
+        // Reset form
+        setSelectedCampaignId('');
+        setRating(0);
+        setComment('');
+      } else {
+        throw new Error(result.error || 'Failed to submit review');
+      }
+    } catch (error: any) {
+      console.error('Submission error:', error);
+      toast.error(error.message || 'Failed to submit review');
     } finally {
       setSubmitting(false);
     }
@@ -102,12 +145,21 @@ const DonorFeedback: React.FC = () => {
     );
   };
 
+  if (loading) {
+    return (
+      <DonorLayout title="Feedback & Reviews">
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        </div>
+      </DonorLayout>
+    );
+  }
+
   return (
     <DonorLayout title="Feedback & Reviews">
       <div className="space-y-6">
         {/* Header */}
         <div>
-          
           <p className="text-gray-600">Share your experience and help others make informed decisions</p>
         </div>
 
@@ -120,56 +172,64 @@ const DonorFeedback: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmitFeedback} className="space-y-4">
-              <div>
-                <Label htmlFor="campaign">Select Campaign</Label>
-                <select
-                  id="campaign"
-                  value={selectedCampaign}
-                  onChange={(e) => setSelectedCampaign(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">-- Select a campaign you've donated to --</option>
-                  {donatedCampaigns.map((campaign) => (
-                    <option key={campaign.id} value={campaign.id}>
-                      {campaign.title} - {campaign.charity}
-                    </option>
-                  ))}
-                </select>
+            {eligibleCampaigns.length === 0 ? (
+              <div className="text-center py-6 bg-gray-50 rounded-lg">
+                <p className="text-gray-600">
+                  You don't have any pending reviews. Donate to more campaigns to share your feedback!
+                </p>
               </div>
+            ) : (
+              <form onSubmit={handleSubmitFeedback} className="space-y-4">
+                <div>
+                  <Label htmlFor="campaign">Select Campaign</Label>
+                  <select
+                    id="campaign"
+                    value={selectedCampaignId}
+                    onChange={(e) => setSelectedCampaignId(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">-- Select a campaign you've donated to --</option>
+                    {eligibleCampaigns.map((campaign) => (
+                      <option key={campaign.id} value={campaign.id}>
+                        {campaign.title} - {campaign.charityName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <Label>Rating</Label>
-                <div className="mt-2">{renderStars(rating, true)}</div>
-                <p className="text-sm text-gray-500 mt-1">Click to rate</p>
-              </div>
+                <div>
+                  <Label>Rating</Label>
+                  <div className="mt-2">{renderStars(rating, true)}</div>
+                  <p className="text-sm text-gray-500 mt-1">Click to rate</p>
+                </div>
 
-              <div>
-                <Label htmlFor="comment">Your Review</Label>
-                <Textarea
-                  id="comment"
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Share your experience with this campaign..."
-                  rows={4}
-                  className="mt-1"
-                />
-              </div>
+                <div>
+                  <Label htmlFor="comment">Your Review</Label>
+                  <Textarea
+                    id="comment"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Share your experience with this campaign..."
+                    rows={4}
+                    className="mt-1"
+                  />
+                </div>
 
-              <Button type="submit" disabled={submitting}>
-                {submitting ? (
-                  <>
-                    <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Submit Review
-                  </>
-                )}
-              </Button>
-            </form>
+                <Button type="submit" disabled={submitting || !selectedCampaignId || rating === 0}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Submit Review
+                    </>
+                  )}
+                </Button>
+              </form>
+            )}
           </CardContent>
         </Card>
 
@@ -179,7 +239,7 @@ const DonorFeedback: React.FC = () => {
             <CardTitle>My Reviews</CardTitle>
           </CardHeader>
           <CardContent>
-            {myFeedback.length === 0 ? (
+            {myReviews.length === 0 ? (
               <div className="text-center py-8">
                 <MessageSquare className="mx-auto h-12 w-12 text-gray-300" />
                 <h3 className="mt-4 text-lg font-medium text-gray-900">No reviews yet</h3>
@@ -189,43 +249,39 @@ const DonorFeedback: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {myFeedback.map((feedback) => (
-                  <div key={feedback.id} className="border rounded-lg p-4">
+                {myReviews.map((review) => (
+                  <div key={review.id} className="border rounded-lg p-4 bg-white shadow-sm">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <h4 className="font-semibold">{feedback.campaignTitle}</h4>
-                        <p className="text-sm text-gray-600">by {feedback.charityName}</p>
+                        <h4 className="font-semibold text-lg">{review.campaign?.title || 'Unknown Campaign'}</h4>
+                        <p className="text-sm text-gray-600">
+                          Posted on {new Date(review.createdAt).toLocaleDateString()}
+                        </p>
                       </div>
                       <Badge
                         variant={
-                          feedback.status === 'published'
+                          review.status === 'approved'
                             ? 'default'
-                            : feedback.status === 'pending'
+                            : review.status === 'pending'
                             ? 'secondary'
                             : 'destructive'
                         }
+                        className="capitalize"
                       >
-                        {feedback.status}
+                        {review.status}
                       </Badge>
                     </div>
 
-                    <div className="mb-2">{renderStars(feedback.rating)}</div>
+                    <div className="mb-2">{renderStars(review.rating)}</div>
 
-                    <p className="text-gray-700 mb-3">{feedback.comment}</p>
+                    <p className="text-gray-700 mb-3 whitespace-pre-wrap">{review.comment}</p>
 
-                    <div className="flex items-center justify-between text-sm text-gray-500">
-                      <span>{new Date(feedback.createdAt).toLocaleDateString()}</span>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
-                          <ThumbsUp className="w-4 h-4 mr-1" />
-                          Helpful (0)
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Flag className="w-4 h-4 mr-1" />
-                          Report
-                        </Button>
+                    {review.adminNotes && review.status === 'rejected' && (
+                      <div className="bg-red-50 p-3 rounded-md border border-red-100 mt-2">
+                        <p className="text-sm font-medium text-red-800">Admin Feedback:</p>
+                        <p className="text-sm text-red-600">{review.adminNotes}</p>
                       </div>
-                    </div>
+                    )}
                   </div>
                 ))}
               </div>

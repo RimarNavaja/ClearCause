@@ -768,7 +768,7 @@ const CharityDashboard: React.FC = () => {
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Button className="h-20 flex flex-col gap-2 bg-blue-700" asChild>
               <Link to="/charity/campaigns/new">
                 <PlusCircle className="h-6 w-6" />
@@ -783,6 +783,16 @@ const CharityDashboard: React.FC = () => {
               <Link to="/charity/funds">
                 <DollarSign className="h-6 w-6" />
                 Manage Funds
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-20 flex flex-col gap-2"
+              asChild
+            >
+              <Link to="/charity/reviews">
+                <Heart className="h-6 w-6" />
+                View Reviews
               </Link>
             </Button>
             <Button

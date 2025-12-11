@@ -292,23 +292,25 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
           </div>
 
           {/* Action Button */}
-          <Button
-            className="w-full rounded-full bg-clearcause-primary  hover:bg-clearcause-primary/80 disabled:opacity-50"
-            disabled={isExpired || realtimeData.status !== "active"}
-            asChild
-          >
-            <Link
-              to={`/donate/${realtimeData.id}`}
-              className="flex items-center justify-center "
+          {user?.role !== 'charity' && (
+            <Button
+              className="w-full rounded-full bg-clearcause-primary  hover:bg-clearcause-primary/80 disabled:opacity-50"
+              disabled={isExpired || realtimeData.status !== "active"}
+              asChild
             >
-              {!isExpired && realtimeData.status === "active" && <></>}
-              {isExpired
-                ? "Campaign Ended"
-                : progressPercentage >= 100
-                ? "Goal Reached!"
-                : "Donate Now"}
+              <Link
+                to={`/donate/${realtimeData.id}`}
+                className="flex items-center justify-center "
+              >
+                {!isExpired && realtimeData.status === "active" && <></>}
+                {isExpired
+                  ? "Campaign Ended"
+                  : progressPercentage >= 100
+                  ? "Goal Reached!"
+                  : "Donate Now"}
             </Link>
           </Button>
+        )}
         </div>
       </div>
     </div>

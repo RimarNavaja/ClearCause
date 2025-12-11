@@ -39,6 +39,7 @@ import DonorProfile from "./pages/donor/DonorProfile";
 import DonorSettings from "./pages/donor/DonorSettings";
 import TrackCampaigns from "./pages/donor/TrackCampaigns";
 import DonorFeedback from "./pages/donor/DonorFeedback";
+import CharityFeedback from "./pages/donor/CharityFeedback";
 import DonorAchievements from "./pages/donor/DonorAchievements";
 import RefundDecisions from "./pages/donor/RefundDecisions";
 import CharityApplicationForm from "./pages/CharityApplicationForm";
@@ -57,6 +58,8 @@ import OrganizationProfile from "./pages/charity/OrganizationProfile";
 import CharitySettings from "./pages/charity/CharitySettings";
 import CharityMilestones from "./pages/charity/CharityMilestones";
 import CharityAnalytics from "./pages/charity/CharityAnalytics";
+import CharityReviews from "./pages/charity/CharityReviews";
+import ReceivedFeedback from "./pages/charity/ReceivedFeedback";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import VerificationQueue from "./pages/admin/VerificationQueue";
 import VerificationDetail from "./pages/admin/VerificationDetail";
@@ -71,11 +74,13 @@ import CampaignReview from "./pages/admin/CampaignReview";
 import ScorecardManagement from "./pages/admin/ScorecardManagement";
 import PlatformSettings from "./pages/admin/PlatformSettings";
 import AuditLogs from "./pages/admin/AuditLogs";
+import ActivityLog from "./pages/admin/ActivityLog";
 import AdminProfile from "./pages/admin/AdminProfile";
 import ActivityMonitor from "./pages/admin/ActivityMonitor";
 import UserManagement from "./pages/admin/UserManagement";
 import ReviewModeration from "./pages/admin/ReviewModeration";
 import RefundManagement from "./pages/admin/RefundManagement";
+import CharityFeedbackManagement from "./pages/admin/CharityFeedbackManagement";
 import ScrollToTop from "@/components/ui/ScrollToTop";
 
 const queryClient = new QueryClient();
@@ -193,6 +198,11 @@ const App = () => {
               <DonorFeedback />
             </DonorRoute>
           } />
+          <Route path="/donor/charity-feedback" element={
+            <DonorRoute>
+              <CharityFeedback />
+            </DonorRoute>
+          } />
           <Route path="/donor/achievements" element={
             <DonorRoute>
               <DonorAchievements />
@@ -280,6 +290,16 @@ const App = () => {
               <CharityAnalytics />
             </CharityRoute>
           } />
+          <Route path="/charity/reviews" element={
+            <CharityRoute>
+              <CharityReviews />
+            </CharityRoute>
+          } />
+          <Route path="/charity/received-feedback" element={
+            <CharityRoute>
+              <ReceivedFeedback />
+            </CharityRoute>
+          } />
 
           {/* Admin routes */}
           <Route path="/admin/dashboard" element={
@@ -355,6 +375,11 @@ const App = () => {
           <Route path="/admin/logs" element={
             <AdminRoute>
               <AuditLogs />
+            </AdminRoute>
+          } />
+          <Route path="/admin/activity-log" element={
+            <AdminRoute>
+              <ActivityLog />
             </AdminRoute>
           } />
           <Route path="/admin/profile" element={

@@ -437,6 +437,38 @@ export interface Database {
           created_at?: string;
         };
       };
+      platform_settings: {
+        Row: {
+          id: string;
+          key: string;
+          value: any;
+          description: string | null;
+          category: string;
+          updated_by: string | null;
+          updated_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          key: string;
+          value: any;
+          description?: string | null;
+          category?: string;
+          updated_by?: string | null;
+          updated_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          key?: string;
+          value?: any;
+          description?: string | null;
+          category?: string;
+          updated_by?: string | null;
+          updated_at?: string;
+          created_at?: string;
+        };
+      };
       achievements: {
         Row: Achievement;
         Insert: Omit<Achievement, 'id' | 'created_at' | 'updated_at'> & {
@@ -455,6 +487,35 @@ export interface Database {
           context?: Record<string, any>;
         };
         Update: never;
+      };
+      charity_feedback: {
+        Row: {
+          id: string;
+          charity_id: string;
+          donor_id: string;
+          rating: number;
+          comment: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          charity_id: string;
+          donor_id: string;
+          rating: number;
+          comment?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          charity_id?: string;
+          donor_id?: string;
+          rating?: number;
+          comment?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
       };
     };
     Views: {
@@ -875,6 +936,35 @@ export interface RecentActivity {
   userName?: string;
 }
 
+// Activity Log Types (Audit Trail)
+export interface ActivityLogEntry {
+  id: string;
+  userId: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  details: Record<string, any> | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  // Joined user data
+  user?: {
+    id: string;
+    email: string;
+    fullName: string | null;
+    role: UserRole;
+  };
+}
+
+export interface ActivityLogFilters {
+  userId?: string;
+  action?: string;
+  entityType?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+}
+
 // ===== REFUND SYSTEM TYPES =====
 export type RefundRequestStatus =
   | 'pending_donor_decision'
@@ -945,6 +1035,41 @@ export interface DonorRefundDecision {
   metadata: Record<string, any>;
   createdAt: string;
   updatedAt: string;
+}
+
+// ===== CHARITY FEEDBACK TYPES =====
+export interface CharityFeedback {
+  id: string;
+  charityId: string;
+  donorId: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // Relations
+  donor?: {
+    id: string;
+    fullName: string | null;
+    avatarUrl: string | null;
+  };
+  charity?: {
+    id: string;
+    organizationName: string;
+    logoUrl: string | null;
+  };
+}
+
+export interface CharityFeedbackStats {
+  totalFeedback: number;
+  averageRating: number;
+  ratingDistribution: {
+    1: number;
+    2: number;
+    3: number;
+    4: number;
+    5: number;
+  };
+  feedbackWithComments: number;
 }
 
 // ===== UTILITY TYPES =====

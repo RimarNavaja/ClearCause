@@ -983,6 +983,12 @@ export const approveCharityVerification = withErrorHandling(async (
     throw handleSupabaseError(error);
   }
 
+  // Log audit event
+  await logAuditEvent(currentUserId, 'CHARITY_VERIFICATION_APPROVED', 'charity_verification', verificationId, {
+    admin_notes: adminNotes,
+    action: 'approved'
+  });
+
   return createSuccessResponse(data, 'Charity verification approved successfully');
 });
 
@@ -1022,6 +1028,13 @@ export const rejectCharityVerification = withErrorHandling(async (
     throw handleSupabaseError(error);
   }
 
+  // Log audit event
+  await logAuditEvent(currentUserId, 'CHARITY_VERIFICATION_REJECTED', 'charity_verification', verificationId, {
+    rejection_reason: rejectionReason,
+    admin_notes: adminNotes,
+    action: 'rejected'
+  });
+
   return createSuccessResponse(data, 'Charity verification rejected');
 });
 
@@ -1060,6 +1073,13 @@ export const requestVerificationResubmission = withErrorHandling(async (
   if (error) {
     throw handleSupabaseError(error);
   }
+
+  // Log audit event
+  await logAuditEvent(currentUserId, 'CHARITY_VERIFICATION_RESUBMISSION_REQUESTED', 'charity_verification', verificationId, {
+    resubmission_reason: resubmissionReason,
+    admin_notes: adminNotes,
+    action: 'resubmission_requested'
+  });
 
   return createSuccessResponse(data, 'Resubmission requested successfully');
 });
