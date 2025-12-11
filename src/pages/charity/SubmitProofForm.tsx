@@ -161,20 +161,20 @@ const SubmitProofForm: React.FC = () => {
       </Link>
 
       <Card className="mb-6">
-        <CardContent className="p-6">
-          <h2 className="text-xl font-medium">{campaign?.title || 'Campaign'}</h2>
+        <CardContent className="p-6 font-poppinsregular">
+          <h2 className="text-xl font-robotobold">{campaign?.title || 'Campaign'}</h2>
           <p className="text-sm text-gray-500 mt-1">Submitting proof for milestone</p>
 
           <div className="mt-4 p-4 bg-gray-50 rounded-md">
-            <h3 className="font-medium">{milestone.title}</h3>
+            <h3 className="font-robotobold">{milestone.title}</h3>
             <p className="text-sm text-gray-600 mt-1">{milestone.description}</p>
           </div>
 
           <div className="mt-6">
-            <h3 className="font-medium text-gray-800">Required Evidence</h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Upload photos, receipts, or documents proving completion of this milestone.
-            </p>
+            <h3 className="font-medium text-gray-800">Required Evidence:</h3>
+            {/* <p className="text-sm text-gray-600 mt-1">
+              {milestone.evidenceDescription || milestone.description || "Upload photos, receipts, or documents proving completion of this milestone."}
+            </p> */}
           </div>
         </CardContent>
       </Card>

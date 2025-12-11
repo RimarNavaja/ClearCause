@@ -319,7 +319,7 @@ const CharityMilestones: React.FC = () => {
                           <TableCell className="font-medium">{milestone.campaignTitle}</TableCell>
                           <TableCell>
                             <div>
-                              <p className="font-medium">{milestone.title}</p>
+                              <p className="font-robotobold text-blue-700 ">{milestone.title}</p>
                               <p className="text-sm text-gray-500">{milestone.description}</p>
                             </div>
                           </TableCell>
