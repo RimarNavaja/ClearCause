@@ -76,6 +76,20 @@ export const config = {
     maxLimit: 100,
   },
 
+  // Refund System Settings
+  refund: {
+    enabled: import.meta.env.VITE_REFUND_ENABLED !== 'false', // Enabled by default
+    decisionDeadlineDays: parseInt(import.meta.env.VITE_REFUND_DEADLINE_DAYS || '14'),
+    firstReminderDays: parseInt(import.meta.env.VITE_REFUND_FIRST_REMINDER_DAYS || '7'),
+    finalReminderDays: parseInt(import.meta.env.VITE_REFUND_FINAL_REMINDER_DAYS || '12'),
+    autoProcessOnExpire: import.meta.env.VITE_REFUND_AUTO_PROCESS !== 'false',
+    autoProcessType: (import.meta.env.VITE_REFUND_AUTO_TYPE as 'refund' | 'donate_platform') || 'refund',
+    minimumRefundAmount: parseFloat(import.meta.env.VITE_REFUND_MINIMUM_AMOUNT || '50'),
+    allowSameCharityRedirect: import.meta.env.VITE_REFUND_SAME_CHARITY !== 'false',
+    allowDifferentCharityRedirect: import.meta.env.VITE_REFUND_DIFFERENT_CHARITY !== 'false',
+    minCampaignDaysRemaining: parseInt(import.meta.env.VITE_REFUND_MIN_DAYS_REMAINING || '7'),
+  },
+
   // Routes
   routes: {
     home: '/',

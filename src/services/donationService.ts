@@ -283,6 +283,21 @@ const processDonationPayment = async (
         console.error('Error checking achievements:', error);
         // Don't fail the donation if achievement check fails
       }
+
+      // NEW: Allocate donation to milestones proportionally
+      try {
+        const { allocateDonationToMilestones } = await import('./refundService');
+        await allocateDonationToMilestones(
+          donationId,
+          updatedDonation.campaign_id,
+          updatedDonation.amount,
+          updatedDonation.user_id
+        );
+      } catch (error) {
+        console.error('Error allocating donation to milestones:', error);
+        // Don't fail the donation if allocation fails
+        // This can be retried later via admin panel
+      }
     }
   } catch (error) {
     console.error('Payment processing error:', error);

@@ -871,6 +871,78 @@ export interface RecentActivity {
   userName?: string;
 }
 
+// ===== REFUND SYSTEM TYPES =====
+export type RefundRequestStatus =
+  | 'pending_donor_decision'
+  | 'processing'
+  | 'completed'
+  | 'partially_completed'
+  | 'cancelled';
+
+export type DonorDecisionType = 'refund' | 'redirect_campaign' | 'donate_platform';
+
+export type DonorDecisionStatus =
+  | 'pending'
+  | 'decided'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'auto_refunded';
+
+export interface MilestoneFundAllocation {
+  id: string;
+  milestoneId: string;
+  donationId: string;
+  campaignId: string;
+  donorId: string;
+  allocatedAmount: number;
+  allocationPercentage: number;
+  isReleased: boolean;
+  releasedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MilestoneRefundRequest {
+  id: string;
+  milestoneId: string;
+  campaignId: string;
+  charityId: string;
+  milestoneProofId: string | null;
+  totalAmount: number;
+  totalDonorsCount: number;
+  status: RefundRequestStatus;
+  decisionDeadline: string;
+  firstReminderSentAt: string | null;
+  finalReminderSentAt: string | null;
+  rejectionReason: string | null;
+  adminNotes: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  updatedAt: string;
+}
+
+export interface DonorRefundDecision {
+  id: string;
+  refundRequestId: string;
+  donorId: string;
+  donationId: string;
+  milestoneId: string;
+  refundAmount: number;
+  decisionType: DonorDecisionType | null;
+  redirectCampaignId: string | null;
+  status: DonorDecisionStatus;
+  decidedAt: string | null;
+  processedAt: string | null;
+  refundTransactionId: string | null;
+  newDonationId: string | null;
+  processingError: string | null;
+  metadata: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ===== UTILITY TYPES =====
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
 export type InsertTables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert'];

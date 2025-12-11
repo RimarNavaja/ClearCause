@@ -40,6 +40,7 @@ import DonorSettings from "./pages/donor/DonorSettings";
 import TrackCampaigns from "./pages/donor/TrackCampaigns";
 import DonorFeedback from "./pages/donor/DonorFeedback";
 import DonorAchievements from "./pages/donor/DonorAchievements";
+import RefundDecisions from "./pages/donor/RefundDecisions";
 import CharityApplicationForm from "./pages/CharityApplicationForm";
 import CharityApplicationStatus from "./pages/CharityApplicationStatus";
 import CharityDashboard from "./pages/charity/CharityDashboard";
@@ -74,6 +75,7 @@ import AdminProfile from "./pages/admin/AdminProfile";
 import ActivityMonitor from "./pages/admin/ActivityMonitor";
 import UserManagement from "./pages/admin/UserManagement";
 import ReviewModeration from "./pages/admin/ReviewModeration";
+import RefundManagement from "./pages/admin/RefundManagement";
 import ScrollToTop from "@/components/ui/ScrollToTop";
 
 const queryClient = new QueryClient();
@@ -194,6 +196,11 @@ const App = () => {
           <Route path="/donor/achievements" element={
             <DonorRoute>
               <DonorAchievements />
+            </DonorRoute>
+          } />
+          <Route path="/donor/refund-decisions" element={
+            <DonorRoute>
+              <RefundDecisions />
             </DonorRoute>
           } />
 
@@ -363,6 +370,11 @@ const App = () => {
           <Route path="/admin/users" element={
             <AdminRoute>
               <UserManagement />
+            </AdminRoute>
+          } />
+          <Route path="/admin/refunds" element={
+            <AdminRoute>
+              <RefundManagement />
             </AdminRoute>
           } />
 

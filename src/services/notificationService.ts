@@ -24,6 +24,11 @@ export type NotificationType =
   | 'campaign_update'
   | 'milestone_completed'
   | 'milestone_verified'
+  | 'milestone_rejected'           // NEW: Milestone rejection notification
+  | 'refund_decision_required'     // NEW: Donor needs to make refund decision
+  | 'refund_decision_reminder'     // NEW: Reminder to make decision
+  | 'refund_processed'             // NEW: Refund/redirect completed
+  | 'donation_redirected'          // NEW: Donation redirected to new campaign
   | 'fund_released'
   | 'review_approved'
   | 'review_rejected'
