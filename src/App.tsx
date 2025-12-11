@@ -71,6 +71,7 @@ import CampaignReview from "./pages/admin/CampaignReview";
 import ScorecardManagement from "./pages/admin/ScorecardManagement";
 import PlatformSettings from "./pages/admin/PlatformSettings";
 import AuditLogs from "./pages/admin/AuditLogs";
+import ActivityLog from "./pages/admin/ActivityLog";
 import AdminProfile from "./pages/admin/AdminProfile";
 import ActivityMonitor from "./pages/admin/ActivityMonitor";
 import UserManagement from "./pages/admin/UserManagement";
@@ -355,6 +356,11 @@ const App = () => {
           <Route path="/admin/logs" element={
             <AdminRoute>
               <AuditLogs />
+            </AdminRoute>
+          } />
+          <Route path="/admin/activity-log" element={
+            <AdminRoute>
+              <ActivityLog />
             </AdminRoute>
           } />
           <Route path="/admin/profile" element={

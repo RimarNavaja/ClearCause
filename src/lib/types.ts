@@ -434,6 +434,38 @@ export interface Database {
           created_at?: string;
         };
       };
+      platform_settings: {
+        Row: {
+          id: string;
+          key: string;
+          value: any;
+          description: string | null;
+          category: string;
+          updated_by: string | null;
+          updated_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          key: string;
+          value: any;
+          description?: string | null;
+          category?: string;
+          updated_by?: string | null;
+          updated_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          key?: string;
+          value?: any;
+          description?: string | null;
+          category?: string;
+          updated_by?: string | null;
+          updated_at?: string;
+          created_at?: string;
+        };
+      };
       achievements: {
         Row: Achievement;
         Insert: Omit<Achievement, 'id' | 'created_at' | 'updated_at'> & {
@@ -869,6 +901,35 @@ export interface RecentActivity {
   timestamp: string;
   userId?: string;
   userName?: string;
+}
+
+// Activity Log Types (Audit Trail)
+export interface ActivityLogEntry {
+  id: string;
+  userId: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  details: Record<string, any> | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  // Joined user data
+  user?: {
+    id: string;
+    email: string;
+    fullName: string | null;
+    role: UserRole;
+  };
+}
+
+export interface ActivityLogFilters {
+  userId?: string;
+  action?: string;
+  entityType?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
 }
 
 // ===== REFUND SYSTEM TYPES =====

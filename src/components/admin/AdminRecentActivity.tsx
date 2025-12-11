@@ -1,17 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Clock, CheckCircle, User, DollarSign, FileText } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle, User, DollarSign, FileText, Shield, Settings } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import * as adminService from '@/services/adminService';
+import * as activityLogService from '@/services/activityLogService';
 import { getRelativeTime } from '@/utils/helpers';
-import { RecentActivity } from '@/lib/types';
+import { ActivityLogEntry } from '@/lib/types';
 
 const AdminRecentActivity = () => {
-  const [activities, setActivities] = useState<RecentActivity[]>([]);
+  const [activities, setActivities] = useState<ActivityLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -22,30 +22,13 @@ const AdminRecentActivity = () => {
 
       try {
         setLoading(true);
-        const result = await adminService.getRecentActivity(10, user.id);
-
-        if (result.success && result.data) {
-          setActivities(result.data);
-          setError(null);
-        } else {
-          // In development, audit logs may not be accessible due to RLS
-          // Show empty state instead of error
-          if (result.error?.includes('permission') || result.error?.includes('policy')) {
-            setActivities([]);
-            setError(null);
-          } else {
-            setError(result.error || 'Failed to load recent activity');
-          }
-        }
+        const logs = await activityLogService.getRecentCriticalActivity(10, user.id);
+        setActivities(logs);
+        setError(null);
       } catch (err: any) {
-        // Handle permission errors gracefully
-        if (err?.message?.includes('permission') || err?.message?.includes('policy')) {
-          setActivities([]);
-          setError(null);
-        } else {
-          setError('An unexpected error occurred');
-          console.error('Recent activity error:', err);
-        }
+        console.error('Recent activity error:', err);
+        setActivities([]);
+        setError(null); // Don't show error, just empty state
       } finally {
         setLoading(false);
       }
@@ -54,34 +37,33 @@ const AdminRecentActivity = () => {
     loadRecentActivity();
   }, [user]);
 
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'user_signup':
-        return <User className="h-4 w-4 text-blue-500" />;
-      case 'donation':
-        return <DollarSign className="h-4 w-4 text-green-500" />;
-      case 'campaign_created':
-        return <FileText className="h-4 w-4 text-purple-500" />;
-      case 'verification':
-        return <CheckCircle className="h-4 w-4 text-orange-500" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-500" />;
+  const getActivityIcon = (action: string) => {
+    const actionLower = action.toLowerCase();
+    
+    if (actionLower.includes('approve')) {
+      return <CheckCircle className="h-4 w-4 text-green-500" />;
     }
+    if (actionLower.includes('reject')) {
+      return <AlertTriangle className="h-4 w-4 text-red-500" />;
+    }
+    if (actionLower.includes('setting')) {
+      return <Settings className="h-4 w-4 text-purple-500" />;
+    }
+    if (actionLower.includes('verification')) {
+      return <Shield className="h-4 w-4 text-orange-500" />;
+    }
+    return <Clock className="h-4 w-4 text-gray-500" />;
   };
 
-  const getActivityHref = (type: string, entityId?: string) => {
-    switch (type) {
-      case 'user_signup':
-        return '/admin/donors';
-      case 'donation':
-        return '/admin/campaigns';
-      case 'campaign_created':
-        return '/admin/campaigns';
-      case 'verification':
-        return '/admin/verifications';
-      default:
-        return '/admin/logs';
+  const formatActivityDescription = (log: ActivityLogEntry): string => {
+    const userName = log.user?.fullName || log.user?.email || 'Admin';
+    const action = activityLogService.formatActionName(log.action);
+    
+    if (log.details && log.details.key) {
+      return `${userName} updated ${log.details.key} setting`;
     }
+    
+    return `${userName} performed ${action}`;
   };
 
   if (loading) {
@@ -143,29 +125,29 @@ const AdminRecentActivity = () => {
           <div className="text-center py-8">
             <Clock className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">No recent activity to display</p>
-            <p className="text-xs text-muted-foreground mt-1">Activity will appear here as users interact with the platform</p>
+            <p className="text-xs text-muted-foreground mt-1">Activity will appear here as admins make changes</p>
           </div>
         ) : (
-          activities.map((activity) => (
-            <Link key={activity.id} to={getActivityHref(activity.type)}>
+          activities.map((log) => (
+            <Link key={log.id} to="/admin/activity-log">
               <div className="flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-all hover:shadow-sm cursor-pointer">
                 <div className="flex-shrink-0 mt-0.5">
-                  {getActivityIcon(activity.type)}
+                  {getActivityIcon(log.action)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground">
-                    {activity.title}
+                    {activityLogService.formatActionName(log.action)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {activity.description}
+                    {formatActivityDescription(log)}
                   </p>
                   <div className="flex items-center gap-2 mt-2">
                     <p className="text-xs text-muted-foreground">
-                      {getRelativeTime(activity.timestamp)}
+                      {getRelativeTime(log.createdAt)}
                     </p>
-                    {activity.userName && (
+                    {log.user && (
                       <Badge variant="outline" className="text-xs">
-                        {activity.userName}
+                        {log.user.fullName || log.user.email}
                       </Badge>
                     )}
                   </div>
@@ -175,7 +157,7 @@ const AdminRecentActivity = () => {
           ))
         )}
         <Button variant="outline" className="w-full mt-3" asChild>
-          <Link to="/admin/logs">View All Activity</Link>
+          <Link to="/admin/activity-log">View All Activity</Link>
         </Button>
       </CardContent>
     </Card>
