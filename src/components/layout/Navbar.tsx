@@ -115,16 +115,16 @@ const Navbar: React.FC = () => {
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-3">
-            {/* <Link to="/login">
-              <Button className="bg-clearcause-primary hover:text-white hover:bg-blue-600 rounded-full px-10 font-redhatbold text-xs">
-                Log In
-              </Button>
-            </Link> */}
-            <Link to="/signup">
-              <Button className="bg-clearcause-primary hover:bg-blue-600 rounded-full  px-10 font-redhatbold text-xs">
+            <Link to="/login">
+              <Button className="bg-clearcause-primary hover:text-white hover:bg-blue-600 rounded-full px-10 font-redhatbold text-xs tracking-wide">
                 Sign In
               </Button>
             </Link>
+            {/* <Link to="/signup">
+              <Button className="bg-clearcause-primary hover:bg-blue-600 rounded-full  px-10 font-redhatbold text-xs">
+                Sign In
+              </Button>
+            </Link> */}
           </div>
           <div className="-mr-2 flex items-center sm:hidden">
             <button
