@@ -632,10 +632,30 @@ export const updateCampaignStatus = withErrorHandling(async (
   }
 
   // Log audit event
-  await logAuditEvent(currentUserId, 'CAMPAIGN_STATUS_UPDATE', 'campaign', campaignId, { 
-    oldStatus: campaign.status, 
-    newStatus: status 
+  await logAuditEvent(currentUserId, 'CAMPAIGN_STATUS_UPDATE', 'campaign', campaignId, {
+    oldStatus: campaign.status,
+    newStatus: status
   });
+
+  // If campaign is being cancelled with donations, initiate refund process
+  if (status === 'cancelled' && updatedCampaign.current_amount > 0) {
+    try {
+      const { initiateCampaignRefund } = await import('./refundService');
+
+      await initiateCampaignRefund(
+        campaignId,
+        'campaign_cancellation',
+        currentUserId,
+        'Campaign was cancelled by ' + (campaign.charity?.userId === currentUserId ? 'charity' : 'admin')
+      );
+
+      console.log(`[campaignService] Refund initiated for cancelled campaign ${campaignId}`);
+    } catch (refundError) {
+      console.error('[campaignService] Failed to initiate campaign refund:', refundError);
+      // Don't fail the cancellation if refund initiation fails
+      // Admins can manually trigger refund later
+    }
+  }
 
   // Return updated campaign with relations
   return getCampaignById(campaignId, true);

@@ -16,6 +16,7 @@ import {
   FileText,
   BarChart3,
   Settings,
+  Star,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -154,6 +155,11 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
       path: "/charity/profile",
       label: "Organization Profile",
       icon: <Landmark className="h-5 w-5" />,
+    },
+    {
+      path: "/charity/received-feedback",
+      label: "Received Feedback",
+      icon: <Star className="h-5 w-5" />,
     },
   ];
 

@@ -402,6 +402,11 @@ const App = () => {
               <RefundManagement />
             </AdminRoute>
           } />
+          <Route path="/admin/charity-feedback" element={
+            <AdminRoute>
+              <CharityFeedbackManagement />
+            </AdminRoute>
+          } />
 
           {/* Catch-all route */}
           <Route path="*" element={<NotFound />} />
