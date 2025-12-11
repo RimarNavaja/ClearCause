@@ -379,9 +379,12 @@ export const getDonorPendingRefundDecisions = withErrorHandling(async (
     .from('donor_refund_decisions')
     .select(`
       *,
-      milestone_refund_requests!inner(decision_deadline, status),
-      milestones(id, title, description),
-      campaigns:campaign_id(id, title, image_url)
+      milestone_refund_requests!inner(
+        decision_deadline,
+        status,
+        campaigns(id, title, image_url)
+      ),
+      milestones(id, title, description)
     `, { count: 'exact' })
     .eq('donor_id', donorId)
     .eq('status', 'pending')
@@ -411,7 +414,7 @@ export const getDonorPendingRefundDecisions = withErrorHandling(async (
     createdAt: d.created_at,
     updatedAt: d.updated_at,
     milestone: d.milestones,
-    campaign: d.campaigns,
+    campaign: d.milestone_refund_requests?.campaigns,
     decisionDeadline: d.milestone_refund_requests?.decision_deadline,
   }));
 
@@ -436,7 +439,7 @@ export const submitDonorDecision = withErrorHandling(async (
     .from('donor_refund_decisions')
     .select(`
       *,
-      milestone_refund_requests!inner(decision_deadline)
+      milestone_refund_requests!inner(decision_deadline, campaign_id)
     `)
     .eq('id', decisionId)
     .eq('donor_id', donorId)
@@ -509,7 +512,7 @@ export const submitDonorDecision = withErrorHandling(async (
     }
 
     // Cannot redirect to the same campaign
-    if (decision.redirectCampaignId === decisionRecord.campaign_id) {
+    if (decision.redirectCampaignId === decisionRecord.milestone_refund_requests.campaign_id) {
       throw new ClearCauseError('SAME_CAMPAIGN', 'Cannot redirect to the same campaign', 400);
     }
   }
@@ -702,7 +705,7 @@ const processSingleDecision = async (decision: any): Promise<{ success: boolean;
           metadata: {
             source: 'milestone_rejection_redirect',
             original_donation_id: decision.donation_id,
-            original_campaign_id: decision.campaign_id,
+            original_campaign_id: decision.milestone_refund_requests?.campaign_id,
             decision_id: decision.id,
           },
         })
@@ -777,7 +780,10 @@ export const processRefundRequest = withErrorHandling(async (
   // Get all decided decisions for this request
   const { data: decisions, error: decisionsError } = await supabase
     .from('donor_refund_decisions')
-    .select('*')
+    .select(`
+      *,
+      milestone_refund_requests!inner(campaign_id)
+    `)
     .eq('refund_request_id', refundRequestId)
     .in('status', ['decided', 'auto_refunded']);
 

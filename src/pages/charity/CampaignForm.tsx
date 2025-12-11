@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import CharityLayout from "@/components/layout/CharityLayout";
@@ -62,8 +63,8 @@ interface Milestone {
   id: string;
   title: string;
   amount: number;
-  evidenceDescription: string;
-  customProof?: string; // For custom description when "other" is selected
+  evidenceDescriptions: string[]; // Now an array for multi-select
+  customProofs: { [key: string]: string }; // Map of proofType -> customDescription for 'other' types
 }
 
 const CampaignForm: React.FC = () => {
@@ -105,7 +106,7 @@ const CampaignForm: React.FC = () => {
   });
 
   const [milestones, setMilestones] = useState<Milestone[]>([
-    { id: "1", title: "", amount: 0, evidenceDescription: "" },
+    { id: "1", title: "", amount: 0, evidenceDescriptions: [], customProofs: {} },
   ]);
 
   // Fetch categories on mount
@@ -213,12 +214,41 @@ const CampaignForm: React.FC = () => {
 
             if (campaign.milestones) {
               setMilestones(
-                campaign.milestones.map((milestone, index) => ({
-                  id: milestone.id || (index + 1).toString(),
-                  title: milestone.title,
-                  amount: milestone.targetAmount,
-                  evidenceDescription: milestone.evidenceDescription || "",
-                }))
+                campaign.milestones.map((milestone, index) => {
+                  const parsedEvidenceDescriptions: string[] = [];
+                  const parsedCustomProofs: { [key: string]: string } = {};
+                  const existingDesc = milestone.evidenceDescription || "";
+
+                  // Attempt to parse existing single string into array
+                  // This is a best-effort parsing for old string format
+                  PROOF_TYPE_OPTIONS.forEach(option => {
+                    if (existingDesc.includes(option.label) && option.value !== 'other') {
+                      parsedEvidenceDescriptions.push(option.value);
+                    }
+                  });
+
+                  if (existingDesc.startsWith("Other: ")) {
+                      parsedEvidenceDescriptions.push("other");
+                      parsedCustomProofs['other'] = existingDesc.replace("Other: ", "").trim();
+                  } else if (existingDesc.includes("Other") && !parsedEvidenceDescriptions.includes("other")) {
+                       // If "Other" is mentioned but not specifically "Other: Custom", still select 'other'
+                       parsedEvidenceDescriptions.push("other");
+                  }
+                  // If after parsing, no options matched but there's a description, treat as custom 'other'
+                  if (parsedEvidenceDescriptions.length === 0 && existingDesc.trim() !== "") {
+                      parsedEvidenceDescriptions.push("other");
+                      parsedCustomProofs['other'] = existingDesc;
+                  }
+
+
+                  return {
+                    id: milestone.id || (index + 1).toString(),
+                    title: milestone.title,
+                    amount: milestone.targetAmount,
+                    evidenceDescriptions: parsedEvidenceDescriptions,
+                    customProofs: parsedCustomProofs,
+                  };
+                })
               );
             }
 
@@ -274,10 +304,20 @@ const CampaignForm: React.FC = () => {
   const handleMilestoneChange = (
     index: number,
     field: keyof Milestone,
-    value: string | number
+    value: string | number | string[]
   ) => {
     const updatedMilestones = [...milestones];
-    updatedMilestones[index] = { ...updatedMilestones[index], [field]: value };
+    if (field === "customProof") { // Special handling for customProof input
+      updatedMilestones[index] = {
+        ...updatedMilestones[index],
+        customProofs: {
+          ...updatedMilestones[index].customProofs,
+          other: value as string, // Assuming 'other' is the key for generic custom proof
+        },
+      };
+    } else {
+      updatedMilestones[index] = { ...updatedMilestones[index], [field]: value };
+    }
     setMilestones(updatedMilestones);
   };
 
@@ -345,17 +385,17 @@ const CampaignForm: React.FC = () => {
     }
 
     // Validate custom proof requirement
-    const invalidMilestones = milestones.filter(
+    const missingCustomProof = milestones.some(
       (m) =>
-        m.evidenceDescription === "other" &&
-        (!m.customProof || m.customProof.trim() === "")
+        m.evidenceDescriptions.includes("other") &&
+        (!m.customProofs["other"] || m.customProofs["other"].trim() === "")
     );
 
-    if (invalidMilestones.length > 0) {
+    if (missingCustomProof) {
       toast({
         title: "Validation Error",
         description:
-          "Please provide a custom proof description for milestones with 'Other' evidence type.",
+          "Please provide a custom proof description for milestones with 'Other' evidence type selected.",
         variant: "destructive",
       });
       return;
@@ -411,19 +451,25 @@ const CampaignForm: React.FC = () => {
         location: campaignDetails.location || undefined,
         status: isDraft ? "draft" : "pending",
         milestones: milestones.map((milestone) => {
-          // Use custom proof description if "other" is selected, otherwise use the selected option label
-          const evidenceDesc =
-            milestone.evidenceDescription === "other"
-              ? milestone.customProof || "Other"
-              : PROOF_TYPE_OPTIONS.find(
-                  (opt) => opt.value === milestone.evidenceDescription
-                )?.label || milestone.evidenceDescription;
+          // Construct evidenceDesc as a single string from the array
+          const selectedLabels: string[] = [];
+          milestone.evidenceDescriptions.forEach(value => {
+            if (value === "other") {
+              selectedLabels.push(`Other: ${milestone.customProofs['other'] || 'N/A'}`);
+            } else {
+              const option = PROOF_TYPE_OPTIONS.find(opt => opt.value === value);
+              if (option) {
+                selectedLabels.push(option.label);
+              }
+            }
+          });
+          const evidenceDesc = selectedLabels.join(', ');
 
           return {
             title: milestone.title,
-            description: evidenceDesc,
+            description: milestone.title, // Use title for description as per previous pattern
             targetAmount: Number(milestone.amount),
-            evidenceDescription: evidenceDesc,
+            evidenceDescription: evidenceDesc, // Send as single string to API
           };
         }),
       };
@@ -1160,44 +1206,32 @@ const CampaignForm: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Required Evidence Type*
                         </label>
-                        <Select
-                          value={milestone.evidenceDescription}
-                          onValueChange={(value) =>
+                        <MultiSelect
+                          options={PROOF_TYPE_OPTIONS}
+                          selected={milestone.evidenceDescriptions || []}
+                          onSelectedChange={(values) =>
                             handleMilestoneChange(
                               index,
-                              "evidenceDescription",
-                              value
+                              "evidenceDescriptions",
+                              values
                             )
                           }
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select required proof type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PROOF_TYPE_OPTIONS.map((option) => (
-                              <SelectItem
-                                key={option.value}
-                                value={option.value}
-                              >
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          placeholder="Select required proof types"
+                        />
                       </div>
 
                       {/* Show custom input if "other" is selected */}
-                      {milestone.evidenceDescription === "other" && (
+                      {milestone.evidenceDescriptions.includes("other") && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Custom Proof Description*
+                            Custom Proof Description for "Other"*
                           </label>
                           <Textarea
-                            value={milestone.customProof || ""}
+                            value={milestone.customProofs["other"] || ""}
                             onChange={(e) =>
                               handleMilestoneChange(
                                 index,
-                                "customProof",
+                                "customProof", // Re-using customProof field for this specific handler
                                 e.target.value
                               )
                             }

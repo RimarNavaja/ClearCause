@@ -1,121 +1,70 @@
 
-import React from 'react';
-import { Calendar, Eye, CheckCircle, DollarSign, Clock } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Calendar, Eye, CheckCircle, DollarSign, Clock, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/lib/supabase';
 
 interface AuditEvent {
   id: string;
-  type: 'donation' | 'milestone_verified' | 'funds_released';
-  timestamp: string;
-  amount?: number;
-  description: string;
-  donorName?: string; // "Anonymous" or "Donor #123"
-  milestoneTitle?: string;
-  verifiedBy?: string;
+  action: string;
+  entity_type: string;
+  details: any;
+  created_at: string;
+  user_email: string;
+  user_role: string;
 }
 
 interface AuditTrailProps {
   campaignId: string;
 }
 
-const SAMPLE_AUDIT_EVENTS: AuditEvent[] = [
-  {
-    id: "1",
-    type: "funds_released",
-    timestamp: "2024-03-15T14:30:00Z",
-    amount: 300000,
-    description: "Funds released for Milestone 2: Initial Construction - First 3 Wells",
-    milestoneTitle: "Initial Construction - First 3 Wells",
-    verifiedBy: "ClearCause Verifier #002"
-  },
-  {
-    id: "2",
-    type: "milestone_verified",
-    timestamp: "2024-03-15T10:15:00Z",
-    description: "Milestone 2 verified: Construction photos and engineering certification approved",
-    milestoneTitle: "Initial Construction - First 3 Wells",
-    verifiedBy: "ClearCause Verifier #002"
-  },
-  {
-    id: "3",
-    type: "donation",
-    timestamp: "2024-03-14T16:45:00Z",
-    amount: 5000,
-    description: "Donation received",
-    donorName: "Donor #127"
-  },
-  {
-    id: "4",
-    type: "donation",
-    timestamp: "2024-03-14T09:20:00Z",
-    amount: 2500,
-    description: "Donation received",
-    donorName: "Anonymous"
-  },
-  {
-    id: "5",
-    type: "funds_released",
-    timestamp: "2024-02-20T11:00:00Z",
-    amount: 200000,
-    description: "Funds released for Milestone 1: Site Selection and Community Engagement",
-    milestoneTitle: "Site Selection and Community Engagement",
-    verifiedBy: "ClearCause Verifier #001"
-  },
-  {
-    id: "6",
-    type: "milestone_verified",
-    timestamp: "2024-02-19T15:30:00Z",
-    description: "Milestone 1 verified: Community meeting logs and signed MOUs approved",
-    milestoneTitle: "Site Selection and Community Engagement",
-    verifiedBy: "ClearCause Verifier #001"
-  },
-  {
-    id: "7",
-    type: "donation",
-    timestamp: "2024-02-18T13:15:00Z",
-    amount: 10000,
-    description: "Donation received",
-    donorName: "Donor #089"
-  },
-  {
-    id: "8",
-    type: "donation",
-    timestamp: "2024-02-15T08:30:00Z",
-    amount: 1000,
-    description: "Donation received",
-    donorName: "Anonymous"
-  }
-];
-
 const AuditTrail: React.FC<AuditTrailProps> = ({ campaignId }) => {
-  // For now, we don't have real audit data, so show empty state
-  const auditEvents: AuditEvent[] = [];
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const getEventIcon = (type: string) => {
-    switch (type) {
-      case 'donation':
-        return <DollarSign className="h-4 w-4 text-green-600" />;
-      case 'milestone_verified':
-        return <CheckCircle className="h-4 w-4 text-blue-600" />;
-      case 'funds_released':
-        return <Eye className="h-4 w-4 text-purple-600" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-600" />;
+  useEffect(() => {
+    const fetchAuditLogs = async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_campaign_audit_logs', {
+          p_campaign_id: campaignId,
+          p_limit: 50
+        });
+
+        if (error) {
+          console.error('Error fetching audit logs:', error);
+        } else {
+          setAuditEvents(data || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch audit logs:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (campaignId) {
+      fetchAuditLogs();
     }
+  }, [campaignId]);
+
+  const getEventIcon = (type: string, action: string) => {
+    if (type === 'donation') return <DollarSign className="h-4 w-4 text-green-600" />;
+    if (type === 'milestone') {
+       if (action.includes('RELEASE')) return <Eye className="h-4 w-4 text-purple-600" />;
+       return <CheckCircle className="h-4 w-4 text-blue-600" />;
+    }
+    if (type === 'campaign') return <AlertCircle className="h-4 w-4 text-orange-600" />;
+    return <Clock className="h-4 w-4 text-gray-600" />;
   };
 
-  const getEventColor = (type: string) => {
-    switch (type) {
-      case 'donation':
-        return 'bg-green-100 text-green-800';
-      case 'milestone_verified':
-        return 'bg-blue-100 text-blue-800';
-      case 'funds_released':
-        return 'bg-purple-100 text-purple-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  const getEventColor = (type: string, action: string) => {
+    if (type === 'donation') return 'bg-green-100 text-green-800';
+    if (type === 'milestone') {
+      if (action.includes('RELEASE')) return 'bg-purple-100 text-purple-800';
+      return 'bg-blue-100 text-blue-800';
     }
+    return 'bg-gray-100 text-gray-800';
   };
 
   const formatDate = (timestamp: string) => {
@@ -128,17 +77,34 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ campaignId }) => {
     });
   };
 
-  const formatEventType = (type: string) => {
-    switch (type) {
-      case 'donation':
-        return 'Donation';
-      case 'milestone_verified':
-        return 'Milestone Verified';
-      case 'funds_released':
-        return 'Funds Released';
-      default:
-        return 'Activity';
+  const formatEventType = (type: string, action: string) => {
+    if (type === 'donation') return 'Donation';
+    if (type === 'milestone') {
+       if (action === 'FUNDS_RELEASED') return 'Funds Released';
+       return 'Milestone Verified';
     }
+    if (action === 'CAMPAIGN_CREATED') return 'Campaign Created';
+    if (action === 'CAMPAIGN_STATUS_UPDATED') return 'Status Update';
+    return action.replace(/_/g, ' ');
+  };
+
+  const getDescription = (event: AuditEvent) => {
+    if (event.action === 'DONATION_COMPLETED') {
+      return `Donation received` + (event.details.is_anonymous ? ' (Anonymous)' : '');
+    }
+    if (event.action === 'MILESTONE_VERIFIED') {
+      return `Verified: ${event.details.milestone_title}`;
+    }
+    if (event.action === 'FUNDS_RELEASED') {
+      return `Funds released for: ${event.details.milestone_title}`;
+    }
+    if (event.action === 'CAMPAIGN_CREATED') {
+      return `Campaign created with goal ₱${event.details.goal_amount?.toLocaleString()}`;
+    }
+    if (event.action === 'CAMPAIGN_STATUS_UPDATED') {
+      return `Campaign status changed from ${event.details.old_status} to ${event.details.new_status}`;
+    }
+    return JSON.stringify(event.details);
   };
 
   return (
@@ -153,7 +119,13 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ campaignId }) => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {auditEvents.length === 0 ? (
+        {loading ? (
+          <div className="space-y-4">
+             {[1, 2, 3].map(i => (
+               <div key={i} className="h-20 bg-gray-100 rounded-lg animate-pulse" />
+             ))}
+          </div>
+        ) : auditEvents.length === 0 ? (
           <div className="text-center py-12">
             <div className="max-w-md mx-auto">
               <p className="text-gray-500 mb-2">No audit trail data available yet</p>
@@ -167,39 +139,31 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ campaignId }) => {
             {auditEvents.map((event) => (
             <div key={event.id} className="flex items-start space-x-4 p-4 border rounded-lg bg-gray-50/50">
               <div className="flex-shrink-0 mt-1">
-                {getEventIcon(event.type)}
+                {getEventIcon(event.entity_type, event.action)}
               </div>
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center space-x-2">
-                    <Badge className={getEventColor(event.type)}>
-                      {formatEventType(event.type)}
+                    <Badge className={getEventColor(event.entity_type, event.action)}>
+                      {formatEventType(event.entity_type, event.action)}
                     </Badge>
-                    {event.amount && (
+                    {event.details?.amount && (
                       <span className="font-semibold text-clearcause-primary">
-                        ₱{event.amount.toLocaleString()}
+                        ₱{Number(event.details.amount).toLocaleString()}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center text-sm text-gray-500">
                     <Calendar className="h-3 w-3 mr-1" />
-                    {formatDate(event.timestamp)}
+                    {formatDate(event.created_at)}
                   </div>
                 </div>
                 
-                <p className="text-sm text-gray-700 mb-1">{event.description}</p>
+                <p className="text-sm text-gray-700 mb-1">{getDescription(event)}</p>
                 
-                {event.donorName && (
-                  <p className="text-xs text-gray-500">From: {event.donorName}</p>
-                )}
-                
-                {event.verifiedBy && (
-                  <p className="text-xs text-gray-500">Verified by: {event.verifiedBy}</p>
-                )}
-                
-                {event.milestoneTitle && event.type !== 'milestone_verified' && (
-                  <p className="text-xs text-gray-500">Milestone: {event.milestoneTitle}</p>
+                {event.user_email && (
+                  <p className="text-xs text-gray-500">By: {event.user_email}</p>
                 )}
               </div>
             </div>
