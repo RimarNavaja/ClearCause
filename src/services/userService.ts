@@ -111,6 +111,27 @@ export const updateUserProfile = withErrorHandling(async (
 
     console.log('[updateUserProfile] Database update successful');
 
+    // Sync with Auth metadata
+    try {
+      const authUpdates: any = {};
+      if (validatedUpdates.fullName) authUpdates.full_name = validatedUpdates.fullName;
+      if (validatedUpdates.avatarUrl) authUpdates.avatar_url = validatedUpdates.avatarUrl;
+      if (validatedUpdates.phone) authUpdates.phone = validatedUpdates.phone;
+
+      if (Object.keys(authUpdates).length > 0) {
+        const { error: authUpdateError } = await supabase.auth.updateUser({
+          data: authUpdates
+        });
+        if (authUpdateError) {
+          console.warn('[updateUserProfile] Failed to sync auth metadata:', authUpdateError);
+        } else {
+          console.log('[updateUserProfile] Synced auth metadata successfully');
+        }
+      }
+    } catch (syncError) {
+      console.warn('[updateUserProfile] Exception syncing auth metadata:', syncError);
+    }
+
     return createSuccessResponse({
       id: data.id,
       email: data.email,
@@ -176,6 +197,20 @@ export const uploadUserAvatar = withErrorHandling(async (
     }
 
     console.log('[uploadUserAvatar] Avatar upload completed successfully');
+
+    // Sync with Auth metadata
+    try {
+      const { error: authUpdateError } = await supabase.auth.updateUser({
+        data: { avatar_url: avatarUrl }
+      });
+      if (authUpdateError) {
+        console.warn('[uploadUserAvatar] Failed to sync auth metadata:', authUpdateError);
+      } else {
+        console.log('[uploadUserAvatar] Synced auth metadata successfully');
+      }
+    } catch (syncError) {
+      console.warn('[uploadUserAvatar] Exception syncing auth metadata:', syncError);
+    }
 
     // Update localStorage cache with new avatar URL
     try {

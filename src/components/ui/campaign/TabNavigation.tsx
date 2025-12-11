@@ -22,7 +22,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({ activeTab, onTabChange })
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm ${
+            className={`flex-1 py-4 px-1 text-center border-b-2 font-poppinsregular text-sm ${
               activeTab === tab.id
                 ? 'border-clearcause-primary text-clearcause-primary'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'

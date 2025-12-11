@@ -167,7 +167,7 @@ const DonationCard: React.FC<DonationCardProps> = ({
             </div>
           </div>
           <div>
-            <h3 className="font-medium">{campaign.charity}</h3>
+            <h3 className="font-medium font-poppinsregular">{campaign.charity}</h3>
             {campaign.charityId && (
               <Link
                 to={`/charities/${campaign.charityId}`}

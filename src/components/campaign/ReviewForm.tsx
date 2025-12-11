@@ -94,9 +94,9 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({ campaignId, onSuccess })
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-6 border rounded-lg bg-card">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-6 border rounded-lg bg-card font-poppinsregular">
       <div>
-        <h3 className="text-lg font-semibold mb-4">Leave a Review</h3>
+        <h3 className="text-lg font-robotobold mb-4">Leave a Review</h3>
 
         <div className="space-y-4">
           {/* Rating Input */}
