@@ -26,11 +26,13 @@ import { Campaign, CampaignStatus } from '@/lib/types';
 import { formatCurrency, getRelativeTime, debounce, calculateDaysLeft } from '@/utils/helpers';
 import { toast } from 'sonner';
 import { waitForAuthReady } from '@/utils/authHelper';
+import { ExtendDeadlineDialog } from '@/components/charity/campaign/ExtendDeadlineDialog';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Campaigns' },
   { value: 'active', label: 'Active' },
-  { value: 'draft', label: 'Pending Review' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'pending', label: 'Pending Review' },
   { value: 'paused', label: 'Paused' },
   { value: 'completed', label: 'Completed' },
   { value: 'cancelled', label: 'Cancelled' },
@@ -405,15 +407,18 @@ const ManageCampaigns: React.FC = () => {
             )}
 
             {/* Campaign Details Section */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              {/* Campaign Title and Created At */}
+              <div className="md:col-span-3">
                 <h3 className="font-medium text-gray-900">{campaign.title}</h3>
                 <p className="text-sm text-gray-500">
                   Created {getRelativeTime(campaign.createdAt)}
                 </p>
               </div>
 
-              <div>
+              {/* Status Badge and Days Left */}
+              <div className="md:col-span-1">
+                
                 <Badge variant={getStatusBadgeVariantWithFeedback(campaign.status, feedback)}>
                   {getStatusLabel(campaign.status, feedback)}
                 </Badge>
@@ -423,8 +428,8 @@ const ManageCampaigns: React.FC = () => {
                   </p>
                 )}
               </div>
-
-              <div>
+              {/* Amount Raised and Progress Bar */}
+              <div className="md:col-span-4">
                 <p className="text-sm font-medium">
                   {formatCurrency(amountRaised)}
                 </p>
@@ -438,13 +443,29 @@ const ManageCampaigns: React.FC = () => {
                   />
                 </div>
               </div>
-
-              <div className="flex items-center justify-end gap-2">
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 md:col-span-4">
                 {campaign.status === 'active' && (
-                  <Button variant="default" size="sm" asChild className="bg-clearcause-primary hover:bg-clearcause-secondary">
+                  <Button variant="default" size="sm" asChild className="bg-clearcause-primary hover:bg-blue-600">
                     <Link to={`/charity/campaigns/${campaign.id}/updates`}>
                       <Megaphone className="mr-2 h-4 w-4" />
                       Post Update
+                    </Link>
+                  </Button>
+                )}
+                {(campaign.status === 'active' || campaign.status === 'paused') && calculateDaysLeft(campaign.endDate) <= 0 && (
+                  <ExtendDeadlineDialog 
+                    campaignId={campaign.id}
+                    currentEndDate={campaign.endDate || null}
+                    campaignTitle={campaign.title}
+                    onSuccess={loadCampaigns}
+                  />
+                )}
+                {campaign.status === 'draft' && (
+                  <Button variant="outline" size="sm" asChild className="border-blue-700 text-blue-700 hover:bg-blue-600 px-5">
+                    <Link to={`/charity/campaigns/edit/${campaign.id}`}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit Draft
                     </Link>
                   </Button>
                 )}
@@ -493,7 +514,7 @@ const ManageCampaigns: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900">Your Campaigns</h1>
             <p className="text-gray-600">Create and manage your fundraising campaigns</p>
           </div>
-          <Button asChild>
+          <Button asChild className='bg-blue-600 hover:bg-blue-600/90'>
             <Link to="/charity/campaigns/new">
               <Plus className="mr-2 h-4 w-4" />
               Create Campaign

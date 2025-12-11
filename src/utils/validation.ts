@@ -141,6 +141,7 @@ export const campaignCreateSchema = z.object({
   location: z.string().min(2, 'Location must be at least 2 characters').max(100, 'Location is too long').optional(),
   startDate: z.string().datetime('Invalid start date').optional(),
   endDate: z.string().datetime('Invalid end date').optional(),
+  status: campaignStatusSchema.optional(),
   milestones: z.array(z.object({
     title: z.string().min(3, 'Milestone title must be at least 3 characters').max(200, 'Milestone title is too long'),
     description: z.string().min(10, 'Milestone description must be at least 10 characters').max(1000, 'Milestone description is too long'),
