@@ -159,7 +159,7 @@ export const getRecentCriticalActivity = withErrorHandling(async (
     throw new ClearCauseError('FORBIDDEN', 'Only administrators can access activity logs', 403);
   }
 
-  // Query for critical actions
+  // Query for recent activity (all types)
   const { data, error } = await supabase
     .from('audit_logs')
     .select(`
@@ -171,7 +171,6 @@ export const getRecentCriticalActivity = withErrorHandling(async (
         role
       )
     `)
-    .or('entity_type.eq.platform_setting,action.eq.UPDATE_PLATFORM_SETTING,action.eq.CHARITY_VERIFICATION_UPDATE,action.ilike.%approve%,action.ilike.%reject%')
     .order('created_at', { ascending: false })
     .limit(limit);
 

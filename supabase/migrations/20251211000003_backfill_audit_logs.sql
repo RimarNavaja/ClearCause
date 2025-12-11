@@ -129,7 +129,7 @@ SELECT
 FROM public.milestones m
 JOIN public.campaigns c ON m.campaign_id = c.id
 JOIN public.milestone_proofs mp ON m.id = mp.milestone_id
-WHERE mp.verification_status = 'verified'
+WHERE mp.verification_status = 'approved'
   AND m.id NOT IN (
     SELECT DISTINCT entity_id 
     FROM public.audit_logs 
@@ -150,17 +150,17 @@ SELECT
     'organization_name', ch.organization_name,
     'old_status', 'pending',
     'new_status', ch.verification_status,
-    'admin_notes', ch.admin_notes
+    'admin_notes', ch.verification_notes
   ) as details,
   COALESCE(ch.updated_at, ch.created_at) as created_at
 FROM public.charities ch
-WHERE ch.verification_status IN ('verified', 'rejected')
+WHERE ch.verification_status IN ('approved', 'rejected')
   AND ch.id NOT IN (
     SELECT DISTINCT entity_id 
     FROM public.audit_logs 
     WHERE action = 'CHARITY_VERIFICATION_UPDATE' 
       AND entity_type = 'charity'
-      AND (details->>'new_status')::text IN ('verified', 'rejected')
+      AND (details->>'new_status')::text IN ('approved', 'rejected')
   );
 
 -- ============================================================================

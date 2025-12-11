@@ -214,6 +214,40 @@ async function backfillAuditLogsAlternative() {
       }
     }
 
+    // 4. Backfill Charity Verifications
+    console.log('📝 4. Backfilling charity verification logs...');
+    const { data: charities } = await supabase
+      .from('charities')
+      .select('id, user_id, organization_name, verification_status, verification_notes, updated_at, created_at')
+      .in('verification_status', ['approved', 'rejected']);
+
+    if (charities && charities.length > 0) {
+      const { error: charityError } = await supabase
+        .from('audit_logs')
+        .upsert(
+          charities.map(c => ({
+            user_id: c.user_id,
+            action: 'CHARITY_VERIFICATION_UPDATE',
+            entity_type: 'charity',
+            entity_id: c.id,
+            details: { 
+              organization_name: c.organization_name,
+              old_status: 'pending',
+              new_status: c.verification_status,
+              admin_notes: c.verification_notes
+            },
+            created_at: c.updated_at || c.created_at
+          })),
+          { onConflict: 'entity_id', ignoreDuplicates: true }
+        );
+      
+      if (charityError) {
+        console.warn(`⚠️  Warning: ${charityError.message}`);
+      } else {
+        console.log(`✅ Created ${charities.length} charity verification logs`);
+      }
+    }
+
     // Fetch final counts
     const { count: totalLogs } = await supabase
       .from('audit_logs')

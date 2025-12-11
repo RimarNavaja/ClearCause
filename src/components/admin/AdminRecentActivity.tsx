@@ -28,7 +28,7 @@ const AdminRecentActivity = () => {
       } catch (err: any) {
         console.error('Recent activity error:', err);
         setActivities([]);
-        setError(null); // Don't show error, just empty state
+        setError(err.message || 'Failed to load activity');
       } finally {
         setLoading(false);
       }
