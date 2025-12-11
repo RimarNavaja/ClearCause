@@ -53,8 +53,8 @@ const MilestoneTracker: React.FC<MilestoneTrackerProps> = ({ milestones }) => {
   };
   
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold">Transparency Milestones</h2>
+    <div className="space-y-6 font-poppinsregular">
+      <h2 className="text-2xl font-robotobold">Transparency Milestones</h2>
       <p className="text-gray-500">
         Funds are released incrementally after ClearCause verifies that each milestone has been achieved.
       </p>
@@ -82,13 +82,13 @@ const MilestoneTracker: React.FC<MilestoneTrackerProps> = ({ milestones }) => {
               <div className="bg-white rounded-lg border p-5">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="text-lg font-semibold">{milestone.title}</h3>
+                    <h3 className="text-lg font-robotobold">{milestone.title}</h3>
                     {milestone.date && (
                       <p className="text-sm text-gray-500">Target date: {milestone.date}</p>
                     )}
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-semibold">PHP {milestone.amount.toLocaleString()}</div>
+                    <div className="text-lg font-robotobold">PHP {milestone.amount.toLocaleString()}</div>
                     <div className="mt-1">{getStatusBadge(milestone.status)}</div>
                   </div>
                 </div>

@@ -142,13 +142,13 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ campaignId }) => {
   };
 
   return (
-    <Card>
+    <Card className='font-poppinsregular'>
       <CardHeader>
-        <CardTitle className="flex items-center">
+        <CardTitle className="flex items-center font-robotobold">
           <Eye className="h-5 w-5 mr-2" />
           Transparent Audit Trail
         </CardTitle>
-        <CardDescription>
+        <CardDescription className='font-poppinsregular'>
           Complete transparency: All donations, verifications, and fund releases are logged and timestamped
         </CardDescription>
       </CardHeader>

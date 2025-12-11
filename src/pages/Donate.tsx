@@ -386,7 +386,7 @@ const Donate: React.FC = () => {
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <Link
               to={`/campaigns/${campaignId}`}
-              className="text-clearcause-primary hover:text-clearcause-secondary flex items-center text-sm font-redhatregular font-bold"
+              className="text-blue-600 hover:text-white hover:bg-blue-600 flex items-center text-sm font-redhatregular font-bold"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
               Return to Campaign
@@ -395,7 +395,7 @@ const Donate: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-poppinsregular">
           <div className="bg-white rounded-xl shadow-md overflow-hidden">
             {/* Campaign Context Header */}
             <div className="bg-blue-700 text-white px-6 py-6">
@@ -408,11 +408,11 @@ const Donate: React.FC = () => {
                   />
                 )}
                 <div className="grid gap-1 flex-1 ">
-                  <h1 className="text-xl font-normal mb-1">Donate to</h1>
-                  <p className="text-white/90 text-lg font-bold">
-                    <span>" {campaign.title} "</span>
+                  <h2 className="text-xl font-normal mb-1">Donate to</h2>
+                  <p className="text-white/90 text-xl font-robotobold tracking-wide">
+                    <span>"{campaign.title}"</span>
                   </p>
-                  <p className="text-white/80 text-sm">
+                  <p className="text-white/80 text-xs">
                     {campaign.charity?.organizationName}
                   </p>
                 </div>
@@ -474,7 +474,7 @@ const Donate: React.FC = () => {
             <div className="p-6 space-y-6">
               {/* Select Amount */}
               <div className="space-y-3">
-                <h2 className="text-lg font-semibold text-gray-900">
+                <h2 className="text-lg font-robotobold text-gray-900">
                   Select Donation Amount
                 </h2>
 
@@ -540,7 +540,7 @@ const Donate: React.FC = () => {
 
               {/* Payment Methods */}
               <div className="space-y-3">
-                <h2 className="text-lg font-semibold text-gray-900">
+                <h2 className="text-lg font-robotobold text-gray-900 font-robotobold">
                   Select Payment Method
                 </h2>
 
@@ -660,7 +660,7 @@ const Donate: React.FC = () => {
                 <div className="flex items-start gap-2 mb-3">
                   <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 mb-1">
+                    <h4 className="font-robotobold text-gray-900 mb-1">
                       Support ClearCause (Optional)
                     </h4>
                     <p className="text-sm text-gray-600">
@@ -709,7 +709,7 @@ const Donate: React.FC = () => {
               </div>
 
               {/* Donor Covers Fees Checkbox */}
-              <div className="bg-green-50 rounded-lg p-4 border-2 border-green-200">
+              <div className="bg-blue-50 rounded-lg p-4 border-2 border-blue-200">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
@@ -719,7 +719,7 @@ const Donate: React.FC = () => {
                   />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-900">
+                      <span className="font-semibold text-gray-900 font-robotobold">
                         Cover transaction fees
                       </span>
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
@@ -774,7 +774,7 @@ const Donate: React.FC = () => {
                     )}
                     {coverFees ? (
                       <>
-                        <div className="flex justify-between text-green-600">
+                        <div className="flex justify-between text-blue-600">
                           <span>Platform fee you're covering ({platformFeePercentage}%):</span>
                           <span className="font-medium">+₱{feeBreakdown.platformFee.toFixed(2)}</span>
                         </div>
@@ -787,7 +787,7 @@ const Donate: React.FC = () => {
                         </div>
                       </>
                     )}
-                    <div className="border-t border-gray-300 pt-2 mt-2 flex justify-between font-semibold text-green-700 bg-green-50 -mx-4 px-4 py-2 rounded">
+                    <div className="border-t border-gray-300 pt-2 mt-2 flex justify-between font-semibold text-blue-700 bg-blue-50 -mx-4 px-4 py-2 rounded">
                       <span>Charity receives:</span>
                       <span>₱{feeBreakdown.netAmount.toFixed(2)}</span>
                     </div>
@@ -797,20 +797,20 @@ const Donate: React.FC = () => {
 
               {/* Payment Summary */}
               <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-5 border border-blue-100">
-                <h3 className="font-semibold text-gray-900 mb-3">
+                <h3 className="font-robotobold text-gray-900 mb-3">
                   Payment Summary
                 </h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Donation amount:</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="font-robotobold text-gray-900">
                       ₱{amount.toLocaleString()}
                     </span>
                   </div>
                   {tipAmount > 0 && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Tip to ClearCause:</span>
-                      <span className="font-semibold text-blue-600">
+                      <span className="font-robotobold text-blue-600">
                         ₱{tipAmount.toLocaleString()}
                       </span>
                     </div>
@@ -833,7 +833,7 @@ const Donate: React.FC = () => {
                     </div>
                   )}
                   <div className="border-t border-blue-200 mt-3 pt-3 flex justify-between items-center">
-                    <span className="font-semibold text-gray-900">Total charge:</span>
+                    <span className="font-robotobold text-gray-900">Total charge:</span>
                     <span className="font-bold text-2xl text-clearcause-primary">
                       ₱{feeBreakdown.totalCharge.toLocaleString()}
                     </span>

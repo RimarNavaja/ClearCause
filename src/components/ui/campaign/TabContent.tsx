@@ -68,9 +68,9 @@ const TabContent: React.FC<TabContentProps> = ({
   switch (activeTab) {
     case 'about':
       return (
-        <div className="prose max-w-none">
+        <div className="prose max-w-none font-poppinsregular">
           <p className="text-base text-gray-700 whitespace-pre-line">{description}</p>
-          <h3 className="font-semibold text-lg mt-6 mb-3">Project Location</h3>
+          <h3 className="font-semibold text-lg mt-6 mb-3 font-robotobold">Project Location</h3>
           <p>{location}</p>
         </div>
       );
