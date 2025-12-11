@@ -355,7 +355,19 @@ const Donate: React.FC = () => {
                 {campaignError || "Campaign not found"}
               </AlertDescription>
             </Alert>
-            <div className="mt-6 text-center font-redhatbold">
+
+            {campaign && user && campaign.charity?.userId === user.id && calculateDaysLeft(campaign.endDate) <= 0 && (
+              <div className="mt-4 text-center">
+                <p className="text-gray-600 mb-2">Since you are the campaign owner, you can extend the deadline.</p>
+                <Link to="/charity/campaigns">
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    Manage Campaign
+                  </Button>
+                </Link>
+              </div>
+            )}
+
+            <div className="mt-16 text-center font-redhatbold">
               <Link to="/campaigns">
                 <Button variant="outline" className="bg-blue-700 hover:bg-blue-600 text-white">
                   <ArrowLeft className="h-4 w-4 mr-2 " />

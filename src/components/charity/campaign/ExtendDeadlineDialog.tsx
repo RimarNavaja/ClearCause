@@ -84,9 +84,10 @@ export const ExtendDeadlineDialog: React.FC<ExtendDeadlineDialogProps> = ({
         <Button
           variant="outline"
           size="sm"
-          className="font-redhatbold text-red-500"
+          className="font-redhatbold text-red-500 border-red-600 hover:bg-red-600 hover:text-white"
         >
-          <Clock className="h-4 w-4" />
+          {/* <Clock className="h-4 w-4" /> */}
+          Extend
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
