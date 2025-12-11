@@ -1,12 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Eye, Plus, Search, AlertCircle, BarChart3, AlertTriangle, XCircle, CheckCircle, Edit, Clock, User, Info, Trash2, Megaphone } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import {
+  Eye,
+  Plus,
+  Search,
+  AlertCircle,
+  BarChart3,
+  AlertTriangle,
+  XCircle,
+  CheckCircle,
+  Edit,
+  Clock,
+  User,
+  Info,
+  Trash2,
+  Megaphone,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,43 +37,54 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import CharityLayout from '@/components/layout/CharityLayout';
-import { useAuth } from '@/hooks/useAuth';
-import { useRealtime } from '@/hooks/useRealtime';
-import * as campaignService from '@/services/campaignService';
-import * as charityService from '@/services/charityService';
-import { Campaign, CampaignStatus } from '@/lib/types';
-import { formatCurrency, getRelativeTime, debounce, calculateDaysLeft } from '@/utils/helpers';
-import { toast } from 'sonner';
-import { waitForAuthReady } from '@/utils/authHelper';
-import { ExtendDeadlineDialog } from '@/components/charity/campaign/ExtendDeadlineDialog';
+} from "@/components/ui/alert-dialog";
+import CharityLayout from "@/components/layout/CharityLayout";
+import { useAuth } from "@/hooks/useAuth";
+import { useRealtime } from "@/hooks/useRealtime";
+import * as campaignService from "@/services/campaignService";
+import * as charityService from "@/services/charityService";
+import { Campaign, CampaignStatus } from "@/lib/types";
+import {
+  formatCurrency,
+  getRelativeTime,
+  debounce,
+  calculateDaysLeft,
+} from "@/utils/helpers";
+import { toast } from "sonner";
+import { waitForAuthReady } from "@/utils/authHelper";
+import { ExtendDeadlineDialog } from "@/components/charity/campaign/ExtendDeadlineDialog";
 
 const STATUS_OPTIONS = [
-  { value: 'all', label: 'All Campaigns' },
-  { value: 'active', label: 'Active' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'pending', label: 'Pending Review' },
-  { value: 'paused', label: 'Paused' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: "all", label: "All Campaigns" },
+  { value: "active", label: "Active" },
+  { value: "draft", label: "Draft" },
+  { value: "pending", label: "Pending Review" },
+  { value: "paused", label: "Paused" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
 const ManageCampaigns: React.FC = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchInput, setSearchInput] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [stats, setStats] = useState<any>(null);
-  const [approvalFeedback, setApprovalFeedback] = useState<Record<string, any>>({});
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; campaignId: string | null; campaignTitle: string }>({
+  const [approvalFeedback, setApprovalFeedback] = useState<Record<string, any>>(
+    {}
+  );
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    campaignId: string | null;
+    campaignTitle: string;
+  }>({
     open: false,
     campaignId: null,
-    campaignTitle: '',
+    campaignTitle: "",
   });
 
   const { user } = useAuth();
@@ -72,21 +104,23 @@ const ManageCampaigns: React.FC = () => {
       setError(null);
 
       // Wait for auth to be fully ready before making RLS-dependent queries
-      console.log('[ManageCampaigns] Waiting for auth to be ready...');
+      console.log("[ManageCampaigns] Waiting for auth to be ready...");
       const authReady = await waitForAuthReady(5000); // Wait up to 5 seconds
 
       if (!authReady) {
-        console.warn('[ManageCampaigns] Auth not ready, retrying in 1 second...');
+        console.warn(
+          "[ManageCampaigns] Auth not ready, retrying in 1 second..."
+        );
         // If auth isn't ready, wait a bit and the retry logic in getCharityByUserId will handle it
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
       // First get charity ID from user ID
-      console.log('[ManageCampaigns] Fetching charity data...');
+      console.log("[ManageCampaigns] Fetching charity data...");
       const charityResult = await charityService.getCharityByUserId(user.id);
 
       if (!charityResult.success || !charityResult.data) {
-        setError('No charity organization found');
+        setError("No charity organization found");
         setCampaigns([]);
         setLoading(false);
         return;
@@ -100,7 +134,8 @@ const ManageCampaigns: React.FC = () => {
 
       const campaignFilters = {
         search: searchQuery || undefined,
-        status: statusFilter !== 'all' ? [statusFilter as CampaignStatus] : undefined,
+        status:
+          statusFilter !== "all" ? [statusFilter as CampaignStatus] : undefined,
       };
 
       // Pass charity ID, pagination params, user ID, and filters
@@ -113,7 +148,9 @@ const ManageCampaigns: React.FC = () => {
 
       if (result.success && result.data) {
         // PaginatedResponse returns data directly as an array, not in a campaigns property
-        const campaignsData = Array.isArray(result.data) ? result.data : result.data.campaigns || [];
+        const campaignsData = Array.isArray(result.data)
+          ? result.data
+          : result.data.campaigns || [];
         setCampaigns(campaignsData);
         setTotalPages(result.pagination?.totalPages || 1);
 
@@ -121,9 +158,17 @@ const ManageCampaigns: React.FC = () => {
         const feedbackMap: Record<string, any> = {};
         await Promise.all(
           campaignsData.map(async (campaign) => {
-            if (campaign.status === 'draft') {
-              const historyResult = await campaignService.getCampaignApprovalHistory(campaign.id, user.id);
-              if (historyResult.success && historyResult.data && historyResult.data.length > 0) {
+            if (campaign.status === "draft") {
+              const historyResult =
+                await campaignService.getCampaignApprovalHistory(
+                  campaign.id,
+                  user.id
+                );
+              if (
+                historyResult.success &&
+                historyResult.data &&
+                historyResult.data.length > 0
+              ) {
                 // Get the most recent feedback
                 feedbackMap[campaign.id] = historyResult.data[0];
               }
@@ -132,13 +177,13 @@ const ManageCampaigns: React.FC = () => {
         );
         setApprovalFeedback(feedbackMap);
       } else {
-        setError(result.error || 'Failed to load campaigns');
+        setError(result.error || "Failed to load campaigns");
         setCampaigns([]);
       }
     } catch (err) {
-      setError('An unexpected error occurred');
+      setError("An unexpected error occurred");
       setCampaigns([]);
-      console.error('Campaign loading error:', err);
+      console.error("Campaign loading error:", err);
     } finally {
       setLoading(false);
     }
@@ -146,7 +191,7 @@ const ManageCampaigns: React.FC = () => {
 
   // Real-time subscriptions
   useRealtime(
-    'campaigns',
+    "campaigns",
     (payload) => {
       if (user && payload.new && (payload.new as any).charity_id === user.id) {
         // Reload campaigns when there's a change
@@ -155,7 +200,7 @@ const ManageCampaigns: React.FC = () => {
     },
     {
       enabled: !!user,
-      event: '*',
+      event: "*",
     }
   );
 
@@ -180,65 +225,84 @@ const ManageCampaigns: React.FC = () => {
     if (!deleteDialog.campaignId || !user) return;
 
     try {
-      const result = await campaignService.deleteCampaign(deleteDialog.campaignId, user.id);
+      const result = await campaignService.deleteCampaign(
+        deleteDialog.campaignId,
+        user.id
+      );
 
       if (result.success) {
-        toast.success('Campaign deleted successfully');
-        setDeleteDialog({ open: false, campaignId: null, campaignTitle: '' });
+        toast.success("Campaign deleted successfully");
+        setDeleteDialog({ open: false, campaignId: null, campaignTitle: "" });
         // Reload campaigns
         loadCampaigns();
       } else {
-        toast.error(result.error || 'Failed to delete campaign');
+        toast.error(result.error || "Failed to delete campaign");
       }
     } catch (error) {
-      console.error('Error deleting campaign:', error);
-      toast.error('Failed to delete campaign');
+      console.error("Error deleting campaign:", error);
+      toast.error("Failed to delete campaign");
     }
   };
 
   // Get status badge variant
   const getStatusBadgeVariant = (status: CampaignStatus) => {
     switch (status) {
-      case 'active': return 'default';
-      case 'completed': return 'secondary';
-      case 'paused': return 'outline';
-      case 'draft': return 'outline';
-      case 'pending': return 'secondary';
-      default: return 'outline';
+      case "active":
+        return "default";
+      case "completed":
+        return "secondary";
+      case "paused":
+        return "outline";
+      case "draft":
+        return "outline";
+      case "pending":
+        return "secondary";
+      default:
+        return "outline";
     }
   };
 
   // Get status display label
   const getStatusLabel = (status: CampaignStatus, feedback?: any) => {
     // If there's rejection feedback, show as Rejected
-    if (status === 'draft' && feedback?.action === 'rejected') {
-      return 'Rejected';
+    if (status === "draft" && feedback?.action === "rejected") {
+      return "Rejected";
     }
     // If there's revision feedback, show as Needs Revision
-    if (status === 'draft' && feedback?.action === 'revision_requested') {
-      return 'Needs Revision';
+    if (status === "draft" && feedback?.action === "revision_requested") {
+      return "Needs Revision";
     }
 
     switch (status) {
-      case 'draft': return 'Draft';
-      case 'pending': return 'Pending Review';
-      case 'active': return 'Active';
-      case 'paused': return 'Paused';
-      case 'completed': return 'Completed';
-      case 'cancelled': return 'Cancelled';
-      default: return status;
+      case "draft":
+        return "Draft";
+      case "pending":
+        return "Pending Review";
+      case "active":
+        return "Active";
+      case "paused":
+        return "Paused";
+      case "completed":
+        return "Completed";
+      case "cancelled":
+        return "Cancelled";
+      default:
+        return status;
     }
   };
 
   // Get status badge variant with feedback awareness
-  const getStatusBadgeVariantWithFeedback = (status: CampaignStatus, feedback?: any) => {
+  const getStatusBadgeVariantWithFeedback = (
+    status: CampaignStatus,
+    feedback?: any
+  ) => {
     // If rejected, show destructive variant
-    if (status === 'draft' && feedback?.action === 'rejected') {
-      return 'destructive';
+    if (status === "draft" && feedback?.action === "rejected") {
+      return "destructive";
     }
     // If needs revision, show warning variant
-    if (status === 'draft' && feedback?.action === 'revision_requested') {
-      return 'secondary';
+    if (status === "draft" && feedback?.action === "revision_requested") {
+      return "secondary";
     }
 
     return getStatusBadgeVariant(status);
@@ -253,15 +317,17 @@ const ManageCampaigns: React.FC = () => {
     const feedback = approvalFeedback[campaign.id];
 
     return (
-      <Card className={`${feedback ? 'border-l-4' : ''} ${
-        feedback?.action === 'rejected'
-          ? 'border-l-red-500 bg-red-50/30'
-          : feedback?.action === 'revision_requested'
-          ? 'border-l-amber-500 bg-amber-50/30'
-          : feedback?.action === 'approved'
-          ? 'border-l-green-500 bg-green-50/30'
-          : ''
-      }`}>
+      <Card
+        className={`${feedback ? "border-l-4" : ""} ${
+          feedback?.action === "rejected"
+            ? "border-l-red-500 bg-red-50/30"
+            : feedback?.action === "revision_requested"
+            ? "border-l-amber-500 bg-amber-50/30"
+            : feedback?.action === "approved"
+            ? "border-l-green-500 bg-green-50/30"
+            : ""
+        }`}
+      >
         <CardContent className="p-6">
           <div className="space-y-4">
             {/* Admin Feedback Section */}
@@ -270,28 +336,41 @@ const ManageCampaigns: React.FC = () => {
                 {/* Header */}
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-full ${
-                      feedback.action === 'rejected'
-                        ? 'bg-red-100'
-                        : feedback.action === 'revision_requested'
-                        ? 'bg-amber-100'
-                        : 'bg-green-100'
-                    }`}>
-                      {feedback.action === 'rejected' && <XCircle className="h-5 w-5 text-red-600" />}
-                      {feedback.action === 'revision_requested' && <AlertTriangle className="h-5 w-5 text-amber-600" />}
-                      {feedback.action === 'approved' && <CheckCircle className="h-5 w-5 text-green-600" />}
+                    <div
+                      className={`p-2 rounded-full ${
+                        feedback.action === "rejected"
+                          ? "bg-red-100"
+                          : feedback.action === "revision_requested"
+                          ? "bg-amber-100"
+                          : "bg-green-100"
+                      }`}
+                    >
+                      {feedback.action === "rejected" && (
+                        <XCircle className="h-5 w-5 text-red-600" />
+                      )}
+                      {feedback.action === "revision_requested" && (
+                        <AlertTriangle className="h-5 w-5 text-amber-600" />
+                      )}
+                      {feedback.action === "approved" && (
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      )}
                     </div>
                     <div>
-                      <h3 className={`text-lg font-semibold ${
-                        feedback.action === 'rejected'
-                          ? 'text-red-900'
-                          : feedback.action === 'revision_requested'
-                          ? 'text-amber-900'
-                          : 'text-green-900'
-                      }`}>
-                        {feedback.action === 'rejected' && '❌ Campaign Rejected'}
-                        {feedback.action === 'revision_requested' && '✏️ Revision Requested'}
-                        {feedback.action === 'approved' && '✅ Campaign Approved'}
+                      <h3
+                        className={`text-lg font-semibold ${
+                          feedback.action === "rejected"
+                            ? "text-red-900"
+                            : feedback.action === "revision_requested"
+                            ? "text-amber-900"
+                            : "text-green-900"
+                        }`}
+                      >
+                        {feedback.action === "rejected" &&
+                          "❌ Campaign Rejected"}
+                        {feedback.action === "revision_requested" &&
+                          "✏️ Revision Requested"}
+                        {feedback.action === "approved" &&
+                          "✅ Campaign Approved"}
                       </h3>
                       <div className="flex items-center gap-3 mt-1 text-sm text-gray-600">
                         {feedback.admin?.full_name && (
@@ -309,8 +388,12 @@ const ManageCampaigns: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  {feedback.action === 'revision_requested' && (
-                    <Button asChild size="sm" className="bg-amber-600 hover:bg-amber-700">
+                  {feedback.action === "revision_requested" && (
+                    <Button
+                      asChild
+                      size="sm"
+                      className="bg-amber-600 hover:bg-amber-700"
+                    >
                       <Link to={`/charity/campaigns/edit/${campaign.id}`}>
                         <Edit className="h-4 w-4 mr-2" />
                         Edit Campaign
@@ -320,25 +403,29 @@ const ManageCampaigns: React.FC = () => {
                 </div>
 
                 {/* Reason */}
-                <div className={`p-4 rounded-lg ${
-                  feedback.action === 'rejected'
-                    ? 'bg-red-100/50 border border-red-200'
-                    : feedback.action === 'revision_requested'
-                    ? 'bg-amber-100/50 border border-amber-200'
-                    : 'bg-green-100/50 border border-green-200'
-                }`}>
-                  <p className={`font-medium text-sm mb-1 ${
-                    feedback.action === 'rejected'
-                      ? 'text-red-900'
-                      : feedback.action === 'revision_requested'
-                      ? 'text-amber-900'
-                      : 'text-green-900'
-                  }`}>
-                    {feedback.action === 'rejected'
-                      ? 'Reason for rejection:'
-                      : feedback.action === 'revision_requested'
-                      ? 'What needs to be changed:'
-                      : 'Feedback:'}
+                <div
+                  className={`p-4 rounded-lg ${
+                    feedback.action === "rejected"
+                      ? "bg-red-100/50 border border-red-200"
+                      : feedback.action === "revision_requested"
+                      ? "bg-amber-100/50 border border-amber-200"
+                      : "bg-green-100/50 border border-green-200"
+                  }`}
+                >
+                  <p
+                    className={`font-medium text-sm mb-1 ${
+                      feedback.action === "rejected"
+                        ? "text-red-900"
+                        : feedback.action === "revision_requested"
+                        ? "text-amber-900"
+                        : "text-green-900"
+                    }`}
+                  >
+                    {feedback.action === "rejected"
+                      ? "Reason for rejection:"
+                      : feedback.action === "revision_requested"
+                      ? "What needs to be changed:"
+                      : "Feedback:"}
                   </p>
                   <p className="text-gray-700">{feedback.reason}</p>
                 </div>
@@ -348,29 +435,39 @@ const ManageCampaigns: React.FC = () => {
                   <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
                     <p className="font-medium text-sm text-blue-900 mb-1 flex items-center gap-2">
                       <AlertCircle className="h-4 w-4" />
-                      {feedback.action === 'rejected' ? 'Additional Notes:' : 'Admin Suggestions:'}
+                      {feedback.action === "rejected"
+                        ? "Additional Notes:"
+                        : "Admin Suggestions:"}
                     </p>
-                    <p className="text-gray-700 text-sm">{feedback.suggestions}</p>
+                    <p className="text-gray-700 text-sm">
+                      {feedback.suggestions}
+                    </p>
                   </div>
                 )}
 
                 {/* Next Steps Info for Rejected */}
-                {feedback.action === 'rejected' && (
+                {feedback.action === "rejected" && (
                   <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
                     <p className="font-medium text-sm text-gray-900 mb-2 flex items-center gap-2">
                       <Info className="h-4 w-4" />
                       What happens next?
                     </p>
                     <p className="text-sm text-gray-600">
-                      This campaign application has been rejected and cannot be resubmitted. You may create a new campaign that addresses the feedback provided above.
+                      This campaign application has been rejected and cannot be
+                      resubmitted. You may create a new campaign that addresses
+                      the feedback provided above.
                     </p>
                   </div>
                 )}
 
                 {/* Action Buttons */}
-                {feedback.action === 'revision_requested' && (
+                {feedback.action === "revision_requested" && (
                   <div className="flex items-center gap-2 pt-2 border-t">
-                    <Button asChild variant="default" className="bg-amber-600 hover:bg-amber-700">
+                    <Button
+                      asChild
+                      variant="default"
+                      className="bg-amber-600 hover:bg-amber-700"
+                    >
                       <Link to={`/charity/campaigns/edit/${campaign.id}`}>
                         <Edit className="h-4 w-4 mr-2" />
                         Make Changes Now
@@ -386,7 +483,7 @@ const ManageCampaigns: React.FC = () => {
                 )}
 
                 {/* Action Buttons for Rejected */}
-                {feedback.action === 'rejected' && (
+                {feedback.action === "rejected" && (
                   <div className="flex items-center gap-2 pt-2 border-t">
                     <Button asChild variant="default">
                       <Link to={`/charity/campaigns/new`}>
@@ -396,7 +493,9 @@ const ManageCampaigns: React.FC = () => {
                     </Button>
                     <Button
                       variant="destructive"
-                      onClick={() => handleDeleteCampaign(campaign.id, campaign.title)}
+                      onClick={() =>
+                        handleDeleteCampaign(campaign.id, campaign.title)
+                      }
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete Campaign
@@ -407,9 +506,9 @@ const ManageCampaigns: React.FC = () => {
             )}
 
             {/* Campaign Details Section */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 content-center">
               {/* Campaign Title and Created At */}
-              <div className="md:col-span-3">
+              <div className="md:col-span-2">
                 <h3 className="font-medium text-gray-900">{campaign.title}</h3>
                 <p className="text-sm text-gray-500">
                   Created {getRelativeTime(campaign.createdAt)}
@@ -417,19 +516,41 @@ const ManageCampaigns: React.FC = () => {
               </div>
 
               {/* Status Badge and Days Left */}
-              <div className="md:col-span-1">
-                
-                <Badge variant={getStatusBadgeVariantWithFeedback(campaign.status, feedback)}>
-                  {getStatusLabel(campaign.status, feedback)}
+
+              <div className="md:col-span-2 flex flex-col items-center justify-center">
+                <Badge
+                  variant={
+                    daysLeft <= 0 &&
+                    campaign.status !== "completed" &&
+                    campaign.status !== "cancelled"
+                      ? "secondary"
+                      : getStatusBadgeVariantWithFeedback(
+                          campaign.status,
+                          feedback
+                        )
+                  }
+                >
+                  {daysLeft <= 0 &&
+                  campaign.status !== "completed" &&
+                  campaign.status !== "cancelled"
+                    ? "Ended"
+                    : getStatusLabel(campaign.status, feedback)}
                 </Badge>
-                {daysLeft > 0 && campaign.status === 'active' && (
+                {daysLeft > 0 && campaign.status === "active" && (
                   <p className="text-xs text-gray-500 mt-1">
                     {daysLeft} days left
                   </p>
                 )}
+                {daysLeft <= 0 &&
+                  campaign.status !== "completed" &&
+                  campaign.status !== "cancelled" && (
+                    <p className="text-xs text-red-600 mt-1 font-medium">
+                      Campaign Ended
+                    </p>
+                  )}
               </div>
               {/* Amount Raised and Progress Bar */}
-              <div className="md:col-span-4">
+              <div className="md:col-span-4 ">
                 <p className="text-sm font-medium">
                   {formatCurrency(amountRaised)}
                 </p>
@@ -445,33 +566,45 @@ const ManageCampaigns: React.FC = () => {
               </div>
               {/* Action Buttons */}
               <div className="flex items-center justify-end gap-2 md:col-span-4">
-                {campaign.status === 'active' && (
-                  <Button variant="default" size="sm" asChild className="bg-clearcause-primary hover:bg-blue-600">
+                {campaign.status === "active" && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    asChild
+                    className="bg-clearcause-primary hover:bg-blue-600"
+                  >
                     <Link to={`/charity/campaigns/${campaign.id}/updates`}>
-                      <Megaphone className="mr-2 h-4 w-4" />
+                      
                       Post Update
                     </Link>
                   </Button>
                 )}
-                {(campaign.status === 'active' || campaign.status === 'paused') && calculateDaysLeft(campaign.endDate) <= 0 && (
-                  <ExtendDeadlineDialog 
-                    campaignId={campaign.id}
-                    currentEndDate={campaign.endDate || null}
-                    campaignTitle={campaign.title}
-                    onSuccess={loadCampaigns}
-                  />
-                )}
-                {campaign.status === 'draft' && (
-                  <Button variant="outline" size="sm" asChild className="border-blue-700 text-blue-700 hover:bg-blue-600 px-5">
+                {(campaign.status === "active" ||
+                  campaign.status === "paused") &&
+                  calculateDaysLeft(campaign.endDate) <= 0 && (
+                    <ExtendDeadlineDialog
+                      campaignId={campaign.id}
+                      currentEndDate={campaign.endDate || null}
+                      campaignTitle={campaign.title}
+                      onSuccess={loadCampaigns}
+                    />
+                  )}
+                {campaign.status === "draft" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="border-blue-700 text-blue-700 hover:bg-blue-600 px-5"
+                  >
                     <Link to={`/charity/campaigns/edit/${campaign.id}`}>
-                      <Edit className="mr-2 h-4 w-4" />
+                      {/* <Edit className="mr-2 h-4 w-4" /> */}
                       Edit Draft
                     </Link>
                   </Button>
                 )}
                 <Button variant="outline" size="sm" asChild>
                   <Link to={`/campaigns/${campaign.id}`}>
-                    <Eye className="mr-2 h-4 w-4" />
+                    {/* <Eye className="mr-2 h-4 w-4" /> */}
                     View Details
                   </Link>
                 </Button>
@@ -512,9 +645,11 @@ const ManageCampaigns: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Your Campaigns</h1>
-            <p className="text-gray-600">Create and manage your fundraising campaigns</p>
+            <p className="text-gray-600">
+              Create and manage your fundraising campaigns
+            </p>
           </div>
-          <Button asChild className='bg-blue-600 hover:bg-blue-600/90'>
+          <Button asChild className="bg-blue-600 hover:bg-blue-600/90">
             <Link to="/charity/campaigns/new">
               <Plus className="mr-2 h-4 w-4" />
               Create Campaign
@@ -529,7 +664,9 @@ const ManageCampaigns: React.FC = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Total Campaigns</p>
+                    <p className="text-sm font-medium text-gray-500">
+                      Total Campaigns
+                    </p>
                     <p className="text-2xl font-bold">{stats.total}</p>
                   </div>
                   <BarChart3 className="h-8 w-8 text-blue-600" />
@@ -553,8 +690,12 @@ const ManageCampaigns: React.FC = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Total Raised</p>
-                    <p className="text-2xl font-bold">{formatCurrency(stats.totalRaised)}</p>
+                    <p className="text-sm font-medium text-gray-500">
+                      Total Raised
+                    </p>
+                    <p className="text-2xl font-bold">
+                      {formatCurrency(stats.totalRaised)}
+                    </p>
                   </div>
                   <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
                     <span className="text-green-600 text-sm font-bold">₱</span>
@@ -566,7 +707,9 @@ const ManageCampaigns: React.FC = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Avg. Success Rate</p>
+                    <p className="text-sm font-medium text-gray-500">
+                      Avg. Success Rate
+                    </p>
                     <p className="text-2xl font-bold">{stats.successRate}%</p>
                   </div>
                   <BarChart3 className="h-8 w-8 text-purple-600" />
@@ -587,7 +730,7 @@ const ManageCampaigns: React.FC = () => {
               className="pl-10"
             />
           </div>
-          
+
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Filter by status" />
@@ -609,7 +752,9 @@ const ManageCampaigns: React.FC = () => {
               <div className="flex items-center gap-3">
                 <AlertCircle className="h-5 w-5 text-red-600" />
                 <div>
-                  <h3 className="font-medium text-red-800">Error loading campaigns</h3>
+                  <h3 className="font-medium text-red-800">
+                    Error loading campaigns
+                  </h3>
                   <p className="text-sm text-red-600">{error}</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={loadCampaigns}>
@@ -622,9 +767,10 @@ const ManageCampaigns: React.FC = () => {
 
         {/* Campaign Display - List View */}
         <div className="space-y-4">
-          {campaigns && campaigns.map((campaign) => (
-            <CampaignTableRow key={campaign.id} campaign={campaign} />
-          ))}
+          {campaigns &&
+            campaigns.map((campaign) => (
+              <CampaignTableRow key={campaign.id} campaign={campaign} />
+            ))}
         </div>
 
         {/* Empty State */}
@@ -632,14 +778,15 @@ const ManageCampaigns: React.FC = () => {
           <Card>
             <CardContent className="p-12 text-center">
               <BarChart3 className="mx-auto h-12 w-12 text-gray-300" />
-              <h3 className="mt-4 text-lg font-medium text-gray-900">No campaigns found</h3>
+              <h3 className="mt-4 text-lg font-medium text-gray-900">
+                No campaigns found
+              </h3>
               <p className="mt-2 text-gray-500">
-                {searchQuery || statusFilter !== 'all' 
-                  ? 'Try adjusting your search or filter criteria.'
-                  : 'Get started by creating your first campaign.'
-                }
+                {searchQuery || statusFilter !== "all"
+                  ? "Try adjusting your search or filter criteria."
+                  : "Get started by creating your first campaign."}
               </p>
-              {(!searchQuery && statusFilter === 'all') && (
+              {!searchQuery && statusFilter === "all" && (
                 <Button className="mt-4" asChild>
                   <Link to="/charity/campaigns/new">
                     <Plus className="mr-2 h-4 w-4" />
@@ -657,11 +804,11 @@ const ManageCampaigns: React.FC = () => {
             <Button
               variant="outline"
               disabled={currentPage <= 1}
-              onClick={() => setCurrentPage(prev => prev - 1)}
+              onClick={() => setCurrentPage((prev) => prev - 1)}
             >
               Previous
             </Button>
-            
+
             <div className="flex space-x-1">
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 const page = i + 1;
@@ -677,11 +824,11 @@ const ManageCampaigns: React.FC = () => {
                 );
               })}
             </div>
-            
+
             <Button
               variant="outline"
               disabled={currentPage >= totalPages}
-              onClick={() => setCurrentPage(prev => prev + 1)}
+              onClick={() => setCurrentPage((prev) => prev + 1)}
             >
               Next
             </Button>
@@ -689,12 +836,24 @@ const ManageCampaigns: React.FC = () => {
         )}
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, campaignId: null, campaignTitle: '' })}>
+        <AlertDialog
+          open={deleteDialog.open}
+          onOpenChange={(open) =>
+            !open &&
+            setDeleteDialog({
+              open: false,
+              campaignId: null,
+              campaignTitle: "",
+            })
+          }
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Campaign?</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete <strong>"{deleteDialog.campaignTitle}"</strong>? This action cannot be undone.
+                Are you sure you want to delete{" "}
+                <strong>"{deleteDialog.campaignTitle}"</strong>? This action
+                cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
