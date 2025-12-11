@@ -485,6 +485,35 @@ export interface Database {
         };
         Update: never;
       };
+      charity_feedback: {
+        Row: {
+          id: string;
+          charity_id: string;
+          donor_id: string;
+          rating: number;
+          comment: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          charity_id: string;
+          donor_id: string;
+          rating: number;
+          comment?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          charity_id?: string;
+          donor_id?: string;
+          rating?: number;
+          comment?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -1002,6 +1031,41 @@ export interface DonorRefundDecision {
   metadata: Record<string, any>;
   createdAt: string;
   updatedAt: string;
+}
+
+// ===== CHARITY FEEDBACK TYPES =====
+export interface CharityFeedback {
+  id: string;
+  charityId: string;
+  donorId: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // Relations
+  donor?: {
+    id: string;
+    fullName: string | null;
+    avatarUrl: string | null;
+  };
+  charity?: {
+    id: string;
+    organizationName: string;
+    logoUrl: string | null;
+  };
+}
+
+export interface CharityFeedbackStats {
+  totalFeedback: number;
+  averageRating: number;
+  ratingDistribution: {
+    1: number;
+    2: number;
+    3: number;
+    4: number;
+    5: number;
+  };
+  feedbackWithComments: number;
 }
 
 // ===== UTILITY TYPES =====

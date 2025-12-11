@@ -65,6 +65,7 @@ export interface ReviewModerationData {
 export interface ReviewFilters {
   campaignId?: string;
   userId?: string;
+  charityId?: string;
   status?: ReviewStatus[];
   minRating?: number;
   maxRating?: number;
@@ -348,7 +349,8 @@ export const listReviews = withErrorHandling(async (
       ),
       campaigns:campaign_id (
         id,
-        title
+        title,
+        charity_id
       )
     `,
       { count: 'exact' }
@@ -368,6 +370,10 @@ export const listReviews = withErrorHandling(async (
   // Apply filters
   if (filters.campaignId) {
     query = query.eq('campaign_id', filters.campaignId);
+  }
+
+  if (filters.charityId) {
+    query = query.eq('campaigns.charity_id', filters.charityId);
   }
 
   if (filters.userId && (!currentUserId || isAdmin)) {

@@ -162,6 +162,18 @@ CREATE TABLE public.audit_logs (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Charity feedback table (donor feedback for charity organizations)
+CREATE TABLE public.charity_feedback (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  charity_id UUID NOT NULL REFERENCES public.charities(id) ON DELETE CASCADE,
+  donor_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(charity_id, donor_id)
+);
+
 -- =====================================================
 -- INDEXES
 -- =====================================================
@@ -216,6 +228,12 @@ CREATE INDEX idx_campaign_approvals_campaign_id ON public.campaign_approvals(cam
 CREATE INDEX idx_campaign_approvals_admin_id ON public.campaign_approvals(admin_id);
 CREATE INDEX idx_campaign_approvals_action ON public.campaign_approvals(action);
 CREATE INDEX idx_campaign_approvals_created_at ON public.campaign_approvals(created_at);
+
+-- Charity feedback indexes
+CREATE INDEX idx_charity_feedback_charity_id ON public.charity_feedback(charity_id);
+CREATE INDEX idx_charity_feedback_donor_id ON public.charity_feedback(donor_id);
+CREATE INDEX idx_charity_feedback_rating ON public.charity_feedback(rating);
+CREATE INDEX idx_charity_feedback_created_at ON public.charity_feedback(created_at DESC);
 
 -- =====================================================
 -- FUNCTIONS AND TRIGGERS
@@ -288,6 +306,7 @@ CREATE TRIGGER update_charities_updated_at BEFORE UPDATE ON public.charities FOR
 CREATE TRIGGER update_campaigns_updated_at BEFORE UPDATE ON public.campaigns FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
 CREATE TRIGGER update_milestones_updated_at BEFORE UPDATE ON public.milestones FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
 CREATE TRIGGER update_campaign_updates_updated_at BEFORE UPDATE ON public.campaign_updates FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
+CREATE TRIGGER update_charity_feedback_updated_at BEFORE UPDATE ON public.charity_feedback FOR EACH ROW EXECUTE PROCEDURE public.update_updated_at_column();
 
 -- =====================================================
 -- ROW LEVEL SECURITY (RLS)
@@ -303,6 +322,7 @@ ALTER TABLE public.milestone_proofs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.campaign_updates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.campaign_approvals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.charity_feedback ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
 CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
@@ -393,6 +413,18 @@ CREATE POLICY "Charities can view approvals for their campaigns" ON public.campa
 -- Audit logs policies
 CREATE POLICY "Users can view their own audit logs" ON public.audit_logs FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "System can insert audit logs" ON public.audit_logs FOR INSERT WITH CHECK (true);
+
+-- Charity feedback policies
+CREATE POLICY "Anyone can view charity feedback" ON public.charity_feedback FOR SELECT USING (true);
+CREATE POLICY "Authenticated users can insert charity feedback" ON public.charity_feedback FOR INSERT WITH CHECK (auth.uid() = donor_id AND auth.uid() IS NOT NULL);
+CREATE POLICY "Donors can update their own feedback" ON public.charity_feedback FOR UPDATE USING (auth.uid() = donor_id);
+CREATE POLICY "Donors can delete their own feedback" ON public.charity_feedback FOR DELETE USING (auth.uid() = donor_id);
+CREATE POLICY "Admins can delete any charity feedback" ON public.charity_feedback FOR DELETE USING (
+  EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  )
+);
 
 -- =====================================================
 -- STORAGE SETUP
