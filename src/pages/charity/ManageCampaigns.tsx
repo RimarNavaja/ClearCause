@@ -26,6 +26,7 @@ import { Campaign, CampaignStatus } from '@/lib/types';
 import { formatCurrency, getRelativeTime, debounce, calculateDaysLeft } from '@/utils/helpers';
 import { toast } from 'sonner';
 import { waitForAuthReady } from '@/utils/authHelper';
+import { ExtendDeadlineDialog } from '@/components/charity/campaign/ExtendDeadlineDialog';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Campaigns' },
@@ -417,6 +418,7 @@ const ManageCampaigns: React.FC = () => {
 
               {/* Status Badge and Days Left */}
               <div className="md:col-span-1">
+                
                 <Badge variant={getStatusBadgeVariantWithFeedback(campaign.status, feedback)}>
                   {getStatusLabel(campaign.status, feedback)}
                 </Badge>
@@ -450,6 +452,14 @@ const ManageCampaigns: React.FC = () => {
                       Post Update
                     </Link>
                   </Button>
+                )}
+                {(campaign.status === 'active' || campaign.status === 'paused') && calculateDaysLeft(campaign.endDate) <= 0 && (
+                  <ExtendDeadlineDialog 
+                    campaignId={campaign.id}
+                    currentEndDate={campaign.endDate || null}
+                    campaignTitle={campaign.title}
+                    onSuccess={loadCampaigns}
+                  />
                 )}
                 {campaign.status === 'draft' && (
                   <Button variant="outline" size="sm" asChild className="border-blue-700 text-blue-700 hover:bg-blue-600 px-5">

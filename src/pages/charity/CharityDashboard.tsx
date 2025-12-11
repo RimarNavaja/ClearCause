@@ -689,11 +689,13 @@ const CharityDashboard: React.FC = () => {
                           variant={
                             campaign.status === "active"
                               ? "default"
+                              : campaign.status === "draft"
+                              ? "outline"
                               : "secondary"
                           }
                         >
                           {campaign.status === "draft"
-                            ? "Pending Review"
+                            ? "Draft"
                             : campaign.status}
                         </Badge>
                       </div>

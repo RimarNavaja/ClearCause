@@ -300,6 +300,17 @@ export const updateCampaign = withErrorHandling(async (
     validateCampaignDates(validatedUpdates.startDate, validatedUpdates.endDate);
   }
 
+  // Validate deadline extension
+  if (validatedUpdates.endDate) {
+    if (campaign.status === 'completed' || campaign.status === 'cancelled') {
+      throw new ClearCauseError(
+        'ACTION_NOT_ALLOWED', 
+        'Cannot extend the deadline of a completed or cancelled campaign. Please contact support if this is an error.', 
+        400
+      );
+    }
+  }
+
   // Handle image upload if provided
   let imageUrl = campaign.imageUrl;
   if (updates.imageFile) {
