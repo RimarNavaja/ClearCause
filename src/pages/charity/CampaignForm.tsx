@@ -421,7 +421,7 @@ const CampaignForm: React.FC = () => {
 
           return {
             title: milestone.title,
-            description: evidenceDesc,
+            description: null, // Don't use description for evidence anymore
             targetAmount: Number(milestone.amount),
             evidenceDescription: evidenceDesc,
           };

@@ -40,6 +40,7 @@ export const createMilestones = withErrorHandling(async (
     title: string;
     description: string;
     targetAmount: number;
+    evidenceDescription?: string;
   }>
 ): Promise<ApiResponse<Milestone[]>> => {
   // Prepare milestone inserts
@@ -49,6 +50,7 @@ export const createMilestones = withErrorHandling(async (
     description: milestone.description,
     target_amount: milestone.targetAmount,
     status: 'pending' as MilestoneStatus,
+    evidence_description: milestone.evidenceDescription || null,
   }));
 
   const { data: createdMilestones, error: milestoneError } = await supabase
@@ -68,6 +70,7 @@ export const createMilestones = withErrorHandling(async (
     targetAmount: m.target_amount,
     status: m.status,
     dueDate: m.due_date,
+    evidenceDescription: m.evidence_description,
     createdAt: m.created_at,
     updatedAt: m.updated_at,
   }));
@@ -113,6 +116,7 @@ export const getMilestones = withErrorHandling(async (
       targetAmount: m.target_amount,
       status: m.status,
       dueDate: m.due_date,
+      evidenceDescription: m.evidence_description,
       createdAt: m.created_at,
       updatedAt: m.updated_at,
       // Add proof submission information
@@ -140,10 +144,6 @@ export const getMilestoneById = withErrorHandling(async (
     throw handleSupabaseError(error);
   }
 
-  if (!data) {
-    throw new ClearCauseError('NOT_FOUND', 'Milestone not found', 404);
-  }
-
   const milestone: Milestone = {
     id: data.id,
     campaignId: data.campaign_id,
@@ -152,6 +152,7 @@ export const getMilestoneById = withErrorHandling(async (
     targetAmount: data.target_amount,
     status: data.status,
     dueDate: data.due_date,
+    evidenceDescription: data.evidence_description,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -169,6 +170,7 @@ export const updateMilestone = withErrorHandling(async (
     description: string;
     targetAmount: number;
     dueDate: string;
+    evidenceDescription: string;
   }>
 ): Promise<ApiResponse<Milestone>> => {
   const updateData: any = {};
@@ -177,6 +179,7 @@ export const updateMilestone = withErrorHandling(async (
   if (updates.description !== undefined) updateData.description = updates.description;
   if (updates.targetAmount !== undefined) updateData.target_amount = updates.targetAmount;
   if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate;
+  if (updates.evidenceDescription !== undefined) updateData.evidence_description = updates.evidenceDescription;
 
   const { data, error } = await supabase
     .from('milestones')
@@ -197,6 +200,7 @@ export const updateMilestone = withErrorHandling(async (
     targetAmount: data.target_amount,
     status: data.status,
     dueDate: data.due_date,
+    evidenceDescription: data.evidence_description,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -230,6 +234,7 @@ export const updateMilestoneStatus = withErrorHandling(async (
     targetAmount: data.target_amount,
     status: data.status,
     dueDate: data.due_date,
+    evidenceDescription: data.evidence_description,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };

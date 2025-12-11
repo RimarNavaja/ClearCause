@@ -184,9 +184,9 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md">
+      <SheetContent className="w-full sm:max-w-md font-poppinsregular">
         <SheetHeader>
-          <SheetTitle>Notifications</SheetTitle>
+          <SheetTitle className='font-robotobold'>Notifications</SheetTitle>
           <SheetDescription>
             Stay updated on your campaigns, donations, and milestones
           </SheetDescription>
@@ -214,6 +214,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                   size="icon"
                   onClick={loadNotifications}
                   disabled={loading}
+                  className='hover:bg-blue-700 hover:text-white '
                 >
                   <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 </Button>
@@ -301,7 +302,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6"
+                                className="h-6 w-6 hover:bg-blue-700"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleDelete(notification.id);

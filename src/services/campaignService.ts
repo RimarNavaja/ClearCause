@@ -212,6 +212,7 @@ export const getCampaignById = withErrorHandling(async (
       targetAmount: m.target_amount,
       status: m.status,
       dueDate: m.due_date,
+      evidenceDescription: m.evidence_description,
       createdAt: m.created_at,
       updatedAt: m.updated_at,
     }));

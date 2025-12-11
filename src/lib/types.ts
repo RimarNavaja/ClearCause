@@ -341,6 +341,7 @@ export interface Database {
           target_amount: number;
           status: MilestoneStatus;
           due_date: string | null;
+          evidence_description: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -352,6 +353,7 @@ export interface Database {
           target_amount: number;
           status?: MilestoneStatus;
           due_date?: string | null;
+          evidence_description?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -363,6 +365,7 @@ export interface Database {
           target_amount?: number;
           status?: MilestoneStatus;
           due_date?: string | null;
+          evidence_description?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -629,6 +632,7 @@ export interface Milestone {
   targetAmount: number;
   status: MilestoneStatus;
   dueDate: string | null;
+  evidenceDescription?: string | null;
   createdAt: string;
   updatedAt: string;
   campaign?: Campaign;
