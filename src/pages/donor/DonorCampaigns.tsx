@@ -182,12 +182,13 @@ const DonorCampaigns: React.FC = () => {
   // Use different layouts based on user role
   const pageContent = (
     <div className={isDonor ? "space-y-6" : "space-y-6"}>
-        {/* Description */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800 font-poppinsregular">
-            Discover verified campaigns and make a difference. Campaigns you've supported are highlighted with a badge.
-          </p>
-        </div>
+        {isDonor && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-800 font-poppinsregular">
+              Discover verified campaigns and make a difference. Campaigns you've supported are highlighted with a badge.
+            </p>
+          </div>
+        )}
 
         {/* Search and Filters */}
         <div className="bg-white rounded-lg shadow-sm border p-4">
@@ -455,7 +456,6 @@ const DonorCampaigns: React.FC = () => {
       <main className="flex-grow bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-poppinsregular">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 font-robotobold">Browse Campaigns</h1>
             <p className="mt-2 text-gray-600">
               Discover verified campaigns and make a difference.
             </p>

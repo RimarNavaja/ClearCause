@@ -105,11 +105,11 @@ const CampaignUpdatesFeed: React.FC<CampaignUpdatesFeedProps> = ({
   // Empty state
   if (updates.length === 0 && !loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 px-4">
+      <div className="flex flex-col items-center justify-center py-12 px-4 font-poppinsregular">
         <div className="bg-gray-100 rounded-full p-6 mb-4">
           <Megaphone className="w-12 h-12 text-gray-400" />
         </div>
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">No Updates Yet</h3>
+        <h3 className="text-xl font-semibold text-gray-900 mb-2 font-robotobold">No Updates Yet</h3>
         <p className="text-gray-600 text-center max-w-md">
           This campaign hasn't posted any updates yet. Check back soon to see progress and impact stories!
         </p>
