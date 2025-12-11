@@ -69,8 +69,8 @@ const Donate: React.FC = () => {
 
   // Calculate fees in real-time
   const feeBreakdown = useMemo(() => {
-    return calculateFees(amount, tipAmount, coverFees);
-  }, [amount, tipAmount, coverFees]);
+    return calculateFees(amount, tipAmount, coverFees, platformFeePercentage);
+  }, [amount, tipAmount, coverFees, platformFeePercentage]);
 
   // Filter preset amounts based on dynamic minimum donation
   const validPresets = useMemo(() => {
@@ -114,11 +114,11 @@ const Donate: React.FC = () => {
     }
 
     // Check with fee calculations
-    const validation = validateDonationAmount(numValue, tipAmount, coverFees);
+    const validation = validateDonationAmount(numValue, tipAmount, coverFees, platformFeePercentage);
     if (!validation.valid) {
       // Parse validation error to make it more specific
       if (validation.error?.includes('Charity must receive at least')) {
-        const fees = calculateFees(numValue, tipAmount, coverFees);
+        const fees = calculateFees(numValue, tipAmount, coverFees, platformFeePercentage);
         setCustomAmountError(
           `With fees, charity receives only ₱${fees.netAmount.toFixed(2)}. ` +
           `Minimum to charity is ₱50. Try ₱${Math.ceil(minimumDonationAmount * 1.15)} or more.`
@@ -135,7 +135,7 @@ const Donate: React.FC = () => {
 
     // Valid!
     setCustomAmountError(null);
-  }, [minimumDonationAmount, tipAmount, coverFees]);
+  }, [minimumDonationAmount, tipAmount, coverFees, platformFeePercentage]);
 
   // Update fee calculator when settings change
   useEffect(() => {
@@ -238,7 +238,7 @@ const Donate: React.FC = () => {
     }
 
     // Validate donation amount with fees
-    const validation = validateDonationAmount(amount, tipAmount, coverFees);
+    const validation = validateDonationAmount(amount, tipAmount, coverFees, platformFeePercentage);
     if (!validation.valid) {
       let errorMsg = validation.error || "Invalid donation amount";
 

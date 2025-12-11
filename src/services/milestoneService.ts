@@ -888,6 +888,24 @@ export const rejectMilestoneProof = withErrorHandling(async (
     { rejection_reason: rejectionReason, admin_notes: adminNotes }
   );
 
+  // NEW: Initiate refund process for rejected milestone
+  try {
+    const { initiateRefundProcess } = await import('./refundService');
+    const refundResult = await initiateRefundProcess(
+      data.milestones.id,
+      proofId,
+      rejectionReason,
+      currentUserId
+    );
+
+    console.log(`[milestoneService] Refund initiated: ${refundResult.data?.affectedDonors} donors, ₱${refundResult.data?.totalAmount.toLocaleString()}`);
+  } catch (refundError: any) {
+    console.error('[milestoneService] Failed to initiate refund process:', refundError);
+    // Don't fail milestone rejection if refund initiation fails
+    // Admin can manually trigger refund later from admin panel
+    // Common reasons for failure: no allocations yet (early rejection)
+  }
+
   return createSuccessResponse(data);
 });
 

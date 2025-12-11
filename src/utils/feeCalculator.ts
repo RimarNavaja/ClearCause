@@ -70,10 +70,16 @@ export interface FeeBreakdown {
  */
 export function calculateFeesWithDonorCovers(
   intendedDonation: number,
-  tipAmount: number = 0
+  tipAmount: number = 0,
+  platformFeePercentage?: number
 ): FeeBreakdown {
-  // Calculate platform fee using dynamic rate
-  const platformFee = Math.round(intendedDonation * DYNAMIC_PLATFORM_FEE_RATE * 100) / 100;
+  // Use provided percentage or fall back to global rate
+  const feeRate = platformFeePercentage !== undefined
+    ? platformFeePercentage / 100
+    : DYNAMIC_PLATFORM_FEE_RATE;
+
+  // Calculate platform fee using the fee rate
+  const platformFee = Math.round(intendedDonation * feeRate * 100) / 100;
 
   // Donor covers fees: total charge = donation + platform fee + tip
   const totalCharge = intendedDonation + platformFee + tipAmount;
@@ -98,9 +104,15 @@ export function calculateFeesWithDonorCovers(
  */
 export function calculateFeesStandard(
   grossAmount: number,
-  tipAmount: number = 0
+  tipAmount: number = 0,
+  platformFeePercentage?: number
 ): FeeBreakdown {
-  const platformFee = Math.round(grossAmount * DYNAMIC_PLATFORM_FEE_RATE * 100) / 100;
+  // Use provided percentage or fall back to global rate
+  const feeRate = platformFeePercentage !== undefined
+    ? platformFeePercentage / 100
+    : DYNAMIC_PLATFORM_FEE_RATE;
+
+  const platformFee = Math.round(grossAmount * feeRate * 100) / 100;
   const totalCharge = grossAmount + tipAmount;
   const netAmount = grossAmount - platformFee;  // Charity gets donation minus platform fee (tip goes to ClearCause!)
 
@@ -120,17 +132,19 @@ export function calculateFeesStandard(
  * @param amount - Donor's intended donation amount
  * @param tipAmount - Optional tip to ClearCause
  * @param donorCoversFees - If true, donor pays extra to cover fees (default: true)
+ * @param platformFeePercentage - Optional platform fee percentage (e.g., 3 for 3%). If not provided, uses global setting.
  * @returns FeeBreakdown with all calculations
  */
 export function calculateFees(
   amount: number,
   tipAmount: number = 0,
-  donorCoversFees: boolean = true
+  donorCoversFees: boolean = true,
+  platformFeePercentage?: number
 ): FeeBreakdown {
   if (donorCoversFees) {
-    return calculateFeesWithDonorCovers(amount, tipAmount);
+    return calculateFeesWithDonorCovers(amount, tipAmount, platformFeePercentage);
   } else {
-    return calculateFeesStandard(amount, tipAmount);
+    return calculateFeesStandard(amount, tipAmount, platformFeePercentage);
   }
 }
 
@@ -153,18 +167,20 @@ export function getSuggestedTips(amount: number): number[] {
  * @param amount - Donation amount
  * @param tipAmount - Optional tip
  * @param donorCoversFees - Whether donor is covering fees
+ * @param platformFeePercentage - Optional platform fee percentage (e.g., 3 for 3%). If not provided, uses global setting.
  * @returns Validation result with error message if invalid
  */
 export function validateDonationAmount(
   amount: number,
   tipAmount: number = 0,
-  donorCoversFees: boolean = true
+  donorCoversFees: boolean = true,
+  platformFeePercentage?: number
 ): { valid: boolean; error?: string } {
   if (amount < FEE_CONSTANTS.MIN_DONATION) {
     return { valid: false, error: `Minimum donation is ₱${FEE_CONSTANTS.MIN_DONATION}` };
   }
 
-  const fees = calculateFees(amount, tipAmount, donorCoversFees);
+  const fees = calculateFees(amount, tipAmount, donorCoversFees, platformFeePercentage);
 
   if (fees.netAmount < FEE_CONSTANTS.MIN_NET_AMOUNT) {
     return { valid: false, error: `Charity must receive at least ₱${FEE_CONSTANTS.MIN_NET_AMOUNT} after fees` };

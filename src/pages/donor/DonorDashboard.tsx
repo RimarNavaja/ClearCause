@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import DonorLayout from "@/components/layout/DonorLayout";
 import CampaignGrid from "@/components/ui/campaign/CampaignGrid";
+import { PendingRefundWidget } from "@/components/donor/PendingRefundWidget";
 import { useAuth } from "@/hooks/useAuth";
 import { useRealtime } from "@/hooks/useRealtime";
 import * as donationService from "@/services/donationService";
@@ -251,6 +252,9 @@ const DonorDashboard: React.FC = () => {
             Thank you for making a difference. Here's your impact summary.
           </p>
         </div>
+
+        {/* Pending Refund Widget - Shows when there are pending refund decisions */}
+        <PendingRefundWidget />
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
