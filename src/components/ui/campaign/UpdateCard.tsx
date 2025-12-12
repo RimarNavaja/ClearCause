@@ -105,12 +105,9 @@ const UpdateCard: React.FC<UpdateCardProps> = ({
           </div>
         </div>
 
-        {/* Author and date */}
+        {/*Date */}
         <div className="flex items-center gap-4 text-sm text-gray-600">
-          <div className="flex items-center gap-1.5">
-            <User className="w-4 h-4" />
-            <span>{authorName}</span>
-          </div>
+          
           <div className="flex items-center gap-1.5">
             <Calendar className="w-4 h-4" />
             <span>{timeAgo}</span>

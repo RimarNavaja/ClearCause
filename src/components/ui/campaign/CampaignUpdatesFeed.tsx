@@ -132,7 +132,7 @@ const CampaignUpdatesFeed: React.FC<CampaignUpdatesFeedProps> = ({
             className={filterType === 'all' ? 'bg-clearcause-primary' : ''}
           >
             All Updates
-            <Badge variant="secondary" className="ml-2">
+            <Badge variant="secondary" className="ml-2 bg-white text-black">
               {totalCount}
             </Badge>
           </Button>
@@ -159,6 +159,7 @@ const CampaignUpdatesFeed: React.FC<CampaignUpdatesFeedProps> = ({
             variant={filterType === 'general' ? 'default' : 'outline'}
             size="sm"
             onClick={() => handleFilterChange('general')}
+            
           >
             General
           </Button>
