@@ -299,7 +299,7 @@ const CharitySettings: React.FC = () => {
             <div className="space-y-6">
               {Object.entries(groupedSettings).map(([category, settings], categoryIndex) => (
                 <div key={category} className="space-y-4">
-                  <h3 className="text-lg font-medium">{category}</h3>
+                  <h3 className="text-lg font-robotobold text-blue-700">{category}</h3>
                   <div className="space-y-4">
                     {settings.map(setting => (
                       <div key={setting.id} className="grid grid-cols-[1fr_auto_auto] gap-4 items-center py-2">
@@ -383,18 +383,18 @@ const CharitySettings: React.FC = () => {
         </Card>
 
         {/* Implementation Note */}
-        <Card className="border-blue-200 bg-blue-50">
+        {/* <Card className="border-blue-200 bg-blue-50">
           <CardContent className="p-4">
             <p className="text-sm text-blue-800">
               <strong>Note:</strong> Notification preferences are currently stored locally.
               These settings will be migrated to server-side storage in a future update.
             </p>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Save Button */}
         <div className="flex justify-end">
-          <Button type="submit" className="min-w-[160px]" disabled={saving}>
+          <Button type="submit" className="min-w-[160px] bg-blue-700 hover:bg-blue-600" disabled={saving}>
             <Save className="h-4 w-4 mr-1" />
             {saving ? 'Saving...' : 'Save Preferences'}
           </Button>

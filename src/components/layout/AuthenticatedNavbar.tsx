@@ -343,7 +343,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = () => {
                   <ChevronDown className="ml-2 h-4 w-4 text-gray-400" />
                 </div>
               </button>
-
+              
               {/* User Dropdown Menu */}
               {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg py-1 border border-gray-200 z-50 font-poppinsregular">

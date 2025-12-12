@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, X, AlertTriangle, Calendar, DollarSign, Users, MapPin, Tag } from 'lucide-react';
+import { ArrowLeft, Check, X, AlertTriangle, Calendar, PhilippinePeso, Users, MapPin, Tag } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -232,9 +232,9 @@ const CampaignReview = () => {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-2xl">{campaign.title}</CardTitle>
+                    <CardTitle className="text-2xl">"{campaign.title}"</CardTitle>
                     <div className="mt-2">
-                      <Badge variant={campaign.status === 'draft' ? 'secondary' : 'default'}>
+                      <Badge variant={campaign.status === 'draft' ? 'secondary' : 'default'} className='w-auto'>
                         {campaign.status}
                       </Badge>
                     </div>
@@ -251,14 +251,14 @@ const CampaignReview = () => {
                 {/* Campaign Info Grid */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-start gap-3">
-                    <DollarSign className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <PhilippinePeso className="h-5 w-5 text-muted-foreground mt-0.5" />
                     <div>
                       <p className="text-sm text-muted-foreground">Goal Amount</p>
                       <p className="font-semibold">{formatCurrency(campaign.goalAmount)}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <DollarSign className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <PhilippinePeso className="h-5 w-5 text-muted-foreground mt-0.5" />
                     <div>
                       <p className="text-sm text-muted-foreground">Current Amount</p>
                       <p className="font-semibold">{formatCurrency(campaign.currentAmount)}</p>
@@ -327,7 +327,7 @@ const CampaignReview = () => {
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h4 className="font-medium">{milestone.title}</h4>
+                              <h4 className="font-robotobold text-blue-600">{milestone.title}</h4>
                               {milestone.description && (
                                 <p className="text-sm text-muted-foreground mt-1">
                                   {milestone.description}
@@ -400,9 +400,9 @@ const CampaignReview = () => {
                       {((campaign.currentAmount / campaign.goalAmount) * 100).toFixed(1)}%
                     </span>
                   </div>
-                  <div className="w-full bg-secondary rounded-full h-2">
+                  <div className="w-full bg-blue-100 rounded-full h-2">
                     <div
-                      className="bg-primary h-2 rounded-full transition-all"
+                      className="bg-blue-700 h-2 rounded-full transition-all"
                       style={{ width: `${Math.min((campaign.currentAmount / campaign.goalAmount) * 100, 100)}%` }}
                     />
                   </div>
