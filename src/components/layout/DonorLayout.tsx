@@ -12,6 +12,7 @@ import {
   TrendingUp,
   MessageSquare,
   Award,
+  Star,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -143,8 +144,13 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
     },
     {
       path: "/donor/feedback",
-      label: "Feedback/Reviews",
+      label: "Campaign Reviews",
       icon: <MessageSquare className="h-5 w-5" />,
+    },
+    {
+      path: "/donor/charity-feedback",
+      label: "Charity Feedback",
+      icon: <Star className="h-5 w-5" />,
     },
     {
       path: "/donor/achievements",

@@ -83,7 +83,7 @@ CREATE POLICY "Service role can manage platform settings"
 INSERT INTO public.platform_settings (key, value, description, category) VALUES
   (
     'platform_fee_percentage',
-    '5'::jsonb,
+    '0.5'::jsonb,
     'Percentage fee charged on each donation (0-20%)',
     'payment'
   ),

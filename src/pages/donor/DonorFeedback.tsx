@@ -43,6 +43,7 @@ const DonorFeedback: React.FC = () => {
           user.id
         );
         
+        console.log('Reviews Result:', reviewsResult);
         const reviews = reviewsResult.success && reviewsResult.data ? reviewsResult.data : [];
         setMyReviews(reviews);
         
@@ -53,13 +54,18 @@ const DonorFeedback: React.FC = () => {
           user.id
         );
         
+        console.log('Donations Result:', donationsResult);
+        
         if (donationsResult.success && donationsResult.data) {
           const reviewedCampaignIds = new Set(reviews.map(r => r.campaignId));
           const uniqueCampaigns = new Map<string, EligibleCampaign>();
           
+          console.log('Processing donations:', donationsResult.data.length);
+          
           donationsResult.data.forEach((donation: any) => {
+            console.log('Checking donation:', donation.id, donation.status, donation.campaign?.id);
             if (
-              donation.status === 'completed' && 
+              (donation.status === 'completed' || donation.status === 'pending') && 
               donation.campaign && 
               !reviewedCampaignIds.has(donation.campaign.id)
             ) {
@@ -68,6 +74,12 @@ const DonorFeedback: React.FC = () => {
                 title: donation.campaign.title,
                 charityName: donation.campaign.charity?.organizationName || 'Unknown Charity'
               });
+            } else {
+                console.log('Donation excluded. Reason:', 
+                    donation.status !== 'completed' ? 'Status not completed' :
+                    !donation.campaign ? 'No campaign data' :
+                    reviewedCampaignIds.has(donation.campaign?.id) ? 'Already reviewed' : 'Unknown'
+                );
             }
           });
           
@@ -104,9 +116,9 @@ const DonorFeedback: React.FC = () => {
       }, user.id);
 
       if (result.success && result.data) {
-        toast.success('Review submitted successfully! It will be visible after approval.');
-        
-        // Add new review to list (it will be pending)
+        toast.success('Review submitted successfully!');
+
+        // Add new review to list
         setMyReviews([result.data, ...myReviews]);
         
         // Remove campaign from eligible list
@@ -258,18 +270,11 @@ const DonorFeedback: React.FC = () => {
                           Posted on {new Date(review.createdAt).toLocaleDateString()}
                         </p>
                       </div>
-                      <Badge
-                        variant={
-                          review.status === 'approved'
-                            ? 'default'
-                            : review.status === 'pending'
-                            ? 'secondary'
-                            : 'destructive'
-                        }
-                        className="capitalize"
-                      >
-                        {review.status}
-                      </Badge>
+                      {review.status === 'rejected' && (
+                        <Badge variant="destructive" className="capitalize">
+                          {review.status}
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="mb-2">{renderStars(review.rating)}</div>
@@ -297,7 +302,7 @@ const DonorFeedback: React.FC = () => {
               <li>• Be honest and constructive in your feedback</li>
               <li>• Focus on your personal experience with the campaign</li>
               <li>• Avoid offensive language or personal attacks</li>
-              <li>• Reviews are moderated and may take up to 24 hours to appear</li>
+              <li>• Reviews are published immediately and visible to everyone</li>
             </ul>
           </CardContent>
         </Card>

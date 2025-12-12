@@ -216,6 +216,18 @@ export default function RefundDecisions() {
     }
   };
 
+  const getTriggerTypeInfo = (decision: DonorRefundDecision) => {
+    const triggerType = decision.metadata?.trigger_type;
+
+    if (triggerType === 'campaign_expiration') {
+      return { label: 'Campaign Expired', variant: 'destructive' as const };
+    }
+    if (triggerType === 'campaign_cancellation') {
+      return { label: 'Campaign Cancelled', variant: 'destructive' as const };
+    }
+    return { label: 'Milestone Rejected', variant: 'default' as const };
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -252,7 +264,7 @@ export default function RefundDecisions() {
 
         <h1 className="text-3xl font-bold">Refund Decisions</h1>
         <p className="text-muted-foreground mt-2">
-          Make decisions on your contributions from rejected milestones
+          Make decisions on your contributions from rejected milestones, expired campaigns, or cancelled campaigns
         </p>
       </div>
 
@@ -295,20 +307,28 @@ export default function RefundDecisions() {
           <div className="space-y-6">
             {decisions.map((decision) => {
               const daysRemaining = getDaysRemaining(decision.decisionDeadline);
+              const triggerInfo = getTriggerTypeInfo(decision);
 
               return (
                 <Card key={decision.id} className="overflow-hidden">
                   <CardHeader className="bg-muted/50">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant={triggerInfo.variant}>
+                            {triggerInfo.label}
+                          </Badge>
+                          {getUrgencyBadge(daysRemaining)}
+                        </div>
                         <CardTitle className="text-lg">
-                          Rejected Milestone: {decision.milestone?.title || 'Milestone'}
+                          {decision.milestone?.title
+                            ? `Rejected Milestone: ${decision.milestone.title}`
+                            : decision.campaign?.title || 'Refund Decision'}
                         </CardTitle>
                         <CardDescription className="mt-1">
                           Campaign: {decision.campaign?.title || 'Unknown Campaign'}
                         </CardDescription>
                       </div>
-                      {getUrgencyBadge(daysRemaining)}
                     </div>
                   </CardHeader>
 

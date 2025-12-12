@@ -49,10 +49,11 @@ const ReviewModeration = () => {
     try {
       setLoading(true);
 
-      const result = await reviewService.getPendingReviews({ page: 1, limit: 100 }, user.id);
+      // Load all reviews (not just pending since reviews are auto-approved now)
+      const result = await reviewService.listReviews({ page: 1, limit: 100 }, {});
 
       if (result.success && result.data) {
-        setReviews(result.data);
+        setReviews(result.data.items);
       } else {
         throw new Error(result.error || 'Failed to load reviews');
       }
@@ -175,8 +176,8 @@ const ReviewModeration = () => {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Review Moderation</h1>
-            <p className="text-gray-600">Review and moderate donor campaign reviews</p>
+            <h1 className="text-3xl font-bold text-gray-900">Review Management</h1>
+            <p className="text-gray-600">Reviews publish instantly. Moderate if needed to remove inappropriate content.</p>
           </div>
           <Button onClick={loadReviews} disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -188,23 +189,23 @@ const ReviewModeration = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Reviews</CardTitle>
-              <Clock className="h-4 w-4 text-yellow-600" />
+              <CardTitle className="text-sm font-medium">Total Reviews</CardTitle>
+              <MessageSquare className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.pending}</div>
-              <p className="text-xs text-muted-foreground">Awaiting moderation</p>
+              <div className="text-2xl font-bold">{reviews.length}</div>
+              <p className="text-xs text-muted-foreground">All reviews</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Approved</CardTitle>
+              <CardTitle className="text-sm font-medium">Published</CardTitle>
               <CheckCircle className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.approved}</div>
-              <p className="text-xs text-muted-foreground">Published reviews</p>
+              <p className="text-xs text-muted-foreground">Visible to public</p>
             </CardContent>
           </Card>
 
@@ -239,7 +240,7 @@ const ReviewModeration = () => {
         {/* Reviews List */}
         <Card>
           <CardHeader>
-            <CardTitle>Pending Reviews</CardTitle>
+            <CardTitle>All Reviews</CardTitle>
             <CardDescription>
               {filteredReviews.length} review{filteredReviews.length !== 1 ? 's' : ''} found
             </CardDescription>

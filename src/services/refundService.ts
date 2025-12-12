@@ -1033,3 +1033,167 @@ export const getRefundStats = withErrorHandling(async (
     decisionTypeDistribution,
   });
 });
+
+// ============================================================================
+// CAMPAIGN EXPIRATION REFUND FUNCTIONS
+// ============================================================================
+
+/**
+ * Check if campaign is eligible for expiration refund
+ */
+export const checkCampaignExpirationEligibility = withErrorHandling(async (
+  campaignId: string
+): Promise<ApiResponse<{
+  isEligible: boolean;
+  triggerType?: 'campaign_expiration' | 'campaign_cancellation';
+  gracePeriodEnds?: string;
+  refundableAmount?: number;
+  affectedDonors?: number;
+}>> => {
+  const { data, error } = await supabase
+    .rpc('check_campaign_expiration_eligibility', {
+      p_campaign_id: campaignId
+    });
+
+  if (error) throw handleSupabaseError(error);
+
+  const result = data?.[0];
+  if (!result?.is_eligible) {
+    return createSuccessResponse({ isEligible: false });
+  }
+
+  return createSuccessResponse({
+    isEligible: true,
+    triggerType: result.trigger_type,
+    gracePeriodEnds: result.grace_period_ends,
+    refundableAmount: parseFloat(result.refundable_amount),
+    affectedDonors: result.affected_donors
+  });
+});
+
+/**
+ * Initiate campaign expiration/cancellation refund
+ * Admin or system function
+ */
+export const initiateCampaignRefund = withErrorHandling(async (
+  campaignId: string,
+  triggerType: 'campaign_expiration' | 'campaign_cancellation',
+  adminId: string,
+  reason?: string
+): Promise<ApiResponse<{
+  refundRequestId: string;
+  totalAmount: number;
+  affectedDonors: number;
+}>> => {
+  console.log(`[refundService] Initiating campaign refund for ${campaignId}: ${triggerType}`);
+
+  const { data, error } = await supabase.rpc('initiate_campaign_expiration_refund', {
+    p_campaign_id: campaignId,
+    p_trigger_type: triggerType,
+    p_admin_id: adminId,
+    p_reason: reason || null
+  });
+
+  if (error) throw handleSupabaseError(error);
+
+  const result = data?.[0];
+
+  // Send notifications to all affected donors
+  try {
+    const { createNotification } = await import('./notificationService');
+
+    // Get campaign details
+    const { data: campaign } = await supabase
+      .from('campaigns')
+      .select('title')
+      .eq('id', campaignId)
+      .single();
+
+    // Get all affected donors
+    const { data: decisions } = await supabase
+      .from('donor_refund_decisions')
+      .select('donor_id, refund_amount')
+      .eq('refund_request_id', result.refund_request_id);
+
+    if (decisions && campaign) {
+      for (const decision of decisions) {
+        const triggerMessage = triggerType === 'campaign_expiration'
+          ? 'expired without reaching its funding goal'
+          : 'was cancelled';
+
+        await createNotification({
+          userId: decision.donor_id,
+          type: 'refund_decision_required',
+          title: '⚠️ Campaign Refund - Decision Required',
+          message: `The campaign "${campaign.title}" ${triggerMessage}. You have ₱${parseFloat(decision.refund_amount).toLocaleString()} to reallocate. Please make your decision within 14 days.`,
+          campaignId: campaignId,
+          actionUrl: '/donor/refund-decisions',
+          metadata: {
+            refund_request_id: result.refund_request_id,
+            amount: parseFloat(decision.refund_amount),
+            trigger_type: triggerType,
+          },
+        });
+      }
+    }
+  } catch (notificationError) {
+    console.error('[refundService] Failed to send campaign refund notifications:', notificationError);
+  }
+
+  // Log audit event
+  await logAuditEvent(
+    adminId,
+    'CAMPAIGN_REFUND_INITIATED',
+    'campaign',
+    campaignId,
+    {
+      triggerType,
+      totalAmount: result.total_amount,
+      affectedDonors: result.affected_donors,
+      refundRequestId: result.refund_request_id
+    }
+  );
+
+  console.log(`[refundService] Campaign refund initiated: ${result.affected_donors} donors, ₱${parseFloat(result.total_amount).toLocaleString()}`);
+
+  return createSuccessResponse({
+    refundRequestId: result.refund_request_id,
+    totalAmount: parseFloat(result.total_amount),
+    affectedDonors: result.affected_donors
+  }, 'Campaign refund process initiated successfully');
+});
+
+/**
+ * Process expired campaigns (called by scheduled job)
+ * System function only
+ */
+export const processExpiredCampaigns = withErrorHandling(async (): Promise<ApiResponse<{
+  processedCount: number;
+  campaigns: Array<{
+    campaignId: string;
+    campaignTitle: string;
+    triggerType: string;
+    totalAmount: number;
+    affectedDonors: number;
+  }>;
+}>> => {
+  console.log('[refundService] Processing expired campaigns...');
+
+  const { data, error } = await supabase.rpc('process_expired_campaigns');
+
+  if (error) throw handleSupabaseError(error);
+
+  const processedCount = data?.length || 0;
+  console.log(`[refundService] Processed ${processedCount} expired campaigns`);
+
+  return createSuccessResponse({
+    processedCount,
+    campaigns: data?.map((d: any) => ({
+      campaignId: d.campaign_id,
+      campaignTitle: d.campaign_title,
+      triggerType: d.trigger_type,
+      totalAmount: parseFloat(d.total_amount),
+      affectedDonors: d.affected_donors
+    })) || []
+  }, `Processed ${processedCount} expired campaigns`);
+});

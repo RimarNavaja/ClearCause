@@ -133,7 +133,7 @@ export const createReview = withErrorHandling(async (
       user_id: userId,
       rating: reviewData.rating,
       comment: reviewData.comment || null,
-      status: 'pending', // Reviews start as pending for moderation
+      status: 'approved', // Reviews publish immediately without moderation
     })
     .select(`
       *,
