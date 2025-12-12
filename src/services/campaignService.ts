@@ -1,4 +1,3 @@
-
 //  * Campaign Service
 //  * Handles campaign creation, management, and operations
 
@@ -230,6 +229,7 @@ export const getCampaignById = withErrorHandling(async (
     status: campaign.status,
     startDate: campaign.start_date,
     endDate: campaign.end_date,
+    expirationRefundInitiated: campaign.expiration_refund_initiated,
     category: campaign.category,
     location: campaign.location,
     createdAt: campaign.created_at,
@@ -377,6 +377,51 @@ export const updateCampaign = withErrorHandling(async (
 });
 
 /**
+ * Request campaign deadline extension
+ */
+export const requestCampaignExtension = withErrorHandling(async (
+  campaignId: string,
+  newEndDate: string,
+  reason: string,
+  userId: string
+): Promise<ApiResponse<string>> => {
+  // Check if user is the charity owner
+  const campaignResult = await getCampaignById(campaignId, false);
+  if (!campaignResult.success || !campaignResult.data) {
+    throw new ClearCauseError('NOT_FOUND', 'Campaign not found', 404);
+  }
+  
+  const campaign = campaignResult.data;
+  
+  if (campaign.charityId) {
+    // We can rely on the DB function to verify ownership more strictly, 
+    // but a quick check here helps fail fast.
+    const charityResult = await getCharityByUserId(userId);
+    if (!charityResult.success || charityResult.data?.id !== campaign.charityId) {
+       throw new ClearCauseError('FORBIDDEN', 'You can only request extensions for your own campaigns', 403);
+    }
+  }
+
+  const { data, error } = await supabase.rpc('request_campaign_extension', {
+    p_campaign_id: campaignId,
+    p_requested_end_date: newEndDate,
+    p_reason: reason
+  });
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  // Log audit event
+  await logAuditEvent(userId, 'CAMPAIGN_EXTENSION_REQUESTED', 'campaign', campaignId, {
+    newEndDate,
+    reason
+  });
+
+  return createSuccessResponse(data as string, 'Extension request submitted successfully');
+});
+
+/**
  * List campaigns with filters and pagination
  */
 export const listCampaigns = withErrorHandling(async (
@@ -451,6 +496,7 @@ export const listCampaigns = withErrorHandling(async (
     status: campaign.status,
     startDate: campaign.start_date,
     endDate: campaign.end_date,
+    expirationRefundInitiated: campaign.expiration_refund_initiated,
     category: campaign.category,
     location: campaign.location,
     createdAt: campaign.created_at,
@@ -564,6 +610,7 @@ export const getCampaignsByCharity = withErrorHandling(async (
     status: campaign.status,
     startDate: campaign.start_date,
     endDate: campaign.end_date,
+    expirationRefundInitiated: campaign.expiration_refund_initiated,
     category: campaign.category,
     location: campaign.location,
     createdAt: campaign.created_at,
@@ -632,9 +679,13 @@ export const updateCampaignStatus = withErrorHandling(async (
   }
 
   // Log audit event
-  await logAuditEvent(currentUserId, 'CAMPAIGN_STATUS_UPDATE', 'campaign', campaignId, {
+  const isOverride = campaign.charity?.userId !== currentUserId;
+  const action = isOverride ? 'CAMPAIGN_STATUS_OVERRIDE' : 'CAMPAIGN_STATUS_UPDATE';
+  
+  await logAuditEvent(currentUserId, action, 'campaign', campaignId, {
     oldStatus: campaign.status,
-    newStatus: status
+    newStatus: status,
+    isOverride
   });
 
   // If campaign is being cancelled with donations, initiate refund process

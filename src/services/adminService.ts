@@ -14,7 +14,9 @@ import {
   Donation,
   ClearCauseError,
   PlatformSetting,
-  CampaignCategory
+  CampaignCategory,
+  ExtensionRequest,
+  ExtensionRequestStatus
 } from '../lib/types';
 import { validateData, paginationSchema } from '../utils/validation';
 import { withErrorHandling, handleSupabaseError, createSuccessResponse } from '../utils/errors';
@@ -1715,3 +1717,118 @@ export const deleteCampaignCategory = withErrorHandling(async (
 
   return createSuccessResponse(undefined, 'Campaign category deleted successfully');
 });
+
+// =========================================
+// CAMPAIGN EXTENSION REQUESTS
+// =========================================
+
+/**
+ * Get campaign extension requests
+ */
+export const getCampaignExtensionRequests = withErrorHandling(async (
+  filters: { status?: ExtensionRequestStatus } = {},
+  params: PaginationParams,
+  currentUserId: string
+): Promise<PaginatedResponse<ExtensionRequest>> => {
+  // Check if current user is admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can access extension requests', 403);
+  }
+
+  const validatedParams = validateData(paginationSchema, params);
+  const { page, limit, sortBy = 'created_at', sortOrder = 'desc' } = validatedParams;
+  const offset = (page - 1) * limit;
+
+  let query = supabase
+    .from('campaign_extension_requests')
+    .select(`
+      *,
+      campaign:campaigns (
+        title
+      ),
+      charity:charities (
+        organization_name
+      )
+    `, { count: 'exact' });
+
+  // Apply filters
+  if (filters.status) {
+    query = query.eq('status', filters.status);
+  }
+
+  // Apply pagination and sorting
+  query = query
+    .order(sortBy, { ascending: sortOrder === 'asc' })
+    .range(offset, offset + limit - 1);
+
+  const { data, count, error } = await query;
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  const requests: ExtensionRequest[] = (data || []).map((req: any) => ({
+    id: req.id,
+    campaignId: req.campaign_id,
+    charityId: req.charity_id,
+    requestedEndDate: req.requested_end_date,
+    reason: req.reason,
+    status: req.status,
+    adminNotes: req.admin_notes,
+    reviewedBy: req.reviewed_by,
+    reviewedAt: req.reviewed_at,
+    createdAt: req.created_at,
+    updatedAt: req.updated_at,
+    campaign: req.campaign,
+    charity: req.charity
+  }));
+
+  return createPaginatedResponse(requests, count || 0, validatedParams);
+});
+
+/**
+ * Resolve campaign extension request
+ */
+export const resolveExtensionRequest = withErrorHandling(async (
+  requestId: string,
+  status: ExtensionRequestStatus,
+  adminNotes: string,
+  currentUserId: string
+): Promise<ApiResponse<void>> => {
+  // Check if current user is admin
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can resolve extension requests', 403);
+  }
+
+  // Call the database function
+  const { data, error } = await supabase.rpc('resolve_campaign_extension_request', {
+    p_request_id: requestId,
+    p_status: status,
+    p_admin_notes: adminNotes
+  });
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  // Log audit event
+  await logAuditEvent(currentUserId, 'RESOLVE_EXTENSION_REQUEST', 'extension_request', requestId, {
+    status,
+    admin_notes: adminNotes
+  });
+
+  return createSuccessResponse(undefined, `Extension request ${status}`);
+});
+

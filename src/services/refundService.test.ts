@@ -269,7 +269,7 @@ describe('RefundService', () => {
       (supabase.from as any).mockReturnValue(mockFromChain);
 
       const result = await submitDonorDecision('decision-123', 'donor-789', {
-        type: 'redirect_to_campaign',
+        type: 'redirect_campaign',
         // Missing redirectCampaignId
       });
 

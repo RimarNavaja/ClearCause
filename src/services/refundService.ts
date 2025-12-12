@@ -319,7 +319,7 @@ export const initiateRefundProcess = withErrorHandling(async (
 
       await createNotification({
         userId: donorId,
-        type: 'refund_decision_required',
+        type: 'system_announcement',
         title: '⚠️ Milestone Rejected - Decision Required',
         message: `A milestone for "${milestoneWithCampaign?.campaigns?.title}" was rejected. You have ₱${donorAmount.toLocaleString()} to reallocate. Please make your decision within 14 days.`,
         campaignId: milestone.campaign_id,
@@ -517,6 +517,8 @@ export const submitDonorDecision = withErrorHandling(async (
     }
   }
 
+  console.log(`[refundService] Processing decision update for decision ${decisionId}`);
+
   // Step 6: Update decision record
   const { error: updateError } = await supabase
     .from('donor_refund_decisions')
@@ -532,8 +534,108 @@ export const submitDonorDecision = withErrorHandling(async (
     .eq('donor_id', donorId);
 
   if (updateError) {
+    console.error('[refundService] Failed to update decision record:', updateError);
     throw handleSupabaseError(updateError);
   }
+
+  // --- IMMEDIATE PROCESSING FOR REDIRECTS (DEBUGGING) ---
+  // If redirect, we want to see it happen immediately for testing
+  if (finalDecisionType === 'redirect_campaign' && decision.redirectCampaignId) {
+    console.log(`[refundService] IMMEDIATE PROCESSING TRIGGERED for redirect to ${decision.redirectCampaignId}`);
+    
+    // Create new donation
+    const { data: newDonation, error: donationError } = await supabase
+    .from('donations')
+    .insert({
+      user_id: donorId,
+      campaign_id: decision.redirectCampaignId,
+      amount: decisionRecord.refund_amount,
+      payment_method: 'redirected',
+      status: 'completed',
+      transaction_id: `REDIRECT_${decisionId}_${Date.now()}`,
+      metadata: {
+        source: 'milestone_rejection_redirect',
+        original_donation_id: decisionRecord.donation_id,
+        original_campaign_id: decisionRecord.milestone_refund_requests?.campaign_id,
+        decision_id: decisionId,
+      },
+    })
+    .select()
+    .single();
+
+    if (donationError) {
+      console.error('[refundService] Failed to create redirect donation:', donationError);
+      // We don't throw here to avoid rolling back the decision, but we log it
+    } else {
+      console.log('[refundService] Created redirect donation:', newDonation.id);
+
+      // Update campaign amount
+      console.log(`[refundService] Incrementing campaign ${decision.redirectCampaignId} by ${decisionRecord.refund_amount}`);
+      
+      const { error: rpcError } = await supabase.rpc('increment_campaign_amount', {
+        p_campaign_id: decision.redirectCampaignId,
+        p_amount: decisionRecord.refund_amount
+      });
+
+      if (rpcError) {
+         console.error('[refundService] RPC increment_campaign_amount FAILED:', rpcError);
+      } else {
+         console.log('[refundService] RPC increment_campaign_amount SUCCESS');
+         
+         // Mark decision as completed
+         await supabase
+          .from('donor_refund_decisions')
+          .update({
+            status: 'completed',
+            processed_at: new Date().toISOString(),
+            new_donation_id: newDonation.id,
+          })
+          .eq('id', decisionId);
+      }
+    }
+  } else if (finalDecisionType === 'donate_platform') {
+    // IMMEDIATE PROCESSING FOR PLATFORM DONATIONS
+    console.log('[refundService] IMMEDIATE PROCESSING TRIGGERED for platform donation');
+    
+    // Mark as completed immediately since no external payment processing is needed
+    // The funds are simply kept by the platform
+    const { error: completeError } = await supabase
+      .from('donor_refund_decisions')
+      .update({
+        status: 'completed',
+        processed_at: new Date().toISOString()
+      })
+      .eq('id', decisionId);
+
+    if (completeError) {
+      console.error('[refundService] Failed to mark platform donation as completed:', completeError);
+    } else {
+      console.log('[refundService] Platform donation marked as completed immediately');
+    }
+  } else if (finalDecisionType === 'refund') {
+    // IMMEDIATE PROCESSING FOR REFUNDS (for testing purposes, actual PayMongo call would be here)
+    console.log('[refundService] IMMEDIATE PROCESSING TRIGGERED for refund to payment method');
+    
+    // For testing, we simulate a successful refund and mark it completed
+    // In a real scenario, this would involve calling the payment provider API and handling retries
+    const dummyTransactionId = `TEST_REFUND_TXN_${decisionId}_${Date.now()}`;
+    
+    const { error: completeError } = await supabase
+      .from('donor_refund_decisions')
+      .update({
+        status: 'completed',
+        processed_at: new Date().toISOString(),
+        refund_transaction_id: dummyTransactionId,
+      })
+      .eq('id', decisionId);
+
+    if (completeError) {
+      console.error('[refundService] Failed to mark refund as completed:', completeError);
+    } else {
+      console.log('[refundService] Refund marked as completed immediately (simulated)');
+    }
+  }
+  // -----------------------------------------------------
 
   // Step 7: Send confirmation notification
   try {
@@ -550,7 +652,7 @@ export const submitDonorDecision = withErrorHandling(async (
 
     await createNotification({
       userId: donorId,
-      type: 'refund_processed',
+      type: 'donation_confirmed',
       title: '✅ Decision Submitted',
       message: message,
       actionUrl: '/donor/donations',
@@ -689,6 +791,26 @@ const processSingleDecision = async (decision: any): Promise<{ success: boolean;
         })
         .eq('id', decision.id);
 
+      // Send success notification to donor
+      try {
+        const { createNotification } = await import('./notificationService');
+        await createNotification({
+          userId: decision.donor_id,
+          type: 'donation_confirmed',
+          title: '✅ Refund Processed Successfully',
+          message: `Your refund of ₱${parseFloat(decision.refund_amount).toLocaleString()} has been processed successfully. The funds will be returned to your payment method within 3-5 business days.`,
+          actionUrl: '/donor/donations',
+          metadata: {
+            decision_id: decision.id,
+            amount: parseFloat(decision.refund_amount),
+            transaction_id: refundResult.transactionId,
+          },
+        });
+      } catch (notificationError) {
+        console.error('[refundService] Failed to send refund success notification:', notificationError);
+        // Don't fail the refund if notification fails
+      }
+
       return { success: true };
 
     } else if (decision.decision_type === 'redirect_campaign') {
@@ -717,10 +839,18 @@ const processSingleDecision = async (decision: any): Promise<{ success: boolean;
       }
 
       // Update campaign amount
-      await supabase.rpc('increment_campaign_amount', {
-        campaign_id: decision.redirect_campaign_id,
-        amount: decision.refund_amount,
+      const { error: campaignUpdateError } = await supabase.rpc('increment_campaign_amount', {
+        p_campaign_id: decision.redirect_campaign_id,
+        p_amount: decision.refund_amount,
       });
+
+      if (campaignUpdateError) {
+        console.error('[refundService] Failed to update campaign amount:', campaignUpdateError);
+        // We should probably fail the whole process if this critical step fails, 
+        // OR rely on a background job to fix consistency. 
+        // For now, let's throw to ensure the user knows something went wrong.
+        throw new Error('Failed to update campaign amount: ' + campaignUpdateError.message);
+      }
 
       // Update decision status
       await supabase
@@ -731,6 +861,33 @@ const processSingleDecision = async (decision: any): Promise<{ success: boolean;
           new_donation_id: newDonation.id,
         })
         .eq('id', decision.id);
+
+      // Send success notification to donor
+      try {
+        const { createNotification } = await import('./notificationService');
+        const { data: redirectCampaign } = await supabase
+          .from('campaigns')
+          .select('title')
+          .eq('id', decision.redirect_campaign_id)
+          .single();
+
+        await createNotification({
+          userId: decision.donor_id,
+          type: 'donation_received',
+          title: '✅ Donation Redirected Successfully',
+          message: `Your donation of ₱${parseFloat(decision.refund_amount).toLocaleString()} has been redirected to "${redirectCampaign?.title || 'another campaign'}". Thank you for continuing your support!`,
+          actionUrl: `/campaigns/${decision.redirect_campaign_id}`,
+          metadata: {
+            decision_id: decision.id,
+            amount: parseFloat(decision.refund_amount),
+            redirect_campaign_id: decision.redirect_campaign_id,
+            new_donation_id: newDonation.id,
+          },
+        });
+      } catch (notificationError) {
+        console.error('[refundService] Failed to send redirect success notification:', notificationError);
+        // Don't fail the redirect if notification fails
+      }
 
       return { success: true };
 
@@ -745,6 +902,25 @@ const processSingleDecision = async (decision: any): Promise<{ success: boolean;
           processed_at: new Date().toISOString(),
         })
         .eq('id', decision.id);
+
+      // Send success notification to donor
+      try {
+        const { createNotification } = await import('./notificationService');
+        await createNotification({
+          userId: decision.donor_id,
+          type: 'thank_you_message',
+          title: '💙 Thank You for Supporting ClearCause!',
+          message: `Your generous donation of ₱${parseFloat(decision.refund_amount).toLocaleString()} to support the ClearCause platform has been received. Your contribution helps us maintain transparency and accountability in charitable giving.`,
+          actionUrl: '/donor/donations',
+          metadata: {
+            decision_id: decision.id,
+            amount: parseFloat(decision.refund_amount),
+          },
+        });
+      } catch (notificationError) {
+        console.error('[refundService] Failed to send platform donation notification:', notificationError);
+        // Don't fail the donation if notification fails
+      }
 
       return { success: true };
     }
@@ -1123,7 +1299,7 @@ export const initiateCampaignRefund = withErrorHandling(async (
 
         await createNotification({
           userId: decision.donor_id,
-          type: 'refund_decision_required',
+          type: 'system_announcement',
           title: '⚠️ Campaign Refund - Decision Required',
           message: `The campaign "${campaign.title}" ${triggerMessage}. You have ₱${parseFloat(decision.refund_amount).toLocaleString()} to reallocate. Please make your decision within 14 days.`,
           campaignId: campaignId,

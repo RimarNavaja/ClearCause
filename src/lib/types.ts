@@ -609,6 +609,7 @@ export interface Campaign {
   status: CampaignStatus;
   startDate: string | null;
   endDate: string | null;
+  expirationRefundInitiated?: boolean;
   createdAt: string;
   updatedAt: string;
   charity?: CharityOrganization;
@@ -1035,6 +1036,29 @@ export interface DonorRefundDecision {
   metadata: Record<string, any>;
   createdAt: string;
   updatedAt: string;
+}
+
+export type ExtensionRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface ExtensionRequest {
+  id: string;
+  campaignId: string;
+  charityId: string;
+  requestedEndDate: string;
+  reason: string;
+  status: ExtensionRequestStatus;
+  adminNotes: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // Relations
+  campaign?: {
+    title: string;
+  };
+  charity?: {
+    organizationName: string;
+  };
 }
 
 // ===== CHARITY FEEDBACK TYPES =====

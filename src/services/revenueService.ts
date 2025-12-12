@@ -35,17 +35,28 @@ export interface CampaignRevenue {
 
 /**
  * Get total platform fees collected (lifetime)
- * Calculates aggregate revenue from all completed donations
+ * Calculates aggregate revenue from all completed donations AND platform refund donations
  */
 export async function getTotalPlatformRevenue(): Promise<RevenueStats> {
-  const { data, error } = await supabase
+  // 1. Get standard platform fees from donations
+  const { data: donations, error: donationError } = await supabase
     .from('donations')
     .select('metadata')
     .eq('status', 'completed');
 
-  if (error) throw error;
+  if (donationError) throw donationError;
 
-  const stats = data.reduce((acc, donation) => {
+  // 2. Get revenue from "donate to platform" refund decisions
+  const { data: refunds, error: refundError } = await supabase
+    .from('donor_refund_decisions')
+    .select('refund_amount')
+    .eq('status', 'completed')
+    .eq('decision_type', 'donate_platform');
+
+  if (refundError) throw refundError;
+
+  // Calculate totals
+  const donationStats = donations.reduce((acc, donation) => {
     const fees = donation.metadata?.fees || {};
     const platformFee = parseFloat(fees.platformFee || 0);
 
@@ -56,7 +67,20 @@ export async function getTotalPlatformRevenue(): Promise<RevenueStats> {
     };
   }, { platformFees: 0, netRevenue: 0, donationCount: 0 });
 
-  return stats;
+  const refundStats = refunds.reduce((acc, refund) => {
+    const amount = parseFloat(refund.refund_amount || 0);
+    return {
+      platformFees: acc.platformFees + amount,
+      netRevenue: acc.netRevenue + amount,
+      donationCount: acc.donationCount + 1,
+    };
+  }, { platformFees: 0, netRevenue: 0, donationCount: 0 });
+
+  return {
+    platformFees: donationStats.platformFees + refundStats.platformFees,
+    netRevenue: donationStats.netRevenue + refundStats.netRevenue,
+    donationCount: donationStats.donationCount + refundStats.donationCount,
+  };
 }
 
 /**
@@ -70,16 +94,29 @@ export async function getPlatformRevenueByPeriod(
   startDate: string,
   endDate: string
 ): Promise<PeriodRevenueStats> {
-  const { data, error } = await supabase
+  // 1. Get standard platform fees
+  const { data: donations, error: donationError } = await supabase
     .from('donations')
-    .select('amount, metadata, created_at')
+    .select('amount, metadata, donated_at')
     .eq('status', 'completed')
-    .gte('created_at', startDate)
-    .lte('created_at', endDate);
+    .gte('donated_at', startDate)
+    .lte('donated_at', endDate);
 
-  if (error) throw error;
+  if (donationError) throw donationError;
 
-  const stats = data.reduce((acc, donation) => {
+  // 2. Get refund donations
+  const { data: refunds, error: refundError } = await supabase
+    .from('donor_refund_decisions')
+    .select('refund_amount, processed_at')
+    .eq('status', 'completed')
+    .eq('decision_type', 'donate_platform')
+    .gte('processed_at', startDate)
+    .lte('processed_at', endDate);
+
+  if (refundError) throw refundError;
+
+  // Calculate stats
+  const donationStats = donations.reduce((acc, donation) => {
     const fees = donation.metadata?.fees || {};
     return {
       platformFees: acc.platformFees + parseFloat(fees.platformFee || 0),
@@ -94,7 +131,27 @@ export async function getPlatformRevenueByPeriod(
     donationCount: 0,
   });
 
-  return stats;
+  const refundStats = refunds.reduce((acc, refund) => {
+    const amount = parseFloat(refund.refund_amount || 0);
+    return {
+      platformFees: acc.platformFees + amount,
+      totalGross: acc.totalGross + amount, // For refunds, gross = net = amount
+      totalNet: acc.totalNet + amount,
+      donationCount: acc.donationCount + 1,
+    };
+  }, {
+    platformFees: 0,
+    totalGross: 0,
+    totalNet: 0,
+    donationCount: 0,
+  });
+
+  return {
+    platformFees: donationStats.platformFees + refundStats.platformFees,
+    totalGross: donationStats.totalGross + refundStats.totalGross,
+    totalNet: donationStats.totalNet + refundStats.totalNet,
+    donationCount: donationStats.donationCount + refundStats.donationCount,
+  };
 }
 
 /**
@@ -108,10 +165,10 @@ export async function getRevenueTrends(months: number = 6): Promise<RevenueTrend
 
   const { data, error } = await supabase
     .from('donations')
-    .select('metadata, created_at')
+    .select('metadata, donated_at')
     .eq('status', 'completed')
-    .gte('created_at', cutoffDate.toISOString())
-    .order('created_at', { ascending: true });
+    .gte('donated_at', cutoffDate.toISOString())
+    .order('donated_at', { ascending: true });
 
   if (error) throw error;
 
@@ -119,7 +176,7 @@ export async function getRevenueTrends(months: number = 6): Promise<RevenueTrend
   const monthlyData = new Map<string, { platformFees: number; count: number }>();
 
   data.forEach(donation => {
-    const month = new Date(donation.created_at).toISOString().substring(0, 7); // YYYY-MM
+    const month = new Date(donation.donated_at).toISOString().substring(0, 7); // YYYY-MM
     const fees = donation.metadata?.fees || {};
     const platformFee = parseFloat(fees.platformFee || 0);
 

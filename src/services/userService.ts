@@ -600,3 +600,57 @@ export const searchUsers = withErrorHandling(async (
 
   return createPaginatedResponse(users, count || 0, validatedParams);
 });
+
+/**
+ * Ban or unban a user (admin only)
+ */
+export const toggleUserStatus = withErrorHandling(async (
+  userId: string,
+  isActive: boolean,
+  currentUserId: string,
+  reason?: string
+): Promise<ApiResponse<User>> => {
+  // Check if current user is admin
+  const currentUser = await getUserProfile(currentUserId);
+  if (!currentUser.success || currentUser.data?.role !== 'admin') {
+    throw new ClearCauseError('FORBIDDEN', 'Only administrators can ban/unban users', 403);
+  }
+
+  // Prevent admin from banning themselves
+  if (userId === currentUserId) {
+    throw new ClearCauseError('FORBIDDEN', 'You cannot ban your own account', 403);
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({
+      is_active: isActive,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  // Log audit event
+  const action = isActive ? 'USER_UNBANNED' : 'USER_BANNED';
+  await logAuditEvent(currentUserId, action, 'user', userId, {
+    reason,
+    previousStatus: !isActive
+  });
+
+  return createSuccessResponse({
+    id: data.id,
+    email: data.email,
+    fullName: data.full_name,
+    avatarUrl: data.avatar_url,
+    role: data.role,
+    isVerified: data.is_verified,
+    isActive: data.is_active,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  }, `User ${isActive ? 'activated' : 'banned'} successfully`);
+});

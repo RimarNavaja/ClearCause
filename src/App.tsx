@@ -81,6 +81,7 @@ import UserManagement from "./pages/admin/UserManagement";
 import ReviewModeration from "./pages/admin/ReviewModeration";
 import RefundManagement from "./pages/admin/RefundManagement";
 import CharityFeedbackManagement from "./pages/admin/CharityFeedbackManagement";
+import PlatformRevenue from "./pages/admin/PlatformRevenue";
 import ScrollToTop from "@/components/ui/ScrollToTop";
 
 const queryClient = new QueryClient();
@@ -405,6 +406,11 @@ const App = () => {
           <Route path="/admin/charity-feedback" element={
             <AdminRoute>
               <CharityFeedbackManagement />
+            </AdminRoute>
+          } />
+          <Route path="/admin/platform-revenue" element={
+            <AdminRoute>
+              <PlatformRevenue />
             </AdminRoute>
           } />
 

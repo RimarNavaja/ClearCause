@@ -10,20 +10,43 @@ const GATEWAY_FEE_RATE = 0.025;
 // Fetch configurable platform fee rate from database
 async function getPlatformFeeRate(supabase: any): Promise<number> {
   try {
+    console.log('[DEBUG] Fetching platform_fee_percentage...');
+    // Use .select() without .single() to see if there are duplicates
     const { data, error } = await supabase
       .from('platform_settings')
-      .select('value')
-      .eq('key', 'platform_fee_percentage')
-      .single();
+      .select('key, value')
+      .eq('key', 'platform_fee_percentage');
 
-    if (error || !data) {
+    console.log('[DEBUG] Raw DB Response:', { 
+      data, 
+      error: error ? error.message : null,
+      length: data?.length 
+    });
+
+    if (error || !data || data.length === 0) {
       console.warn('⚠️  Failed to fetch platform fee percentage, using default 5%:', error?.message);
       return 0.05; // Fallback to 5%
     }
 
-    const percentage = Number(data.value);
-    console.log('✅ Using platform fee rate:', percentage + '%');
-    return percentage / 100; // Convert 5 -> 0.05
+    // Check for duplicates
+    if (data.length > 1) {
+      console.error('❌ CRITICAL: Found multiple rows for platform_fee_percentage!', data);
+    }
+
+    const value = data[0].value;
+    console.log('[DEBUG] Raw value from DB:', value, 'Type:', typeof value);
+
+    const percentage = Number(value);
+    console.log('[DEBUG] Parsed percentage:', percentage);
+
+    // If DB says "0.5", it means 0.5%. 
+    // The code divides by 100: 0.5 / 100 = 0.005.
+    // If DB says "5", it means 5%.
+    // 5 / 100 = 0.05.
+    const finalRate = percentage / 100;
+    console.log('[DEBUG] Final rate used for calc:', finalRate);
+
+    return finalRate; 
   } catch (err) {
     console.error('❌ Error fetching platform fee:', err);
     return 0.05; // Fallback to 5%
@@ -165,7 +188,7 @@ serve(async (req) => {
 
     // 2.5. Fetch configurable platform fee rate
     const PLATFORM_FEE_RATE = await getPlatformFeeRate(supabase);
-    console.log('Platform fee rate for this donation:', (PLATFORM_FEE_RATE * 100) + '%');
+    console.log('[DEBUG] Main: PLATFORM_FEE_RATE:', PLATFORM_FEE_RATE);
 
     // 2.6. Fetch minimum donation amount
     const MIN_DONATION = await getMinimumDonation(supabase);
@@ -214,7 +237,7 @@ serve(async (req) => {
 
     // 4. Calculate fees
     const fees = calculateDonationFees(amount, tipAmount, coverFees, PLATFORM_FEE_RATE);
-    console.log('Fee breakdown:', fees);
+    console.log('[DEBUG] Calculated Fees:', JSON.stringify(fees, null, 2));
 
     // Validate minimum net amount to charity (₱50 minimum)
     if (fees.netAmount < 50) {
@@ -306,7 +329,7 @@ serve(async (req) => {
         }
       },
     };
-    console.log('Session data:', sessionData);
+    console.log('[DEBUG] Saving payment session metadata:', JSON.stringify(sessionData.metadata, null, 2));
 
     const { data: session, error: sessionError } = await supabase
       .from('payment_sessions')

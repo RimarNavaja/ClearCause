@@ -73,8 +73,12 @@ export function CampaignSelectorModal({
             logo_url
           )
         `)
-        .eq('status', 'active')
-        .neq('id', excludeCampaignId || '');
+        .eq('status', 'active');
+
+      // Only exclude campaign if provided
+      if (excludeCampaignId) {
+        query = query.neq('id', excludeCampaignId);
+      }
 
       // Filter by category
       if (selectedCategory && selectedCategory !== 'all') {
@@ -90,9 +94,6 @@ export function CampaignSelectorModal({
       const minEndDate = new Date();
       minEndDate.setDate(minEndDate.getDate() + config.refund.minCampaignDaysRemaining);
       query = query.gte('end_date', minEndDate.toISOString());
-
-      // Filter: Not fully funded
-      query = query.lt('current_amount', supabase.rpc('goal_amount'));
 
       // Sort
       switch (sortBy) {
@@ -117,39 +118,42 @@ export function CampaignSelectorModal({
       if (error) throw error;
 
       // Map to Campaign type
-      const mappedCampaigns: Campaign[] = (data || []).map((c: any) => ({
-        id: c.id,
-        charityId: c.charity_id,
-        title: c.title,
-        description: c.description,
-        goalAmount: parseFloat(c.goal_amount),
-        currentAmount: parseFloat(c.current_amount),
-        donorsCount: c.donors_count,
-        imageUrl: c.image_url,
-        status: c.status,
-        category: c.category,
-        location: c.location,
-        startDate: c.start_date,
-        endDate: c.end_date,
-        createdAt: c.created_at,
-        updatedAt: c.updated_at,
-        progress: (parseFloat(c.current_amount) / parseFloat(c.goal_amount)) * 100,
-        charity: c.charities ? {
-          id: c.charities.id,
-          userId: '',
-          organizationName: c.charities.organization_name,
-          description: '',
-          websiteUrl: null,
-          logoUrl: c.charities.logo_url,
-          phone: null,
-          address: null,
-          registrationNumber: null,
-          verificationStatus: 'approved',
-          verificationDocuments: null,
-          createdAt: '',
-          updatedAt: '',
-        } : undefined,
-      }));
+      const mappedCampaigns: Campaign[] = (data || [])
+        .map((c: any) => ({
+          id: c.id,
+          charityId: c.charity_id,
+          title: c.title,
+          description: c.description,
+          goalAmount: parseFloat(c.goal_amount),
+          currentAmount: parseFloat(c.current_amount),
+          donorsCount: c.donors_count,
+          imageUrl: c.image_url,
+          status: c.status,
+          category: c.category,
+          location: c.location,
+          startDate: c.start_date,
+          endDate: c.end_date,
+          createdAt: c.created_at,
+          updatedAt: c.updated_at,
+          progress: (parseFloat(c.current_amount) / parseFloat(c.goal_amount)) * 100,
+          charity: c.charities ? {
+            id: c.charities.id,
+            userId: '',
+            organizationName: c.charities.organization_name,
+            description: '',
+            websiteUrl: null,
+            logoUrl: c.charities.logo_url,
+            phone: null,
+            address: null,
+            registrationNumber: null,
+            verificationStatus: 'approved',
+            verificationDocuments: null,
+            createdAt: '',
+            updatedAt: '',
+          } : undefined,
+        }))
+        // Filter out fully funded campaigns
+        .filter((c) => c.currentAmount < c.goalAmount);
 
       setCampaigns(mappedCampaigns);
     } catch (error) {
