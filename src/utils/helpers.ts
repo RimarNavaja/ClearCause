@@ -432,6 +432,60 @@ export const throttle = <T extends (...args: any[]) => any>(
   };
 };
 
+// ===== MAPPING UTILITIES =====
+
+/**
+ * Map snake_case campaign payload to camelCase state
+ */
+export const mapCampaignPayloadToState = (payload: any): any => {
+  if (!payload) return {};
+  
+  const mapped: any = {};
+  
+  if (payload.title !== undefined) mapped.title = payload.title;
+  if (payload.current_amount !== undefined) mapped.currentAmount = payload.current_amount;
+  if (payload.goal_amount !== undefined) mapped.goalAmount = payload.goal_amount;
+  if (payload.donors_count !== undefined) mapped.donorsCount = payload.donors_count;
+  if (payload.status !== undefined) mapped.status = payload.status;
+  if (payload.description !== undefined) mapped.description = payload.description;
+  if (payload.image_url !== undefined) mapped.imageUrl = payload.image_url;
+  if (payload.end_date !== undefined) mapped.endDate = payload.end_date;
+  if (payload.category !== undefined) mapped.category = payload.category;
+  if (payload.location !== undefined) mapped.location = payload.location;
+  if (payload.is_featured !== undefined) mapped.isFeatured = payload.is_featured;
+  if (payload.is_urgent !== undefined) mapped.isUrgent = payload.is_urgent;
+  if (payload.updated_at !== undefined) mapped.updatedAt = payload.updated_at;
+  
+  return mapped;
+};
+
+/**
+ * Map snake_case notification payload to camelCase state
+ */
+export const mapNotificationPayloadToState = (payload: any): any => {
+  if (!payload) return {};
+  
+  return {
+    id: payload.id,
+    userId: payload.user_id,
+    type: payload.type,
+    title: payload.title,
+    message: payload.message,
+    status: payload.status,
+    campaignId: payload.campaign_id,
+    donationId: payload.donation_id,
+    milestoneId: payload.milestone_id,
+    actionUrl: payload.action_url,
+    metadata: payload.metadata || {},
+    emailSent: payload.email_sent,
+    emailSentAt: payload.email_sent_at,
+    emailOpened: payload.email_opened,
+    emailOpenedAt: payload.email_opened_at,
+    createdAt: payload.created_at,
+    updatedAt: payload.updated_at,
+  };
+};
+
 // ===== LOCAL STORAGE UTILITIES =====
 
 /**

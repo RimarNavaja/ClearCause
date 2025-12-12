@@ -12,8 +12,9 @@ import TabContent from "@/components/ui/campaign/TabContent";
 import * as campaignService from "@/services/campaignService";
 import * as charityService from "@/services/charityService";
 import { Campaign } from "@/lib/types";
-import { calculateDaysLeft } from "@/utils/helpers";
+import { calculateDaysLeft, mapCampaignPayloadToState } from "@/utils/helpers";
 import { useAuth } from "@/hooks/useAuth";
+import { useCampaignRealtime } from "@/hooks/useRealtime";
 
 // Fallback banner URL for campaigns without images
 const DEFAULT_BANNER_URL =
@@ -28,6 +29,16 @@ const CampaignDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
+
+  // Subscribe to real-time updates for this campaign
+  useCampaignRealtime(campaignId || "", (payload) => {
+    if (campaign) {
+      console.log("Received real-time update for campaign:", payload);
+      const updatedFields = mapCampaignPayloadToState(payload);
+      // Merge updates while preserving joined data (charity, milestones, etc.)
+      setCampaign((prev) => prev ? { ...prev, ...updatedFields } : null);
+    }
+  });
 
   useEffect(() => {
     const loadCampaign = async () => {
