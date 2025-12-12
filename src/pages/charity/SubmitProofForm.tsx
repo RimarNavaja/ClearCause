@@ -166,7 +166,7 @@ const SubmitProofForm: React.FC = () => {
           <p className="text-sm text-gray-500 mt-1">Submitting proof for milestone</p>
 
           <div className="mt-4 p-4 bg-gray-50 rounded-md">
-            <h3 className="font-robotobold">{milestone.title}</h3>
+            <h3 className="font-robotobold text-blue-700">{milestone.title}</h3>
             <p className="text-sm text-gray-600 mt-1">{milestone.description}</p>
           </div>
 

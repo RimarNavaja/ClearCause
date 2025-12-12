@@ -265,8 +265,8 @@ serve(async (req)=>{
             });
 
             const { error: rpcError } = await supabase.rpc('increment_campaign_amount', {
-              campaign_id: donation.campaign_id,
-              amount: netAmount
+              p_campaign_id: donation.campaign_id,
+              p_amount: netAmount
             });
 
             if (rpcError) {

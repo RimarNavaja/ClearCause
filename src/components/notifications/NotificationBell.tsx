@@ -5,11 +5,28 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import * as notificationService from "@/services/notificationService";
 import NotificationCenter from "./NotificationCenter";
+import { useNotifications } from "@/hooks/useRealtime";
 
 export const NotificationBell: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const { user } = useAuth();
+
+  // Listen for real-time notifications
+  useNotifications(
+    user?.id || "",
+    (notification) => {
+      console.log("Received real-time notification:", notification);
+      // Increment unread count for new unread notifications
+      if (notification && notification.status === "unread") {
+        setUnreadCount((prev) => prev + 1);
+        
+        // Optional: Show toast here if you want in-app toast for new notifications
+        // toast({ title: notification.title, description: notification.message })
+      }
+    },
+    !!user?.id
+  );
 
   // Load initial unread count with delay to let auth stabilize
   useEffect(() => {

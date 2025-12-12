@@ -44,7 +44,16 @@ serve(async (req) => {
       .from('donations')
       .select(`
         *,
-        payment_sessions!payment_sessions_donation_id_fkey (*)
+        payment_sessions!payment_sessions_donation_id_fkey (*),
+        campaigns:campaign_id (
+          title,
+          charities:charity_id (
+            user_id
+          )
+        ),
+        profiles:user_id (
+          full_name
+        )
       `)
       .eq('id', donationId)
       .single();
@@ -136,8 +145,8 @@ serve(async (req) => {
 
       // Update campaign amount using net amount
       const { error: rpcError } = await supabase.rpc('increment_campaign_amount', {
-        campaign_id: donation.campaign_id,
-        amount: netAmount,
+        p_campaign_id: donation.campaign_id,
+        p_amount: netAmount,
       });
 
       if (rpcError) {
@@ -295,8 +304,8 @@ serve(async (req) => {
         // Update campaign amount using RPC function with net amount
         console.log('Incrementing campaign amount...');
         const { error: rpcError } = await supabase.rpc('increment_campaign_amount', {
-          campaign_id: donation.campaign_id,
-          amount: netAmount,
+          p_campaign_id: donation.campaign_id,
+          p_amount: netAmount,
         });
 
         if (rpcError) {
@@ -321,6 +330,57 @@ serve(async (req) => {
               donorCount: updatedCampaign.donors_count,
             });
           }
+        }
+
+        // --- SEND NOTIFICATIONS ---
+        try {
+          const campaignTitle = donation.campaigns?.title || 'Campaign';
+          const charityUserId = donation.campaigns?.charities?.user_id;
+          const donorName = donation.is_anonymous ? 'An anonymous donor' : (donation.profiles?.full_name || 'A donor');
+          const appUrl = Deno.env.get('VITE_APP_URL') || 'https://clearcause.org';
+          const campaignUrl = `${appUrl}/campaigns/${donation.campaign_id}`;
+
+          console.log('Sending notifications for:', { campaignTitle, charityUserId });
+
+          // 1. Notify Donor
+          await supabase.rpc('create_notification', {
+            p_user_id: donation.user_id,
+            p_type: 'donation_confirmed',
+            p_title: 'Donation Confirmed',
+            p_message: `Your donation of ₱${donation.amount.toLocaleString()} to "${campaignTitle}" has been confirmed.`,
+            p_donation_id: donation.id,
+            p_campaign_id: donation.campaign_id,
+            p_action_url: `/campaigns/${donation.campaign_id}`,
+            p_metadata: { 
+              amount: donation.amount, 
+              campaignTitle,
+              transactionId: donation.transaction_id || payment.id,
+              campaignUrl,
+              donorName
+            }
+          });
+
+          // 2. Notify Charity
+          if (charityUserId) {
+            await supabase.rpc('create_notification', {
+              p_user_id: charityUserId,
+              p_type: 'donation_received',
+              p_title: 'New Donation Received',
+              p_message: `${donorName} donated ₱${donation.amount.toLocaleString()} to "${campaignTitle}".`,
+              p_donation_id: donation.id,
+              p_campaign_id: donation.campaign_id,
+              p_action_url: `/charity/campaigns/${donation.campaign_id}`,
+              p_metadata: { 
+                amount: donation.amount, 
+                campaignTitle, 
+                donorName,
+                campaignUrl
+              }
+            });
+          }
+          console.log('✅ Notifications sent');
+        } catch (notifyError) {
+          console.error('⚠️ Failed to send notifications:', notifyError);
         }
 
         console.log('========== PAYMENT VERIFICATION COMPLETE ==========\n');

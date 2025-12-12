@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { waitForAuthReady } from "@/utils/authHelper";
 import * as userService from "@/services/userService";
+import * as notificationService from "@/services/notificationService";
 
 interface NotificationSetting {
   id: string;
@@ -18,6 +19,7 @@ interface NotificationSetting {
   description: string;
   email: boolean;
   inApp: boolean;
+  apiFieldBase: string; // Base name for API fields (e.g., 'DonationConfirmed')
 }
 
 interface EmailSummarySettings {
@@ -33,6 +35,7 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSetting[] = [
     description: "Receive confirmations when your donations are processed",
     email: true,
     inApp: true,
+    apiFieldBase: "DonationConfirmed"
   },
   {
     id: "milestone-updates",
@@ -41,6 +44,7 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSetting[] = [
     description: "Get updates when campaigns you've supported reach milestones",
     email: true,
     inApp: true,
+    apiFieldBase: "MilestoneCompleted" // Mapping to MilestoneCompleted or Verified? Usually Completed for donors.
   },
   {
     id: "impact-updates",
@@ -50,6 +54,7 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSetting[] = [
       "Receive updates about the impact of campaigns you've supported",
     email: true,
     inApp: true,
+    apiFieldBase: "CampaignUpdate"
   },
 ];
 
@@ -89,26 +94,27 @@ const DonorSettings: React.FC = () => {
         setUserEmail(userResult.data.email);
       }
 
-      // Load notification preferences from localStorage
-      const storedNotificationSettings = localStorage.getItem(
-        `donor_notification_settings_${user.id}`
-      );
-      if (storedNotificationSettings) {
-        try {
-          const parsed = JSON.parse(storedNotificationSettings);
-          setNotificationSettings(parsed);
-        } catch (err) {
-          console.error(
-            "[DonorSettings] Error parsing stored notification settings:",
-            err
-          );
-          setNotificationSettings(DEFAULT_NOTIFICATION_SETTINGS);
-        }
-      } else {
-        setNotificationSettings(DEFAULT_NOTIFICATION_SETTINGS);
+      // Load notification preferences from API
+      const prefsResult = await notificationService.getNotificationPreferences(user.id);
+      
+      if (prefsResult.success && prefsResult.data) {
+        const apiPrefs = prefsResult.data;
+        
+        // Map API prefs to UI settings
+        setNotificationSettings(prev => prev.map(setting => {
+          const emailKey = `email${setting.apiFieldBase}` as keyof typeof apiPrefs;
+          const inAppKey = `inapp${setting.apiFieldBase}` as keyof typeof apiPrefs;
+          
+          return {
+            ...setting,
+            email: Boolean(apiPrefs[emailKey]),
+            inApp: Boolean(apiPrefs[inAppKey])
+          };
+        }));
       }
 
-      // Load email summary settings from localStorage
+      // Load email summary settings (Mock for now as schema support might be pending/separate)
+      // If we had columns in DB, we'd map them. For now, keep local or default.
       const storedEmailSettings = localStorage.getItem(
         `donor_email_summary_settings_${user.id}`
       );
@@ -117,15 +123,10 @@ const DonorSettings: React.FC = () => {
           const parsed = JSON.parse(storedEmailSettings);
           setEmailSummarySettings(parsed);
         } catch (err) {
-          console.error(
-            "[DonorSettings] Error parsing stored email settings:",
-            err
-          );
           setEmailSummarySettings(DEFAULT_EMAIL_SETTINGS);
         }
-      } else {
-        setEmailSummarySettings(DEFAULT_EMAIL_SETTINGS);
       }
+
     } catch (err: any) {
       console.error("[DonorSettings] Error loading settings:", err);
       setError(err.message || "Failed to load settings data");
@@ -165,11 +166,18 @@ const DonorSettings: React.FC = () => {
     try {
       setSaving(true);
 
-      // Save to localStorage
-      localStorage.setItem(
-        `donor_notification_settings_${user.id}`,
-        JSON.stringify(notificationSettings)
-      );
+      // Construct API payload
+      const preferencesToUpdate: any = {};
+      
+      notificationSettings.forEach(setting => {
+        preferencesToUpdate[`email${setting.apiFieldBase}`] = setting.email;
+        preferencesToUpdate[`inapp${setting.apiFieldBase}`] = setting.inApp;
+      });
+
+      // Update via API
+      await notificationService.updateNotificationPreferences(user.id, preferencesToUpdate);
+
+      // Save email summary to local storage (until DB support)
       localStorage.setItem(
         `donor_email_summary_settings_${user.id}`,
         JSON.stringify(emailSummarySettings)
@@ -348,14 +356,54 @@ const DonorSettings: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Implementation Note */}
-        {/* <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="p-4">
-            <p className="text-sm text-blue-800">
-              <strong>Note:</strong> Notification preferences are currently
-              stored locally. These settings will be migrated to server-side
-              storage in a future update.
+        {/* Not implemented, this is for future implementations */}
+        {/* Email Summary Settings Card */}
+        {/* <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MailCheck className="h-5 w-5" />
+              Email Summary Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Choose how often you'd like to receive summary emails about your
+              supported campaigns.
             </p>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Weekly Campaign Summary</p>
+                  <p className="text-sm text-gray-500">
+                    Weekly digest of campaign performance and updates
+                  </p>
+                </div>
+                <Switch
+                  id="weekly-summary"
+                  checked={emailSummarySettings.weeklySummary}
+                  onCheckedChange={() =>
+                    handleToggleEmailSummary("weeklySummary")
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Monthly Impact Report</p>
+                  <p className="text-sm text-gray-500">
+                    Monthly summary of your donations and their impact
+                  </p>
+                </div>
+                <Switch
+                  id="monthly-report"
+                  checked={emailSummarySettings.monthlyReport}
+                  onCheckedChange={() =>
+                    handleToggleEmailSummary("monthlyReport")
+                  }
+                />
+              </div>
+            </div>
           </CardContent>
         </Card> */}
 
