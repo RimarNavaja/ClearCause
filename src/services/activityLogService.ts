@@ -141,6 +141,63 @@ export const getVerificationActivityLogs = withErrorHandling(async (
 });
 
 /**
+ * Get activity logs for a specific charity (Personalized View)
+ * Allows charities to see actions on their own account/campaigns, including Admin actions.
+ */
+export const getCharityActivityLogs = withErrorHandling(async (
+  params: PaginationParams,
+  currentUserId: string
+): Promise<PaginatedResponse<ActivityLogEntry>> => {
+  // Check if current user is a charity
+  const { data: currentUser, error: userError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUserId)
+    .single();
+
+  if (userError || currentUser?.role !== 'charity') {
+    throw new ClearCauseError('FORBIDDEN', 'Only approved charities can access their activity logs', 403);
+  }
+
+  const validatedParams = validateData(paginationSchema, params);
+  const { page, limit } = validatedParams;
+  const offset = (page - 1) * limit;
+
+  const { data, error } = await supabase.rpc('get_charity_audit_logs', {
+    p_limit: limit,
+    p_offset: offset
+  });
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  // Transform to ActivityLogEntry format
+  const activityLogs: ActivityLogEntry[] = (data || []).map((log: any) => ({
+    id: log.id,
+    userId: 'system', // The RPC handles visibility, we focus on the actor info below
+    action: log.action,
+    entityType: log.entity_type,
+    entityId: log.entity_id,
+    details: log.details,
+    createdAt: log.created_at,
+    user: {
+      id: 'unknown', // RPC doesn't return ID to protect privacy if needed, but returns email
+      email: log.actor_email,
+      fullName: log.actor_email, // Use email as name if name unavailable
+      role: log.actor_role,
+    },
+  }));
+
+  // We don't get a total count from the RPC efficiently without a separate query
+  // For now, we'll return the current page count or simple logic
+  // A real implementation might add a count output to the RPC
+  const estimatedCount = activityLogs.length < limit ? (page - 1) * limit + activityLogs.length : (page * limit) + 1; // Simple estimation
+
+  return createPaginatedResponse(activityLogs, estimatedCount, validatedParams);
+});
+
+/**
  * Get recent critical activity logs (Platform Settings + Verifications)
  * Used for dashboard display
  */
@@ -247,6 +304,22 @@ export const formatActionName = (action: string): string => {
  */
 export const getActionStyle = (action: string): { icon: string; color: string } => {
   const actionLower = action.toLowerCase();
+
+  if (actionLower.includes('override')) {
+    return { icon: 'AlertTriangle', color: 'text-orange-600' };
+  }
+  
+  if (actionLower.includes('withdrawal')) {
+    return { icon: 'DollarSign', color: 'text-green-600' };
+  }
+  
+  if (actionLower.includes('ban') || actionLower.includes('unban')) {
+    return { icon: 'Ban', color: 'text-red-600' };
+  }
+
+  if (actionLower.includes('login') || actionLower.includes('signin')) {
+    return { icon: 'LogIn', color: 'text-blue-500' };
+  }
 
   if (actionLower.includes('approve')) {
     return { icon: 'CheckCircle', color: 'text-green-600' };

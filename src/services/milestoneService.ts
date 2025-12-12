@@ -274,6 +274,36 @@ export const submitMilestoneProof = withErrorHandling(async (
     description?: string;
   }
 ): Promise<ApiResponse<MilestoneProof>> => {
+  // Check if milestone is eligible for submission
+  const { data: milestone, error: milestoneError } = await supabase
+    .from('milestones')
+    .select('refund_initiated')
+    .eq('id', milestoneId)
+    .single();
+
+  if (milestoneError) {
+    throw handleSupabaseError(milestoneError);
+  }
+
+  if (milestone.refund_initiated) {
+    throw new ClearCauseError('SUBMISSION_BLOCKED', 'Refund process has been initiated for this milestone. No further submissions allowed.', 400);
+  }
+
+  // Check rejection count
+  const { count: rejectionCount, error: countError } = await supabase
+    .from('milestone_proofs')
+    .select('id', { count: 'exact', head: true })
+    .eq('milestone_id', milestoneId)
+    .eq('verification_status', 'rejected');
+
+  if (countError) {
+    throw handleSupabaseError(countError);
+  }
+
+  if ((rejectionCount || 0) >= 3) {
+    throw new ClearCauseError('SUBMISSION_LIMIT_EXCEEDED', 'Maximum verification attempts (3) exceeded for this milestone.', 400);
+  }
+
   const { data, error } = await supabase
     .from('milestone_proofs')
     .insert({
@@ -893,22 +923,57 @@ export const rejectMilestoneProof = withErrorHandling(async (
     { rejection_reason: rejectionReason, admin_notes: adminNotes }
   );
 
-  // NEW: Initiate refund process for rejected milestone
-  try {
-    const { initiateRefundProcess } = await import('./refundService');
-    const refundResult = await initiateRefundProcess(
-      data.milestones.id,
-      proofId,
-      rejectionReason,
-      currentUserId
-    );
+  // Check total rejections for this milestone
+  const { count: rejectionCount, error: countError } = await supabase
+    .from('milestone_proofs')
+    .select('id', { count: 'exact', head: true })
+    .eq('milestone_id', data.milestones.id)
+    .eq('verification_status', 'rejected');
 
-    console.log(`[milestoneService] Refund initiated: ${refundResult.data?.affectedDonors} donors, ₱${refundResult.data?.totalAmount.toLocaleString()}`);
-  } catch (refundError: any) {
-    console.error('[milestoneService] Failed to initiate refund process:', refundError);
-    // Don't fail milestone rejection if refund initiation fails
-    // Admin can manually trigger refund later from admin panel
-    // Common reasons for failure: no allocations yet (early rejection)
+  if (countError) {
+    console.error('[milestoneService] Failed to check rejection count:', countError);
+  }
+
+  // NEW: Initiate refund process ONLY if 3 or more rejections
+  if ((rejectionCount || 0) >= 3) {
+    try {
+      // 1. Suspend the campaign
+      console.log(`[milestoneService] 3rd rejection for milestone ${data.milestones.id}. Suspending campaign...`);
+      const { error: suspendError } = await supabase
+        .from('campaigns')
+        .update({ status: 'paused' })
+        .eq('id', data.milestones.campaign_id);
+
+      if (suspendError) {
+        console.error('[milestoneService] Failed to suspend campaign:', suspendError);
+        // Continue with refund even if suspension fails, but log it
+      } else {
+        await logAuditEvent(
+          currentUserId,
+          'CAMPAIGN_SUSPENDED_MILESTONE_REJECTIONS',
+          'campaign',
+          data.milestones.campaign_id,
+          { reason: 'Milestone rejected 3 times', milestone_id: data.milestones.id }
+        );
+      }
+
+      // 2. Initiate Refund Process
+      const { initiateRefundProcess } = await import('./refundService');
+      const refundResult = await initiateRefundProcess(
+        data.milestones.id,
+        proofId,
+        rejectionReason,
+        currentUserId
+      );
+
+      console.log(`[milestoneService] Refund initiated after 3rd rejection: ${refundResult.data?.affectedDonors} donors, ₱${refundResult.data?.totalAmount.toLocaleString()}`);
+    } catch (refundError: any) {
+      console.error('[milestoneService] Failed to initiate refund process:', refundError);
+      // Don't fail milestone rejection if refund initiation fails
+      // Admin can manually trigger refund later from admin panel
+    }
+  } else {
+    console.log(`[milestoneService] Milestone proof rejected. Rejection count: ${rejectionCount}. Refund not yet initiated (< 3).`);
   }
 
   return createSuccessResponse(data);

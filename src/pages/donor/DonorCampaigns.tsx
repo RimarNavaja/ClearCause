@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DonorLayout from '@/components/layout/DonorLayout';
+import CharityLayout from '@/components/layout/CharityLayout';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import CampaignGrid from '@/components/ui/campaign/CampaignGrid';
@@ -44,8 +45,9 @@ const DonorCampaigns: React.FC = () => {
 
   const { user } = useAuth();
 
-  // Check if user is a donor (has donor role)
+  // Check user roles
   const isDonor = user?.role === 'donor';
+  const isCharity = user?.role === 'charity';
 
   // Debounced search function
   const debouncedSearch = debounce((query: string) => {
@@ -446,6 +448,14 @@ const DonorCampaigns: React.FC = () => {
       <DonorLayout title="Browse Campaigns">
         {pageContent}
       </DonorLayout>
+    );
+  }
+
+  if (isCharity) {
+    return (
+      <CharityLayout title="Browse Campaigns">
+        {pageContent}
+      </CharityLayout>
     );
   }
 

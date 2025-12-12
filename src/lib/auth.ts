@@ -224,9 +224,11 @@ export const signIn = async (credentials: SignInData): Promise<ApiResponse<User>
 
     // Log audit event (don't fail login if this fails)
     try {
-      await logAuditEvent(authData.user.id, 'USER_SIGNIN', 'user', authData.user.id, {
+      const action = profileData.role === 'admin' ? 'VERIFIER_LOGIN' : 'USER_SIGNIN';
+      await logAuditEvent(authData.user.id, action, 'user', authData.user.id, {
         email,
         remember_me: rememberMe,
+        role: profileData.role
       });
     } catch (auditError) {
       if (import.meta.env.DEV) console.warn('Failed to log audit event:', auditError);

@@ -612,6 +612,28 @@ export const submitDonorDecision = withErrorHandling(async (
     } else {
       console.log('[refundService] Platform donation marked as completed immediately');
     }
+  } else if (finalDecisionType === 'refund') {
+    // IMMEDIATE PROCESSING FOR REFUNDS (for testing purposes, actual PayMongo call would be here)
+    console.log('[refundService] IMMEDIATE PROCESSING TRIGGERED for refund to payment method');
+    
+    // For testing, we simulate a successful refund and mark it completed
+    // In a real scenario, this would involve calling the payment provider API and handling retries
+    const dummyTransactionId = `TEST_REFUND_TXN_${decisionId}_${Date.now()}`;
+    
+    const { error: completeError } = await supabase
+      .from('donor_refund_decisions')
+      .update({
+        status: 'completed',
+        processed_at: new Date().toISOString(),
+        refund_transaction_id: dummyTransactionId,
+      })
+      .eq('id', decisionId);
+
+    if (completeError) {
+      console.error('[refundService] Failed to mark refund as completed:', completeError);
+    } else {
+      console.log('[refundService] Refund marked as completed immediately (simulated)');
+    }
   }
   // -----------------------------------------------------
 

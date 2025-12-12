@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { ApiResponse, ClearCauseError } from '@/lib/types';
 import { withErrorHandling, createSuccessResponse, handleSupabaseError } from '@/utils/errors';
+import { logAuditEvent } from './adminService';
 
 export interface WithdrawalTransaction {
   id: string;
@@ -130,6 +131,15 @@ export const processWithdrawal = withErrorHandling(async (
     } catch (notificationError) {
       console.error('Failed to send withdrawal notification:', notificationError);
     }
+
+    // Log audit event for financial integrity
+    await logAuditEvent(currentUserId, 'WITHDRAWAL_PROCESSED', 'withdrawal_transaction', transaction.id, {
+      charity_id: charityId,
+      amount,
+      bank_name: bankDetails.bankName,
+      transaction_reference: transactionReference,
+      status: 'completed'
+    });
 
     return createSuccessResponse({
       id: transaction.id,

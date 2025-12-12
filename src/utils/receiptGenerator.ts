@@ -183,7 +183,7 @@ export const generateDonationReceipt = async (data: ReceiptData): Promise<jsPDF>
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(COLORS.primary);
-  doc.text(`₱${data.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth / 2 + 10, yPosition + 2);
+  doc.text(`PHP ${data.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth / 2 + 10, yPosition + 2);
 
   yPosition += 10;
   if (!data.isAnonymous && data.donorEmail) {

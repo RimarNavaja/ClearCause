@@ -1077,8 +1077,10 @@ export const getDonorStatistics = withErrorHandling(async (
     throw handleSupabaseError(error);
   }
 
-  const totalDonations = donations.length;
-  const totalAmount = donations.reduce((sum, d) => sum + d.amount, 0);
+  const validDonations = donations.filter(d => d.payment_method !== 'redirected');
+  
+  const totalDonations = validDonations.length;
+  const totalAmount = validDonations.reduce((sum, d) => sum + d.amount, 0);
   const averageDonation = totalDonations > 0 ? totalAmount / totalDonations : 0;
   const campaignsSupported = new Set(donations.map(d => d.campaigns?.id).filter(Boolean)).size;
 

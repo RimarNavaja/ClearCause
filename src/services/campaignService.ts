@@ -679,9 +679,13 @@ export const updateCampaignStatus = withErrorHandling(async (
   }
 
   // Log audit event
-  await logAuditEvent(currentUserId, 'CAMPAIGN_STATUS_UPDATE', 'campaign', campaignId, {
+  const isOverride = campaign.charity?.userId !== currentUserId;
+  const action = isOverride ? 'CAMPAIGN_STATUS_OVERRIDE' : 'CAMPAIGN_STATUS_UPDATE';
+  
+  await logAuditEvent(currentUserId, action, 'campaign', campaignId, {
     oldStatus: campaign.status,
-    newStatus: status
+    newStatus: status,
+    isOverride
   });
 
   // If campaign is being cancelled with donations, initiate refund process
