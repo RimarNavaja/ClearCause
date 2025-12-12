@@ -55,15 +55,35 @@ const AdminRecentActivity = () => {
     return <Clock className="h-4 w-4 text-gray-500" />;
   };
 
-  const formatActivityDescription = (log: ActivityLogEntry): string => {
+  const renderActivityDescription = (log: ActivityLogEntry) => {
     const userName = log.user?.fullName || log.user?.email || 'Admin';
     const action = activityLogService.formatActionName(log.action);
+    const userRole = log.user?.role || 'admin';
+    
+    // Verifier (admin) -> Blue, User -> Green
+    const nameClass = userRole === 'admin' 
+      ? 'text-blue-600 font-medium' 
+      : 'text-green-600 font-medium';
     
     if (log.details && log.details.key) {
-      return `${userName} updated ${log.details.key} setting`;
+      return (
+        <span>
+          <span className={nameClass}>{userName}</span> updated {log.details.key} setting
+        </span>
+      );
     }
     
-    return `${userName} performed ${action}`;
+    return (
+      <span>
+        <span className={nameClass}>{userName}</span> performed {action}
+      </span>
+    );
+  };
+
+  const getUserBadgeClass = (role?: string) => {
+    return role === 'admin' 
+      ? 'text-blue-700 border-blue-200 bg-blue-50' 
+      : 'text-green-700 border-green-200 bg-green-50';
   };
 
   if (loading) {
@@ -139,14 +159,14 @@ const AdminRecentActivity = () => {
                     {activityLogService.formatActionName(log.action)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {formatActivityDescription(log)}
+                    {renderActivityDescription(log)}
                   </p>
                   <div className="flex items-center gap-2 mt-2">
                     <p className="text-xs text-muted-foreground">
                       {getRelativeTime(log.createdAt)}
                     </p>
                     {log.user && (
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className={`text-xs ${getUserBadgeClass(log.user.role)}`}>
                         {log.user.fullName || log.user.email}
                       </Badge>
                     )}

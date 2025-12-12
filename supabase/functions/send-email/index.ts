@@ -24,7 +24,10 @@ serve(async (req) => {
   }
 
   try {
-    const payload: WebhookPayload = await req.json();
+    const bodyText = await req.text();
+    console.log('[send-email] Raw body:', bodyText);
+
+    const payload: WebhookPayload = JSON.parse(bodyText);
     console.log('[send-email] Received webhook payload:', payload.type);
 
     if (payload.type !== 'INSERT' || payload.table !== 'notifications') {

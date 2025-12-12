@@ -298,7 +298,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2 mb-1">
-                            <h4 className="font-robotobold text-sm">
+                            <h4 className="font-robotobold text-sm text-blue-700">
                               {notification.title}
                             </h4>
                             {notification.status === "unread" && (
