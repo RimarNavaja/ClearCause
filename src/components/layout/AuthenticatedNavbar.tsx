@@ -441,7 +441,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = () => {
       {isMenuOpen && (
         <div className="sm:hidden">
           {/* Mobile Navigation Links */}
-          <div className="pt-2 pb-3 space-y-1">
+          <div className="pt-2 pb-3 space-y-1 font-poppinsregular">
             {navLinks.map((link, index) => (
               <Link
                 key={index}
@@ -457,7 +457,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = () => {
           <div className="pt-3 pb-4 border-t border-gray-200">
             {/* Mobile User Info */}
             <div className="px-4 mb-3">
-              <div className="flex items-center">
+              <div className="flex items-center font-poppinsregular">
                 <Avatar className="w-10 h-10">
                   <AvatarImage
                     src={user.avatarUrl || undefined}
@@ -477,7 +477,7 @@ const AuthenticatedNavbar: React.FC<AuthenticatedNavbarProps> = () => {
             </div>
 
             {/* Mobile Menu Items */}
-            <div className="px-4 space-y-2">
+            <div className="px-4 space-y-2 font-poppinsregular">
               {/* Quick Action Button */}
               {quickAction && (
                 <Link
