@@ -17,7 +17,7 @@ const CharityScorecard: React.FC<ScorecardProps> = ({ scorecard }) => {
     <Card className="bg-white rounded-xl shadow-[0px_2px_4px_-2px_rgba(0,0,0,0.10)] shadow-md overflow-hidden border-none">
       <CardContent className="p-6">
         {/* Title */}
-        <h3 className="text-slate-950 text-base font-bold font-display leading-7 mb-6 text-center font-robotobold">
+        <h3 className="text-slate-950 text-base font-bold leading-7 mb-6 text-center font-robotobold">
           Transparency & Performance
         </h3>
 
