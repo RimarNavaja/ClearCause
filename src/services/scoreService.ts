@@ -202,23 +202,31 @@ export const calculateEfficiencyRating = async (charityId: string): Promise<{ sc
 
     // 2. Milestone Success Rate
     // Fetch milestones for charity
-    const { data: campaigns } = await supabase.from('campaigns').select('id').eq('charity_id', charityId);
-    const campaignIds = campaigns?.map(c => c.id) || [];
+    const { data: campaignsList } = await supabase.from('campaigns').select('id').eq('charity_id', charityId);
+    const campaignIds = campaignsList?.map(c => c.id) || [];
     
-    let milestoneSuccessRate = 0;
+    let milestoneSuccessRate = 100;
+
     if (campaignIds.length > 0) {
-        const { data: proofs } = await supabase
-            .from('milestone_proofs')
-            .select('id, verification_status, verification_notes, milestone_id')
-            // We need to filter by milestone -> campaign -> charity
-            // But we can't deep filter easily.
-            // Let's fetch proofs for the milestones we found earlier?
-            // Re-fetch milestones with proofs is better.
+        const { data: milestonesList } = await supabase
+            .from('milestones')
+            .select('id')
+            .in('campaign_id', campaignIds);
             
-         // Reuse logic
-    }
-    // Simplified: Assume 100 for now if data missing.
-    milestoneSuccessRate = 100; 
+        const milestoneIds = milestonesList?.map(m => m.id) || [];
+        
+        if (milestoneIds.length > 0) {
+             const { data: proofs } = await supabase
+                .from('milestone_proofs')
+                .select('verification_status')
+                .in('milestone_id', milestoneIds);
+                
+             if (proofs && proofs.length > 0) {
+                 const approvedCount = proofs.filter(p => p.verification_status === 'approved').length;
+                 milestoneSuccessRate = (approvedCount / proofs.length) * 100;
+             }
+        }
+    } 
 
     // 3. Donor Feedback
     // `charity_feedback` table exists in types.
