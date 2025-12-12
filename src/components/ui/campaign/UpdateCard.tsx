@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Calendar, User, Milestone, Sparkles, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { formatDistanceToNow } from 'date-fns';
 
 export interface CampaignUpdate {
@@ -85,7 +86,7 @@ const UpdateCard: React.FC<UpdateCardProps> = ({
   const needsExpand = update.content.length > 200;
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200">
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200 font-poppinsregular">
       {/* Header */}
       <div className="p-4 border-b border-gray-100">
         <div className="flex items-start justify-between gap-3 mb-2">
@@ -98,7 +99,7 @@ const UpdateCard: React.FC<UpdateCardProps> = ({
                 </Badge>
               )}
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
+            <h3 className="text-lg font-robotobold text-gray-900 line-clamp-2">
               {update.title}
             </h3>
           </div>
@@ -125,33 +126,45 @@ const UpdateCard: React.FC<UpdateCardProps> = ({
 
       {/* Image */}
       {update.imageUrl && (
-        <div className="relative w-full h-64 bg-gray-100">
-          {!imageLoaded && !imageError && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="animate-pulse text-gray-400">Loading image...</div>
+        <Dialog>
+          <DialogTrigger asChild>
+            <div className="relative w-full h-64 bg-gray-100 cursor-pointer group">
+              {!imageLoaded && !imageError && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="animate-pulse text-gray-400">Loading image...</div>
+                </div>
+              )}
+              <img
+                src={update.imageUrl}
+                alt={update.title}
+                className={`w-full h-full object-cover transition-opacity duration-300 ${
+                  imageLoaded ? 'opacity-100' : 'opacity-0'
+                }`}
+                onLoad={() => {
+                  setImageLoaded(true);
+                  setImageError(false);
+                }}
+                onError={() => {
+                  setImageError(true);
+                  setImageLoaded(false);
+                }}
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200" />
+              {imageError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-400">
+                  <span className="text-sm">Image failed to load</span>
+                </div>
+              )}
             </div>
-          )}
-          <img
-            src={update.imageUrl}
-            alt={update.title}
-            className={`w-full h-full object-cover transition-opacity duration-300 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
-            onLoad={() => {
-              setImageLoaded(true);
-              setImageError(false);
-            }}
-            onError={() => {
-              setImageError(true);
-              setImageLoaded(false);
-            }}
-          />
-          {imageError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-400">
-              <span className="text-sm">Image failed to load</span>
-            </div>
-          )}
-        </div>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl p-0 overflow-hidden border-none bg-transparent shadow-none">
+            <img 
+              src={update.imageUrl} 
+              alt={update.title} 
+              className="w-full h-auto max-h-[90vh] object-contain rounded-lg" 
+            />
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Content */}
@@ -165,7 +178,7 @@ const UpdateCard: React.FC<UpdateCardProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="mt-2 text-clearcause-primary hover:text-clearcause-secondary"
+            className="mt-2 text-blue-700 hover:text-blue-600 hover:bg-blue-700 hover:text-white transition-colors"
           >
             {isExpanded ? (
               <>
