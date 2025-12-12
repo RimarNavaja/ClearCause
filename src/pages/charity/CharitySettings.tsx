@@ -342,7 +342,7 @@ const CharitySettings: React.FC = () => {
         </Card>
 
         {/* Email Summary Settings Card */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MailCheck className="h-5 w-5" />
@@ -380,7 +380,7 @@ const CharitySettings: React.FC = () => {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Implementation Note */}
         {/* <Card className="border-blue-200 bg-blue-50">

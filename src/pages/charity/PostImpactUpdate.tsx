@@ -233,11 +233,11 @@ const PostImpactUpdate: React.FC = () => {
     <CharityLayout title="Post Impact Update">
       {/* Back Button */}
       <Link
-        to={`/charity/campaigns/${campaignId}`}
+        to="/charity/campaigns"
         className="inline-flex items-center mb-6 text-sm font-medium text-gray-600 hover:text-clearcause-primary"
       >
         <ChevronLeft className="w-4 h-4 mr-1" />
-        Back to Campaign
+        Back to Campaigns
       </Link>
 
       {/* Campaign Info */}

@@ -358,6 +358,7 @@ const DonorProfile: React.FC = () => {
                         <FormControl>
                           <Input
                             {...field}
+                            type="tel"
                             disabled={!isEditing || isMutating}
                             placeholder="Add a phone number"
                           />
