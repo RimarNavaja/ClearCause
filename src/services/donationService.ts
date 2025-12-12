@@ -226,7 +226,7 @@ const processDonationPayment = async (
         updated_at: new Date().toISOString(),
       })
       .eq('id', donationId)
-      .select('campaign_id, amount, user_id')
+      .select('campaign_id, amount, user_id, is_anonymous')
       .single();
 
     if (updateError) {
@@ -254,7 +254,11 @@ const processDonationPayment = async (
         'DONATION_COMPLETED',
         'donation',
         donationId,
-        { amount: updatedDonation.amount }
+        { 
+          amount: updatedDonation.amount,
+          campaign_id: updatedDonation.campaign_id,
+          is_anonymous: updatedDonation.is_anonymous
+        }
       );
 
       // Check and award achievements
@@ -1248,6 +1252,40 @@ export const verifyPayment = withErrorHandling(async (
       status: data.status,
       message: data.message
     });
+
+    if (data.status === 'completed') {
+      try {
+        console.log('Checking achievements for donation:', donationId);
+        // Fetch full donation details for achievement checking
+        const { data: donation, error: fetchError } = await supabase
+          .from('donations')
+          .select(`
+            *,
+            campaigns (*)
+          `)
+          .eq('id', donationId)
+          .single();
+
+        if (!fetchError && donation) {
+             await checkAndAwardAchievements(
+              donation.user_id,
+              'donation',
+              {
+                donationId: donation.id,
+                amount: donation.amount,
+                campaign_id: donation.campaign_id,
+                campaign: donation.campaigns,
+                donated_at: donation.donated_at,
+                triggered_milestone: false,
+              }
+            );
+        }
+      } catch (achievementError) {
+        console.error('Error checking achievements after verification:', achievementError);
+        // Don't fail the verification if achievement check fails
+      }
+    }
+
     console.log('========== FRONTEND: PAYMENT VERIFICATION COMPLETE ==========\n');
 
     return createSuccessResponse(data, data.message || 'Payment verified');

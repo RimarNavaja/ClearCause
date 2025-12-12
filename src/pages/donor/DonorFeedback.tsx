@@ -200,7 +200,7 @@ const DonorFeedback: React.FC = () => {
                     onChange={(e) => setSelectedCampaignId(e.target.value)}
                     className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   >
-                    <option value="">-- Select a campaign you've donated to --</option>
+                    <option value="">Select a campaign you've donated to</option>
                     {eligibleCampaigns.map((campaign) => (
                       <option key={campaign.id} value={campaign.id}>
                         {campaign.title} - {campaign.charityName}
@@ -227,7 +227,7 @@ const DonorFeedback: React.FC = () => {
                   />
                 </div>
 
-                <Button type="submit" disabled={submitting || !selectedCampaignId || rating === 0}>
+                <Button type="submit" className='bg-blue-700 hover:bg-blue-600' disabled={submitting || !selectedCampaignId || rating === 0}>
                   {submitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
