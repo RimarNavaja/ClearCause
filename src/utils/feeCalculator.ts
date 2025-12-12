@@ -8,11 +8,19 @@
 let DYNAMIC_PLATFORM_FEE_RATE = 0.05; // Default 5%
 let DYNAMIC_MIN_DONATION = 100;       // Default ₱100
 
+// Payment Gateway Fee (PayMongo/GCash) - Estimated at 2.5%
+// This is added by the gateway on top of the amount we request if they are configured to pass fees to customer
+// OR deducted from the total if we charge the gross amount.
+// Based on observed behavior: 1030 requested -> 1056.41 charged.
+// 1030 / (1 - X) = 1056.41 => 1 - X = 0.975 => X = 0.025 (2.5%)
+const GATEWAY_FEE_RATE = 0.025;
+
 export const FEE_CONSTANTS = {
   PLATFORM_FEE_RATE: DYNAMIC_PLATFORM_FEE_RATE, // Will be updated by context
   MIN_DONATION: DYNAMIC_MIN_DONATION,  // Will be updated by context
   MIN_NET_AMOUNT: 50,           // ₱50 minimum to charity
-  GCASH_LIMIT: 100000           // ₱100,000 GCash limit
+  GCASH_LIMIT: 100000,          // ₱100,000 GCash limit
+  GATEWAY_FEE_RATE: GATEWAY_FEE_RATE
 } as const;
 
 /**
@@ -57,16 +65,18 @@ export interface FeeBreakdown {
   netAmount: number;          // Charity receives
   totalCharge: number;        // Donor pays
   donorCoversFees: boolean;   // Whether donor is covering fees
+  gatewayFee?: number;        // Payment processor fee (PayMongo)
 }
 
 /**
  * Calculate fees when donor chooses to COVER fees
  * Donor pays extra so charity gets 100% of intended donation
  *
- * Example: ₱1,000 donation with 5% platform fee
- * - Platform fee: ₱50 (5%)
- * - Total charge: ₱1,050
- * - Charity gets: ₱1,000 (100%!)
+ * Example: ₱1,000 donation with 5% platform fee + 2.5% Gateway fee
+ * - Platform fee: ₱50 (5% of 1000)
+ * - Subtotal (Net to System): 1050
+ * - Total Charge: 1050 / (1 - 0.025) = 1076.92
+ * - Charity gets: ₱1,000
  */
 export function calculateFeesWithDonorCovers(
   intendedDonation: number,
@@ -81,16 +91,24 @@ export function calculateFeesWithDonorCovers(
   // Calculate platform fee using the fee rate
   const platformFee = Math.round(intendedDonation * feeRate * 100) / 100;
 
-  // Donor covers fees: total charge = donation + platform fee + tip
-  const totalCharge = intendedDonation + platformFee + tipAmount;
+  // Amount we want to receive (Donation + Platform Fee + Tip)
+  const amountToReceive = intendedDonation + platformFee + tipAmount;
+
+  // Calculate total charge needed to cover gateway fees
+  // Formula: AmountToReceive / (1 - GatewayRate)
+  const totalCharge = amountToReceive / (1 - GATEWAY_FEE_RATE);
+  
+  // Gateway fee is the difference
+  const gatewayFee = totalCharge - amountToReceive;
 
   return {
     grossAmount: intendedDonation,
     platformFee,
     tipAmount,
     netAmount: intendedDonation,  // Charity gets 100% of donation (tip goes to ClearCause!)
-    totalCharge,
-    donorCoversFees: true
+    totalCharge, // This will include the gateway fee (e.g. 1056.41)
+    donorCoversFees: true,
+    gatewayFee
   };
 }
 
@@ -100,7 +118,8 @@ export function calculateFeesWithDonorCovers(
  *
  * Example: ₱1,000 donation with 5% platform fee
  * - Platform fee: ₱50 (5%)
- * - Charity gets: ₱950 (95%)
+ * - Gateway fee: ~2.5% of 1000 = 25
+ * - Charity gets: 1000 - 50 - 25 = 925
  */
 export function calculateFeesStandard(
   grossAmount: number,
@@ -113,8 +132,14 @@ export function calculateFeesStandard(
     : DYNAMIC_PLATFORM_FEE_RATE;
 
   const platformFee = Math.round(grossAmount * feeRate * 100) / 100;
+  
+  // Gateway fee is deducted from the gross amount
+  const gatewayFee = grossAmount * GATEWAY_FEE_RATE;
+  
   const totalCharge = grossAmount + tipAmount;
-  const netAmount = grossAmount - platformFee;  // Charity gets donation minus platform fee (tip goes to ClearCause!)
+  
+  // Charity gets donation minus (platform fee + gateway fee)
+  const netAmount = grossAmount - platformFee - gatewayFee;
 
   return {
     grossAmount,
@@ -122,7 +147,8 @@ export function calculateFeesStandard(
     tipAmount,
     netAmount,
     totalCharge,
-    donorCoversFees: false
+    donorCoversFees: false,
+    gatewayFee
   };
 }
 

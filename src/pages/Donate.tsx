@@ -872,6 +872,16 @@ const Donate: React.FC = () => {
                             +₱{feeBreakdown.platformFee.toFixed(2)}
                           </span>
                         </div>
+                        {feeBreakdown.gatewayFee && feeBreakdown.gatewayFee > 0 && (
+                          <div className="flex justify-between text-blue-600">
+                            <span>
+                              Payment Gateway fee (~2.5%):
+                            </span>
+                            <span className="font-medium">
+                              +₱{feeBreakdown.gatewayFee.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
                       </>
                     ) : (
                       <>
@@ -879,6 +889,12 @@ const Donate: React.FC = () => {
                           <span>Platform fee ({platformFeePercentage}%):</span>
                           <span>-₱{feeBreakdown.platformFee.toFixed(2)}</span>
                         </div>
+                        {feeBreakdown.gatewayFee && feeBreakdown.gatewayFee > 0 && (
+                           <div className="flex justify-between text-gray-500">
+                            <span>Payment Gateway fee (~2.5%):</span>
+                            <span>-₱{feeBreakdown.gatewayFee.toFixed(2)}</span>
+                          </div>
+                        )}
                       </>
                     )}
                     <div className="border-t border-gray-300 pt-2 mt-2 flex justify-between font-semibold text-blue-700 bg-blue-50 -mx-4 px-4 py-2 rounded">

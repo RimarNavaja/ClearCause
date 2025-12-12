@@ -42,9 +42,21 @@ ALTER TABLE public.milestone_refund_requests
 ALTER TABLE public.milestone_refund_requests
   ALTER COLUMN milestone_id DROP NOT NULL;
 
+-- ============================================================================
+-- 3. EXTEND DONOR_REFUND_DECISIONS TABLE
+-- ============================================================================
+
+-- Make milestone_id nullable (NULL for campaign-level refunds)
+ALTER TABLE public.donor_refund_decisions
+  ALTER COLUMN milestone_id DROP NOT NULL;
+
 -- Drop existing UNIQUE constraint on milestone_id (if exists)
 ALTER TABLE public.milestone_refund_requests
   DROP CONSTRAINT IF EXISTS milestone_refund_requests_milestone_id_key;
+
+-- Drop existing check constraint if it exists (for idempotent migration)
+ALTER TABLE public.milestone_refund_requests
+  DROP CONSTRAINT IF EXISTS check_trigger_type_milestone;
 
 -- Add conditional constraint: milestone_id required for milestone_rejection, NULL for campaign triggers
 ALTER TABLE public.milestone_refund_requests
@@ -63,7 +75,7 @@ COMMENT ON COLUMN milestone_refund_requests.grace_period_ends_at IS 'End of grac
 COMMENT ON COLUMN milestone_refund_requests.auto_initiated IS 'Whether refund was auto-initiated by scheduled job';
 
 -- ============================================================================
--- 3. EXTEND CAMPAIGNS TABLE
+-- 4. EXTEND CAMPAIGNS TABLE
 -- ============================================================================
 
 -- Track campaign expiration refund status
@@ -83,7 +95,7 @@ COMMENT ON COLUMN campaigns.expiration_refund_completed IS 'Whether all refund d
 COMMENT ON COLUMN campaigns.grace_period_ends_at IS 'Calculated end of grace period (end_date + 7 days)';
 
 -- ============================================================================
--- 4. DATABASE FUNCTION: CHECK CAMPAIGN ELIGIBILITY
+-- 5. DATABASE FUNCTION: CHECK CAMPAIGN ELIGIBILITY
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION check_campaign_expiration_eligibility(
@@ -152,7 +164,7 @@ $$;
 COMMENT ON FUNCTION check_campaign_expiration_eligibility IS 'Checks if campaign is eligible for expiration/cancellation refund';
 
 -- ============================================================================
--- 5. DATABASE FUNCTION: INITIATE CAMPAIGN REFUND
+-- 6. DATABASE FUNCTION: INITIATE CAMPAIGN REFUND
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION initiate_campaign_expiration_refund(
@@ -255,7 +267,7 @@ $$;
 COMMENT ON FUNCTION initiate_campaign_expiration_refund IS 'Initiates campaign expiration/cancellation refund process';
 
 -- ============================================================================
--- 6. DATABASE FUNCTION: PROCESS EXPIRED CAMPAIGNS (SCHEDULED JOB)
+-- 7. DATABASE FUNCTION: PROCESS EXPIRED CAMPAIGNS (SCHEDULED JOB)
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION process_expired_campaigns()

@@ -223,7 +223,11 @@ serve(async (req)=>{
             const { error: donationUpdateError } = await supabase.from('donations').update({
               status: 'completed',
               provider_payment_id: payment.id,
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
+              metadata: {
+                ...donation.metadata,
+                fees: paymentSession?.metadata?.fees || {}
+              }
             }).eq('id', donation.id);
 
             if (donationUpdateError) {
@@ -249,16 +253,20 @@ serve(async (req)=>{
               console.log('✅ Payment session updated to succeeded');
             }
 
+            // Get fee breakdown from payment session
+            const netAmount = paymentSession?.metadata?.fees?.netAmount || donation.amount;
+
             // Update campaign amount using RPC function
-            console.log('Incrementing campaign amount...');
+            console.log('Incrementing campaign amount with net amount...');
             console.log('RPC params:', {
               campaign_id: donation.campaign_id,
-              amount: donation.amount
+              amount: netAmount,
+              grossAmount: donation.amount
             });
 
             const { error: rpcError } = await supabase.rpc('increment_campaign_amount', {
               campaign_id: donation.campaign_id,
-              amount: donation.amount
+              amount: netAmount
             });
 
             if (rpcError) {

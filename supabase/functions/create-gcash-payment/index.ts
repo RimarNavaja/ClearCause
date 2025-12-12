@@ -4,6 +4,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 const PAYMONGO_SECRET_KEY = Deno.env.get('PAYMONGO_SECRET_KEY')!;
 const PAYMONGO_API_URL = 'https://api.paymongo.com/v1';
 
+// Gateway fee rate (2.5%) - Matches frontend feeCalculator.ts
+const GATEWAY_FEE_RATE = 0.025;
+
 // Fetch configurable platform fee rate from database
 async function getPlatformFeeRate(supabase: any): Promise<number> {
   try {
@@ -57,6 +60,7 @@ interface FeeBreakdown {
   netAmount: number;        // Amount to charity
   totalCharge: number;      // Total charged to donor
   donorCoversFees: boolean; // Whether donor is covering fees
+  gatewayFee: number;       // Payment processor fee
 }
 
 function calculateDonationFees(
@@ -68,7 +72,16 @@ function calculateDonationFees(
   if (coverFees) {
     // Donor covers fees - charity gets 100% of intended donation
     const platformFee = Math.round(grossAmount * platformFeeRate * 100) / 100;
-    const totalCharge = grossAmount + platformFee + tipAmount;
+    
+    // Amount we want to receive (Donation + Platform Fee + Tip)
+    const amountToReceive = grossAmount + platformFee + tipAmount;
+
+    // Calculate total charge needed to cover gateway fees
+    // Formula: AmountToReceive / (1 - GatewayRate)
+    const totalCharge = amountToReceive / (1 - GATEWAY_FEE_RATE);
+    
+    // Gateway fee is the difference
+    const gatewayFee = totalCharge - amountToReceive;
 
     return {
       grossAmount,
@@ -76,13 +89,20 @@ function calculateDonationFees(
       tipAmount,
       netAmount: grossAmount,  // Charity gets 100% of donation (tip goes to ClearCause!)
       totalCharge,
-      donorCoversFees: true
+      donorCoversFees: true,
+      gatewayFee
     };
   } else {
     // Standard deduction - fees deducted from donation
     const platformFee = Math.round(grossAmount * platformFeeRate * 100) / 100;
+    
+    // Gateway fee is deducted from the gross amount
+    const gatewayFee = grossAmount * GATEWAY_FEE_RATE;
+    
     const totalCharge = grossAmount + tipAmount;
-    const netAmount = grossAmount - platformFee;  // Charity gets donation minus platform fee (tip goes to ClearCause!)
+    
+    // Charity gets donation minus (platform fee + gateway fee)
+    const netAmount = grossAmount - platformFee - gatewayFee;
 
     return {
       grossAmount,
@@ -90,7 +110,8 @@ function calculateDonationFees(
       tipAmount,
       netAmount,
       totalCharge,
-      donorCoversFees: false
+      donorCoversFees: false,
+      gatewayFee
     };
   }
 }
@@ -132,7 +153,14 @@ serve(async (req) => {
     // 2. Initialize Supabase client
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      {
+        global: {
+          headers: {
+            'Cache-Control': 'no-cache' // Force bypass Supabase API cache
+          }
+        }
+      }
     );
 
     // 2.5. Fetch configurable platform fee rate
@@ -273,7 +301,8 @@ serve(async (req) => {
           tipAmount: fees.tipAmount,
           netAmount: fees.netAmount,
           totalCharge: fees.totalCharge,
-          donorCoversFees: coverFees  // Store the actual checkbox value!
+          donorCoversFees: coverFees,  // Store the actual checkbox value!
+          gatewayFee: fees.gatewayFee  // New field
         }
       },
     };
