@@ -867,6 +867,7 @@ export const approveMilestoneProof = withErrorHandling(async (
       amount_released: releaseAmount,
       disbursement_id: disbursement.id,
       admin_notes: adminNotes,
+      campaign_id: campaign.id
     }
   );
 

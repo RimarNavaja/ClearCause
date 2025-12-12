@@ -80,7 +80,7 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ campaignId }) => {
   const formatEventType = (type: string, action: string) => {
     if (type === 'donation') return 'Donation';
     if (type === 'milestone') {
-       if (action === 'FUNDS_RELEASED') return 'Funds Released';
+       if (action.includes('RELEASE')) return 'Funds Released';
        return 'Milestone Verified';
     }
     if (action === 'CAMPAIGN_CREATED') return 'Campaign Created';
@@ -90,13 +90,13 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ campaignId }) => {
 
   const getDescription = (event: AuditEvent) => {
     if (event.action === 'DONATION_COMPLETED') {
-      return `Donation received` + (event.details.is_anonymous ? ' (Anonymous)' : '');
+      return `Donation received (${event.user_email || 'Donor'})`;
     }
     if (event.action === 'MILESTONE_VERIFIED') {
-      return `Verified: ${event.details.milestone_title}`;
+      return `Verified: ${event.details.milestone_title || 'Milestone'}`;
     }
-    if (event.action === 'FUNDS_RELEASED') {
-      return `Funds released for: ${event.details.milestone_title}`;
+    if (event.action.includes('RELEASE')) {
+      return `Funds released for: ${event.details.milestone_title || 'Milestone'}`;
     }
     if (event.action === 'CAMPAIGN_CREATED') {
       return `Campaign created with goal ₱${event.details.goal_amount?.toLocaleString()}`;
@@ -162,7 +162,7 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ campaignId }) => {
                 
                 <p className="text-sm text-gray-700 mb-1">{getDescription(event)}</p>
                 
-                {event.user_email && (
+                {event.user_email && event.entity_type !== 'donation' && (
                   <p className="text-xs text-gray-500">By: {event.user_email}</p>
                 )}
               </div>

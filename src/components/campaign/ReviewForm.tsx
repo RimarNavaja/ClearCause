@@ -74,7 +74,7 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({ campaignId, onSuccess })
       if (result.success) {
         toast({
           title: 'Review Submitted',
-          description: result.message || 'Your review will be visible after admin approval',
+          description: result.message || 'Review submitted successfully',
         });
         reset();
         setRating(0);
@@ -160,9 +160,7 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({ campaignId, onSuccess })
         </div>
       </div>
 
-      <p className="text-sm text-muted-foreground">
-        Your review will be reviewed by our admin team before it appears publicly.
-      </p>
+     
     </form>
   );
 };

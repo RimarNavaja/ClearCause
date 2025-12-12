@@ -194,7 +194,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               <NavItem
                 to="/admin/users"
                 icon={<UserCog className="h-4 w-4" />}
-                label="User Management"
+                label="User"
               />
               <NavItem
                 to="/admin/charities"
