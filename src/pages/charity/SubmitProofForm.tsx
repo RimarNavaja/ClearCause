@@ -160,7 +160,7 @@ const SubmitProofForm: React.FC = () => {
         Back to Milestones
       </Link>
 
-      <Card className="mb-6">
+      <Card className="mb-6 ">
         <CardContent className="p-6 font-poppinsregular">
           <h2 className="text-xl font-robotobold">{campaign?.title || 'Campaign'}</h2>
           <p className="text-sm text-gray-500 mt-1">Submitting proof for milestone</p>
@@ -171,7 +171,7 @@ const SubmitProofForm: React.FC = () => {
           </div>
 
           <div className="mt-6">
-            <h3 className="font-medium text-gray-800">Required Evidence:</h3>
+            <h3 className=" text-gray-800 font-poppinsregular">Required Evidence:</h3>
             {/* <p className="text-sm text-gray-600 mt-1">
               {milestone.evidenceDescription || milestone.description || "Upload photos, receipts, or documents proving completion of this milestone."}
             </p> */}
@@ -182,7 +182,7 @@ const SubmitProofForm: React.FC = () => {
       <form onSubmit={handleSubmit}>
         <Card className="mb-6">
           <CardContent className="p-6">
-            <h3 className="font-medium text-gray-800 mb-4">Upload Proof Documents</h3>
+            <h3 className="mb-4 font-poppinsregular">Upload Proof Documents</h3>
             
             <div className="border-2 border-dashed border-gray-300 rounded-md p-6 mb-4">
               <div className="text-center">
@@ -238,7 +238,7 @@ const SubmitProofForm: React.FC = () => {
         
         <Card className="mb-6">
           <CardContent className="p-6">
-            <h3 className="font-medium text-gray-800 mb-4">Additional Notes (Optional)</h3>
+            <h3 className="font-poppinsregula mb-4">Additional Notes (Optional)</h3>
             <Textarea
               placeholder="Add any context or explanation for the verification team..."
               className="min-h-[100px]"
@@ -254,7 +254,7 @@ const SubmitProofForm: React.FC = () => {
               Cancel
             </Button>
           </Link>
-          <Button type="submit" disabled={isSubmitting || files.length === 0}>
+          <Button type="submit" className='bg-blue-700 hover:bg-blue-600' disabled={isSubmitting || files.length === 0}>
             {isSubmitting ? 'Uploading & Submitting...' : 'Submit Proof for Verification'}
           </Button>
         </div>

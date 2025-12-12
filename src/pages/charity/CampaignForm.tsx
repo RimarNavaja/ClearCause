@@ -106,7 +106,13 @@ const CampaignForm: React.FC = () => {
   });
 
   const [milestones, setMilestones] = useState<Milestone[]>([
-    { id: "1", title: "", amount: 0, evidenceDescriptions: [], customProofs: {} },
+    {
+      id: "1",
+      title: "",
+      amount: 0,
+      evidenceDescriptions: [],
+      customProofs: {},
+    },
   ]);
 
   // Fetch categories on mount
@@ -221,25 +227,35 @@ const CampaignForm: React.FC = () => {
 
                   // Attempt to parse existing single string into array
                   // This is a best-effort parsing for old string format
-                  PROOF_TYPE_OPTIONS.forEach(option => {
-                    if (existingDesc.includes(option.label) && option.value !== 'other') {
+                  PROOF_TYPE_OPTIONS.forEach((option) => {
+                    if (
+                      existingDesc.includes(option.label) &&
+                      option.value !== "other"
+                    ) {
                       parsedEvidenceDescriptions.push(option.value);
                     }
                   });
 
                   if (existingDesc.startsWith("Other: ")) {
-                      parsedEvidenceDescriptions.push("other");
-                      parsedCustomProofs['other'] = existingDesc.replace("Other: ", "").trim();
-                  } else if (existingDesc.includes("Other") && !parsedEvidenceDescriptions.includes("other")) {
-                       // If "Other" is mentioned but not specifically "Other: Custom", still select 'other'
-                       parsedEvidenceDescriptions.push("other");
+                    parsedEvidenceDescriptions.push("other");
+                    parsedCustomProofs["other"] = existingDesc
+                      .replace("Other: ", "")
+                      .trim();
+                  } else if (
+                    existingDesc.includes("Other") &&
+                    !parsedEvidenceDescriptions.includes("other")
+                  ) {
+                    // If "Other" is mentioned but not specifically "Other: Custom", still select 'other'
+                    parsedEvidenceDescriptions.push("other");
                   }
                   // If after parsing, no options matched but there's a description, treat as custom 'other'
-                  if (parsedEvidenceDescriptions.length === 0 && existingDesc.trim() !== "") {
-                      parsedEvidenceDescriptions.push("other");
-                      parsedCustomProofs['other'] = existingDesc;
+                  if (
+                    parsedEvidenceDescriptions.length === 0 &&
+                    existingDesc.trim() !== ""
+                  ) {
+                    parsedEvidenceDescriptions.push("other");
+                    parsedCustomProofs["other"] = existingDesc;
                   }
-
 
                   return {
                     id: milestone.id || (index + 1).toString(),
@@ -307,7 +323,8 @@ const CampaignForm: React.FC = () => {
     value: string | number | string[]
   ) => {
     const updatedMilestones = [...milestones];
-    if (field === "customProof") { // Special handling for customProof input
+    if (field === "customProof") {
+      // Special handling for customProof input
       updatedMilestones[index] = {
         ...updatedMilestones[index],
         customProofs: {
@@ -316,7 +333,10 @@ const CampaignForm: React.FC = () => {
         },
       };
     } else {
-      updatedMilestones[index] = { ...updatedMilestones[index], [field]: value };
+      updatedMilestones[index] = {
+        ...updatedMilestones[index],
+        [field]: value,
+      };
     }
     setMilestones(updatedMilestones);
   };
@@ -330,6 +350,7 @@ const CampaignForm: React.FC = () => {
         title: "",
         amount: 0,
         evidenceDescription: "",
+        customProofs: {},
       },
     ]);
   };
@@ -453,17 +474,21 @@ const CampaignForm: React.FC = () => {
         milestones: milestones.map((milestone) => {
           // Construct evidenceDesc as a single string from the array
           const selectedLabels: string[] = [];
-          milestone.evidenceDescriptions.forEach(value => {
+          milestone.evidenceDescriptions.forEach((value) => {
             if (value === "other") {
-              selectedLabels.push(`Other: ${milestone.customProofs['other'] || 'N/A'}`);
+              selectedLabels.push(
+                `Other: ${milestone.customProofs["other"] || "N/A"}`
+              );
             } else {
-              const option = PROOF_TYPE_OPTIONS.find(opt => opt.value === value);
+              const option = PROOF_TYPE_OPTIONS.find(
+                (opt) => opt.value === value
+              );
               if (option) {
                 selectedLabels.push(option.label);
               }
             }
           });
-          const evidenceDesc = selectedLabels.join(', ');
+          const evidenceDesc = selectedLabels.join(", ");
 
           return {
             title: milestone.title,
@@ -1085,7 +1110,7 @@ const CampaignForm: React.FC = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => removeMilestone(index)}
-                          className="text-red-500 hover:text-red-700"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 border-red-500"
                         >
                           <Trash2 className="h-4 w-4 mr-1" /> Remove
                         </Button>
@@ -1197,7 +1222,7 @@ const CampaignForm: React.FC = () => {
               <div className="space-y-6">
                 {milestones.map((milestone, index) => (
                   <div key={milestone.id} className="border rounded-md p-4">
-                    <h3 className="font-medium mb-3">
+                    <h3 className="font-medium font-poppinsregular mb-3 text-blue-600">
                       Milestone {index + 1}: {milestone.title || "Untitled"}
                     </h3>
 
@@ -1206,6 +1231,7 @@ const CampaignForm: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Required Evidence Type*
                         </label>
+
                         <MultiSelect
                           options={PROOF_TYPE_OPTIONS}
                           selected={milestone.evidenceDescriptions || []}
@@ -1217,6 +1243,7 @@ const CampaignForm: React.FC = () => {
                             )
                           }
                           placeholder="Select required proof types"
+                          className="hover:bg-blue-100 hover:[&>span]:text-gray-800 font-poppinsregular"
                         />
                       </div>
 
