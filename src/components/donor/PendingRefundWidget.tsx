@@ -22,25 +22,33 @@ export function PendingRefundWidget() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('[PendingRefundWidget] Effect triggered. User:', user?.id);
     loadPendingDecisions();
   }, [user]);
 
   const loadPendingDecisions = async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.log('[PendingRefundWidget] No user ID, skipping load');
+      return;
+    }
 
+    console.log('[PendingRefundWidget] Loading decisions for user:', user.id);
     setLoading(true);
     setError(null);
 
     try {
       const result = await getDonorPendingRefundDecisions(user.id);
+      console.log('[PendingRefundWidget] API Result:', result);
 
       if (result.success && result.data) {
+        console.log('[PendingRefundWidget] Decisions loaded:', result.data.length);
         setDecisions(result.data);
       } else {
+        console.error('[PendingRefundWidget] API Error:', result.error);
         setError(result.error || 'Failed to load pending decisions');
       }
     } catch (err: any) {
-      console.error('Error loading pending decisions:', err);
+      console.error('[PendingRefundWidget] Exception:', err);
       setError(err.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);

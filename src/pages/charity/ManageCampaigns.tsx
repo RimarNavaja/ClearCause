@@ -586,6 +586,7 @@ const ManageCampaigns: React.FC = () => {
                       campaignId={campaign.id}
                       currentEndDate={campaign.endDate || null}
                       campaignTitle={campaign.title}
+                      expirationRefundInitiated={campaign.expirationRefundInitiated}
                       onSuccess={loadCampaigns}
                     />
                   )}

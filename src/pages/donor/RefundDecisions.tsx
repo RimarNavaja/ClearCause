@@ -14,12 +14,12 @@ import {
   ArrowRight,
   CheckCircle2,
   XCircle,
+  HelpCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -28,6 +28,7 @@ import { getCampaignById } from '@/services/campaignService';
 import { DonorRefundDecision, DonorDecisionType, Campaign } from '@/lib/types';
 import { CampaignSelectorModal } from '@/components/donor/CampaignSelectorModal';
 import { DecisionConfirmationDialog } from '@/components/donor/DecisionConfirmationDialog';
+import { formatCurrency, getRelativeTime } from '@/utils/helpers';
 
 interface DecisionState {
   decision: DonorRefundDecision;
@@ -91,7 +92,7 @@ export default function RefundDecisions() {
   const handleRedirectClick = (decision: DonorRefundDecision) => {
     setCurrentDecision({
       decision,
-      decisionType: 'redirect_to_campaign',
+      decisionType: 'redirect_campaign',
     });
     setCampaignSelectorOpen(true);
   };
@@ -99,7 +100,7 @@ export default function RefundDecisions() {
   const handlePlatformClick = (decision: DonorRefundDecision) => {
     setCurrentDecision({
       decision,
-      decisionType: 'donate_to_platform',
+      decisionType: 'donate_platform',
     });
     setConfirmationOpen(true);
   };
@@ -185,9 +186,9 @@ export default function RefundDecisions() {
     switch (type) {
       case 'refund':
         return 'Refund initiated. You will receive the funds in 3-5 business days.';
-      case 'redirect_to_campaign':
+      case 'redirect_campaign':
         return 'Donation redirected successfully. You will receive a receipt via email.';
-      case 'donate_to_platform':
+      case 'donate_platform':
         return 'Thank you for supporting ClearCause! You will receive a receipt via email.';
       default:
         return 'Decision submitted successfully.';
@@ -202,17 +203,17 @@ export default function RefundDecisions() {
 
   const getUrgencyBadge = (daysRemaining: number) => {
     if (daysRemaining <= 0) {
-      return <Badge variant="destructive">Expired</Badge>;
+      return <Badge variant="destructive" className="font-redhatbold">Expired</Badge>;
     } else if (daysRemaining <= 2) {
-      return <Badge variant="destructive">{daysRemaining} days left</Badge>;
+      return <Badge variant="destructive" className="font-redhatbold">{daysRemaining} days left</Badge>;
     } else if (daysRemaining <= 5) {
       return (
-        <Badge variant="outline" className="border-orange-500 text-orange-700">
+        <Badge variant="outline" className="border-orange-500 text-orange-700 bg-orange-50 font-redhatbold">
           {daysRemaining} days left
         </Badge>
       );
     } else {
-      return <Badge variant="outline">{daysRemaining} days left</Badge>;
+      return <Badge variant="outline" className="font-redhatbold bg-white text-gray-700">{daysRemaining} days left</Badge>;
     }
   };
 
@@ -220,19 +221,20 @@ export default function RefundDecisions() {
     const triggerType = decision.metadata?.trigger_type;
 
     if (triggerType === 'campaign_expiration') {
-      return { label: 'Campaign Expired', variant: 'destructive' as const };
+      return { label: 'Campaign Expired', icon: Clock, className: 'bg-orange-100 text-orange-700 border-orange-200' };
     }
     if (triggerType === 'campaign_cancellation') {
-      return { label: 'Campaign Cancelled', variant: 'destructive' as const };
+      return { label: 'Campaign Cancelled', icon: XCircle, className: 'bg-red-100 text-red-700 border-red-200' };
     }
-    return { label: 'Milestone Rejected', variant: 'default' as const };
+    return { label: 'Milestone Rejected', icon: AlertCircle, className: 'bg-blue-100 text-blue-700 border-blue-200' };
   };
 
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="text-gray-500 font-poppinsregular">Loading your decisions...</p>
         </div>
       </div>
     );
@@ -241,214 +243,212 @@ export default function RefundDecisions() {
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="bg-red-50 border-red-200">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="font-poppinsregular">{error}</AlertDescription>
         </Alert>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 space-y-8 font-poppinsregular">
       {/* Header */}
-      <div className="mb-8">
+      <div className="space-y-4">
         <Button
           variant="ghost"
           onClick={() => navigate('/donor/dashboard')}
-          className="mb-4"
+          className="text-gray-600 hover:text-blue-600 pl-0 hover:bg-transparent"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Dashboard
         </Button>
 
-        <h1 className="text-3xl font-bold">Refund Decisions</h1>
-        <p className="text-muted-foreground mt-2">
-          Make decisions on your contributions from rejected milestones, expired campaigns, or cancelled campaigns
-        </p>
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-8 border border-blue-100">
+          <h1 className="text-3xl font-robotobold text-gray-900 mb-2">Refund Decisions</h1>
+          <p className="text-gray-600 max-w-3xl">
+            You have control over your impact. When a milestone is rejected or a campaign stops, 
+            you decide where your contribution goes next.
+          </p>
+        </div>
       </div>
 
-      {/* No Decisions */}
+      {/* No Decisions State */}
       {decisions.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <CheckCircle2 className="h-12 w-12 text-green-600 mb-4" />
-            <h3 className="text-xl font-semibold mb-2">All Caught Up!</h3>
-            <p className="text-muted-foreground text-center max-w-md">
-              You have no pending refund decisions at this time.
+        <Card className="border-dashed border-2 bg-gray-50/50 shadow-none">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="bg-green-100 p-4 rounded-full mb-4">
+              <CheckCircle2 className="h-10 w-10 text-green-600" />
+            </div>
+            <h3 className="text-xl font-robotobold text-gray-900 mb-2">All Caught Up!</h3>
+            <p className="text-gray-500 text-center max-w-md mb-6">
+              You have no pending refund decisions. All your contributions are currently making an impact.
             </p>
             <Button
               onClick={() => navigate('/donor/dashboard')}
-              className="mt-6"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-8"
             >
               Return to Dashboard
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <>
+        <div className="space-y-6">
           {/* Summary Alert */}
-          <Alert className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              You have <strong>{decisions.length}</strong> pending decision
-              {decisions.length !== 1 ? 's' : ''} totaling{' '}
-              <strong>
-                ₱
-                {decisions
-                  .reduce((sum, d) => sum + d.refundAmount, 0)
-                  .toLocaleString()}
+          <Alert className="bg-blue-50 border-blue-200 text-blue-900">
+            <HelpCircle className="h-5 w-5 text-blue-600" />
+            <AlertTitle className="font-robotobold text-blue-800 ml-2">Action Required</AlertTitle>
+            <AlertDescription className="ml-2 mt-1">
+              You have <strong>{decisions.length}</strong> pending decision{decisions.length !== 1 ? 's' : ''} totaling{' '}
+              <strong className="font-robotobold">
+                {formatCurrency(decisions.reduce((sum, d) => sum + d.refundAmount, 0))}
               </strong>
-              . Please make your decisions before the deadline to avoid automatic refunds.
+              . Please review them below.
             </AlertDescription>
           </Alert>
 
-          {/* Decisions List */}
-          <div className="space-y-6">
+          {/* Decisions Grid */}
+          <div className="grid grid-cols-1 gap-6">
             {decisions.map((decision) => {
               const daysRemaining = getDaysRemaining(decision.decisionDeadline);
               const triggerInfo = getTriggerTypeInfo(decision);
+              const TriggerIcon = triggerInfo.icon;
 
               return (
-                <Card key={decision.id} className="overflow-hidden">
-                  <CardHeader className="bg-muted/50">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant={triggerInfo.variant}>
+                <Card key={decision.id} className="overflow-hidden border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300">
+                  <div className="border-b bg-gray-50/50 p-6">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${triggerInfo.className}`}>
+                            <TriggerIcon className="w-3.5 h-3.5" />
                             {triggerInfo.label}
-                          </Badge>
+                          </span>
                           {getUrgencyBadge(daysRemaining)}
                         </div>
-                        <CardTitle className="text-lg">
+                        <h3 className="text-xl font-robotobold text-gray-900">
                           {decision.milestone?.title
-                            ? `Rejected Milestone: ${decision.milestone.title}`
-                            : decision.campaign?.title || 'Refund Decision'}
-                        </CardTitle>
-                        <CardDescription className="mt-1">
-                          Campaign: {decision.campaign?.title || 'Unknown Campaign'}
-                        </CardDescription>
+                            ? `Milestone: ${decision.milestone.title}`
+                            : decision.campaign?.title || 'Campaign Refund'}
+                        </h3>
+                        <p className="text-gray-500 text-sm flex items-center gap-2">
+                          <span>Campaign:</span>
+                          <span className="font-medium text-gray-700">{decision.campaign?.title || 'Unknown Campaign'}</span>
+                        </p>
+                      </div>
+                      
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-sm text-gray-500">Refund Amount</span>
+                        <span className="text-2xl font-robotobold text-blue-600 tracking-tight whitespace-nowrap">
+                          {formatCurrency(decision.refundAmount)}
+                        </span>
                       </div>
                     </div>
-                  </CardHeader>
+                  </div>
 
-                  <CardContent className="pt-6">
-                    {/* Amount and Deadline */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                      <div className="bg-primary/5 rounded-lg p-4">
-                        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                          <DollarSign className="h-4 w-4" />
-                          <span>Refund Amount</span>
-                        </div>
-                        <div className="text-2xl font-bold">
-                          ₱{decision.refundAmount.toLocaleString()}
+                  <CardContent className="p-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                      {/* Left Side: Context & Details */}
+                      <div className="lg:col-span-7 space-y-6">
+                        {/* Rejection/Reason Box */}
+                        {decision.refundRequest?.rejectionReason && (
+                          <div className="bg-red-50 border border-red-100 rounded-lg p-4 space-y-2">
+                            <div className="flex items-center gap-2 text-red-800 font-medium">
+                              <XCircle className="h-4 w-4" />
+                              <span>Reason for {triggerInfo.label.split(' ')[1]}</span>
+                            </div>
+                            <p className="text-red-700/90 text-sm leading-relaxed pl-6">
+                              "{decision.refundRequest.rejectionReason}"
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-6 text-sm">
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <div className="p-2 bg-gray-100 rounded-full">
+                              <Clock className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Deadline</p>
+                              <p className="font-medium">
+                                {new Date(decision.decisionDeadline).toLocaleDateString('en-US', {
+                                  month: 'short', day: 'numeric', year: 'numeric'
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {daysRemaining > 0 && daysRemaining <= 5 && (
+                            <div className="text-orange-600 text-xs flex items-center gap-1.5 bg-orange-50 px-3 py-1.5 rounded-md border border-orange-100">
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              Auto-refund in {daysRemaining} days
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      <div className="bg-muted rounded-lg p-4">
-                        <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-                          <Clock className="h-4 w-4" />
-                          <span>Decision Deadline</span>
-                        </div>
-                        <div className="text-xl font-semibold">
-                          {new Date(decision.decisionDeadline).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
-                        </div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          {daysRemaining > 0
-                            ? `${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining`
-                            : 'Expired'}
-                        </div>
-                      </div>
-                    </div>
+                      {/* Right Side: Actions */}
+                      <div className="lg:col-span-5">
+                        <div className="bg-gray-50 rounded-xl p-5 border border-gray-100 h-full">
+                          <h4 className="font-robotobold text-gray-900 mb-4 text-sm uppercase tracking-wider">
+                            Choose an Action
+                          </h4>
+                          
+                          <div className="space-y-3">
+                            <Button
+                              variant="outline"
+                              className="w-full justify-start h-auto p-4 bg-white hover:bg-blue-50 hover:border-blue-300 group transition-all"
+                              onClick={() => handleRefundClick(decision)}
+                              disabled={daysRemaining <= 0}
+                            >
+                              <div className="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors mr-4">
+                                <DollarSign className="h-5 w-5 text-blue-600" />
+                              </div>
+                              <div className="text-left">
+                                <span className="block font-semibold text-gray-900 group-hover:text-blue-700">Refund to Me</span>
+                                <span className="block text-xs text-gray-500 mt-0.5">Return funds to payment method</span>
+                              </div>
+                            </Button>
 
-                    {/* Rejection Reason */}
-                    {decision.refundRequest?.rejectionReason && (
-                      <Alert className="mb-6">
-                        <XCircle className="h-4 w-4" />
-                        <AlertDescription>
-                          <strong>Rejection Reason:</strong>{' '}
-                          {decision.refundRequest.rejectionReason}
-                        </AlertDescription>
-                      </Alert>
-                    )}
+                            <Button
+                              variant="outline"
+                              className="w-full justify-start h-auto p-4 bg-white hover:bg-green-50 hover:border-green-300 group transition-all"
+                              onClick={() => handleRedirectClick(decision)}
+                              disabled={daysRemaining <= 0}
+                            >
+                              <div className="p-2 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors mr-4">
+                                <ArrowRight className="h-5 w-5 text-green-600" />
+                              </div>
+                              <div className="text-left">
+                                <span className="block font-semibold text-gray-900 group-hover:text-green-700">Redirect Funds</span>
+                                <span className="block text-xs text-gray-500 mt-0.5">Donate to another campaign</span>
+                              </div>
+                            </Button>
 
-                    <Separator className="mb-6" />
-
-                    {/* Decision Options */}
-                    <div>
-                      <h4 className="font-semibold mb-4">Choose what to do with your funds:</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Refund Option */}
-                        <Button
-                          variant="outline"
-                          className="h-auto flex-col items-start p-4 hover:border-blue-600 hover:bg-blue-50"
-                          onClick={() => handleRefundClick(decision)}
-                          disabled={daysRemaining <= 0}
-                        >
-                          <DollarSign className="h-6 w-6 text-blue-600 mb-2" />
-                          <div className="text-left">
-                            <div className="font-semibold mb-1">Refund to Payment Method</div>
-                            <div className="text-xs text-muted-foreground">
-                              Receive money back in 3-5 business days
-                            </div>
+                            <Button
+                              variant="outline"
+                              className="w-full justify-start h-auto p-4 bg-white hover:bg-purple-50 hover:border-purple-300 group transition-all"
+                              onClick={() => handlePlatformClick(decision)}
+                              disabled={daysRemaining <= 0}
+                            >
+                              <div className="p-2 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors mr-4">
+                                <Heart className="h-5 w-5 text-purple-600" />
+                              </div>
+                              <div className="text-left">
+                                <span className="block font-semibold text-gray-900 group-hover:text-purple-700">Donate to Platform</span>
+                                <span className="block text-xs text-gray-500 mt-0.5">Support ClearCause mission</span>
+                              </div>
+                            </Button>
                           </div>
-                        </Button>
-
-                        {/* Redirect Option */}
-                        <Button
-                          variant="outline"
-                          className="h-auto flex-col items-start p-4 hover:border-green-600 hover:bg-green-50"
-                          onClick={() => handleRedirectClick(decision)}
-                          disabled={daysRemaining <= 0}
-                        >
-                          <ArrowRight className="h-6 w-6 text-green-600 mb-2" />
-                          <div className="text-left">
-                            <div className="font-semibold mb-1">Redirect to Another Campaign</div>
-                            <div className="text-xs text-muted-foreground">
-                              Support a different cause immediately
-                            </div>
-                          </div>
-                        </Button>
-
-                        {/* Platform Donation Option */}
-                        <Button
-                          variant="outline"
-                          className="h-auto flex-col items-start p-4 hover:border-pink-600 hover:bg-pink-50"
-                          onClick={() => handlePlatformClick(decision)}
-                          disabled={daysRemaining <= 0}
-                        >
-                          <Heart className="h-6 w-6 text-pink-600 mb-2" />
-                          <div className="text-left">
-                            <div className="font-semibold mb-1">Donate to ClearCause</div>
-                            <div className="text-xs text-muted-foreground">
-                              Help us maintain transparency
-                            </div>
-                          </div>
-                        </Button>
+                        </div>
                       </div>
                     </div>
-
-                    {/* Auto-refund warning */}
-                    {daysRemaining > 0 && daysRemaining <= 5 && (
-                      <Alert variant="destructive" className="mt-4">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription className="text-sm">
-                          If you don't make a decision by{' '}
-                          {new Date(decision.decisionDeadline).toLocaleDateString()}, your funds
-                          will be automatically refunded to your payment method.
-                        </AlertDescription>
-                      </Alert>
-                    )}
                   </CardContent>
                 </Card>
               );
             })}
           </div>
-        </>
+        </div>
       )}
 
       {/* Campaign Selector Modal */}

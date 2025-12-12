@@ -55,9 +55,9 @@ export function DecisionConfirmationDialog({
     switch (decisionType) {
       case 'refund':
         return <DollarSign className="h-8 w-8 text-blue-600" />;
-      case 'redirect_to_campaign':
+      case 'redirect_campaign':
         return <ArrowRight className="h-8 w-8 text-green-600" />;
-      case 'donate_to_platform':
+      case 'donate_platform':
         return <Heart className="h-8 w-8 text-pink-600" />;
       default:
         return null;
@@ -68,9 +68,9 @@ export function DecisionConfirmationDialog({
     switch (decisionType) {
       case 'refund':
         return 'Confirm Refund to Payment Method';
-      case 'redirect_to_campaign':
+      case 'redirect_campaign':
         return 'Confirm Donation Redirect';
-      case 'donate_to_platform':
+      case 'donate_platform':
         return 'Confirm Platform Donation';
       default:
         return 'Confirm Decision';
@@ -81,9 +81,9 @@ export function DecisionConfirmationDialog({
     switch (decisionType) {
       case 'refund':
         return 'Your contribution will be refunded to your original payment method.';
-      case 'redirect_to_campaign':
+      case 'redirect_campaign':
         return 'Your contribution will be redirected to support another campaign.';
-      case 'donate_to_platform':
+      case 'donate_platform':
         return 'Your contribution will support ClearCause operations and help us maintain transparency.';
       default:
         return '';
@@ -94,9 +94,9 @@ export function DecisionConfirmationDialog({
     switch (decisionType) {
       case 'refund':
         return '3-5 business days';
-      case 'redirect_to_campaign':
+      case 'redirect_campaign':
         return 'Immediately';
-      case 'donate_to_platform':
+      case 'donate_platform':
         return 'Immediately';
       default:
         return '';
@@ -132,7 +132,7 @@ export function DecisionConfirmationDialog({
           </div>
 
           {/* Campaign Details (for redirect) */}
-          {decisionType === 'redirect_to_campaign' && selectedCampaign && (
+          {decisionType === 'redirect_campaign' && selectedCampaign && (
             <>
               <Separator />
               <div className="space-y-2">
@@ -169,7 +169,7 @@ export function DecisionConfirmationDialog({
           )}
 
           {/* Redirect Warning */}
-          {decisionType === 'redirect_to_campaign' && (
+          {decisionType === 'redirect_campaign' && (
             <Alert>
               <CheckCircle2 className="h-4 w-4" />
               <AlertDescription>

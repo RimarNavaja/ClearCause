@@ -239,8 +239,8 @@ const processDonationPayment = async (
       const { error: campaignUpdateError } = await supabase.rpc(
         'increment_campaign_amount',
         {
-          campaign_id: updatedDonation.campaign_id,
-          amount: updatedDonation.amount,
+          p_campaign_id: updatedDonation.campaign_id,
+          p_amount: updatedDonation.amount,
         }
       );
 
@@ -818,8 +818,8 @@ export const updateDonationStatus = withErrorHandling(async (
     const { error: campaignUpdateError } = await supabase.rpc(
       'increment_campaign_amount',
       {
-        campaign_id: donation.campaign_id,
-        amount: donation.amount,
+        p_campaign_id: donation.campaign_id,
+        p_amount: donation.amount,
       }
     );
 
@@ -1007,8 +1007,8 @@ export const refundDonation = withErrorHandling(async (
   const { error: campaignUpdateError } = await supabase.rpc(
     'decrement_campaign_amount',
     {
-      campaign_id: donation.campaignId,
-      amount: donation.amount,
+      p_campaign_id: donation.campaignId,
+      p_amount: donation.amount,
     }
   );
 

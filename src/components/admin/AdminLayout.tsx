@@ -52,6 +52,7 @@ import {
   Target,
   Activity,
   UserCog,
+  Banknote,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -202,6 +203,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                 to="/admin/donations"
                 icon={<DollarSign className="h-4 w-4" />}
                 label="Donations"
+              />
+              <NavItem
+                to="/admin/platform-revenue"
+                icon={<Banknote className="h-4 w-4" />}
+                label="Platform Revenue"
               />
               <NavItem
                 to="/admin/logs"

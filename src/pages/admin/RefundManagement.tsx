@@ -165,9 +165,9 @@ export default function RefundManagement() {
     switch (type) {
       case 'refund':
         return <Badge variant="secondary">Refund</Badge>;
-      case 'redirect_to_campaign':
+      case 'redirect_campaign':
         return <Badge variant="secondary">Redirect</Badge>;
-      case 'donate_to_platform':
+      case 'donate_platform':
         return <Badge variant="secondary">Platform</Badge>;
       default:
         return <Badge variant="outline">Pending</Badge>;

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -54,6 +53,8 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ExtensionRequestsTable } from '@/components/admin/ExtensionRequestsTable';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -590,324 +591,345 @@ const CampaignManagement = () => {
           </Card>
         </div>
 
-        {/* Filters and Search */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Campaigns</CardTitle>
-            <CardDescription>Monitor campaign activity and performance</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* Basic Filters Row */}
-            <div className="flex flex-col lg:flex-row gap-4 mb-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search campaigns, charities..."
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((status) => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORY_OPTIONS.map((category) => (
-                    <SelectItem key={category.value} value={category.value}>
-                      {category.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                variant="outline"
-              >
-                <Filter className="mr-2 h-4 w-4" />
-                Advanced
-              </Button>
-            </div>
+        <Tabs defaultValue="campaigns" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="campaigns">All Campaigns</TabsTrigger>
+            <TabsTrigger value="extensions">Extension Requests</TabsTrigger>
+          </TabsList>
 
-            {/* Advanced Filters */}
-            {showAdvancedFilters && (
-              <div className="border rounded-lg p-4 mb-4 bg-muted/20">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="charity-filter">Charity Organization</Label>
-                    <Input
-                      id="charity-filter"
-                      placeholder="Filter by charity name..."
-                      value={charityFilter}
-                      onChange={(e) => setCharityFilter(e.target.value)}
-                    />
+          <TabsContent value="campaigns">
+            {/* Filters and Search */}
+            <Card>
+              <CardHeader>
+                <CardTitle>All Campaigns</CardTitle>
+                <CardDescription>Monitor campaign activity and performance</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Basic Filters Row */}
+                <div className="flex flex-col lg:flex-row gap-4 mb-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search campaigns, charities..."
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                        className="pl-8"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="location-filter">Location</Label>
-                    <Input
-                      id="location-filter"
-                      placeholder="Filter by location..."
-                      value={locationFilter}
-                      onChange={(e) => setLocationFilter(e.target.value)}
-                    />
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((status) => (
+                        <SelectItem key={status.value} value={status.value}>
+                          {status.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filter by category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORY_OPTIONS.map((category) => (
+                        <SelectItem key={category.value} value={category.value}>
+                          {category.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                    variant="outline"
+                  >
+                    <Filter className="mr-2 h-4 w-4" />
+                    Advanced
+                  </Button>
+                </div>
+
+                {/* Advanced Filters */}
+                {showAdvancedFilters && (
+                  <div className="border rounded-lg p-4 mb-4 bg-muted/20">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="charity-filter">Charity Organization</Label>
+                        <Input
+                          id="charity-filter"
+                          placeholder="Filter by charity name..."
+                          value={charityFilter}
+                          onChange={(e) => setCharityFilter(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="location-filter">Location</Label>
+                        <Input
+                          id="location-filter"
+                          placeholder="Filter by location..."
+                          value={locationFilter}
+                          onChange={(e) => setLocationFilter(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="sort-by">Sort By</Label>
+                        <Select value={sortBy} onValueChange={setSortBy}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SORT_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="min-amount">Min Goal Amount ($)</Label>
+                        <Input
+                          id="min-amount"
+                          type="number"
+                          placeholder="0"
+                          value={minAmountFilter}
+                          onChange={(e) => setMinAmountFilter(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="max-amount">Max Goal Amount ($)</Label>
+                        <Input
+                          id="max-amount"
+                          type="number"
+                          placeholder="1000000"
+                          value={maxAmountFilter}
+                          onChange={(e) => setMaxAmountFilter(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="sort-order">Sort Order</Label>
+                        <Select value={sortOrder} onValueChange={setSortOrder}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="desc">Descending</SelectItem>
+                            <SelectItem value="asc">Ascending</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="date-from">Created From</Label>
+                        <Input
+                          id="date-from"
+                          type="date"
+                          value={dateFromFilter}
+                          onChange={(e) => setDateFromFilter(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="date-to">Created Until</Label>
+                        <Input
+                          id="date-to"
+                          type="date"
+                          value={dateToFilter}
+                          onChange={(e) => setDateToFilter(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 mt-4">
+                      <Button onClick={clearFilters} variant="outline">
+                        Clear All Filters
+                      </Button>
+                      <Button onClick={loadCampaigns} variant="outline">
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Refresh
+                      </Button>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="sort-by">Sort By</Label>
-                    <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SORT_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
+                )}
+
+                {/* Campaigns Table */}
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Loading campaigns...</p>
+                    </div>
+                  </div>
+                ) : campaigns.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground">No campaigns found.</p>
+                  </div>
+                ) : (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Campaign</TableHead>
+                          <TableHead>Charity</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Progress</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {campaigns.map((campaign) => (
+                          <TableRow key={campaign.id}>
+                            <TableCell>
+                              <div className="flex items-center space-x-3">
+                                {campaign.imageUrl && (
+                                  <Avatar className="h-10 w-10">
+                                    <AvatarImage src={campaign.imageUrl} alt={campaign.title} />
+                                    <AvatarFallback>{campaign.title.charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                                )}
+                                <div>
+                                  <div
+                                    className="font-medium hover:text-clearcause-primary cursor-pointer transition-colors"
+                                    onClick={() => navigate(`/admin/campaigns/${campaign.id}`)}
+                                  >
+                                    {campaign.title}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    Goal: {formatCurrency(campaign.goalAmount)}
+                                  </div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                {campaign.charity?.organizationName || 'Unknown'}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {getStatusBadge(campaign.status, approvalFeedback[campaign.id])}
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                {formatCurrency(campaign.currentAmount)} / {formatCurrency(campaign.goalAmount)}
+                                <div className="text-xs text-muted-foreground">
+                                  {campaign.progress?.toFixed(1)}% funded
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                {getRelativeTime(campaign.createdAt)}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {/* Inline buttons for pending campaigns ONLY */}
+                              {campaign.status === 'pending' ? (
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => navigate(`/admin/campaigns/${campaign.id}`)}
+                                  >
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    View
+                                  </Button>
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                    onClick={() => handleCampaignAction(campaign, 'approve')}
+                                  >
+                                    <Check className="h-4 w-4 mr-1" />
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => handleCampaignAction(campaign, 'reject')}
+                                  >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Reject
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleCampaignAction(campaign, 'revision')}
+                                  >
+                                    <AlertTriangle className="h-4 w-4 mr-1" />
+                                    Revision
+                                  </Button>
+                                </div>
+                              ) : (
+                                /* Dropdown for other statuses */
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => navigate(`/admin/campaigns/${campaign.id}`)}>
+                                      <Eye className="mr-2 h-4 w-4" />
+                                      View Details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    {getActionButtons(campaign)}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </TableBody>
+                    </Table>
                   </div>
-                  <div>
-                    <Label htmlFor="min-amount">Min Goal Amount ($)</Label>
-                    <Input
-                      id="min-amount"
-                      type="number"
-                      placeholder="0"
-                      value={minAmountFilter}
-                      onChange={(e) => setMinAmountFilter(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="max-amount">Max Goal Amount ($)</Label>
-                    <Input
-                      id="max-amount"
-                      type="number"
-                      placeholder="1000000"
-                      value={maxAmountFilter}
-                      onChange={(e) => setMaxAmountFilter(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="sort-order">Sort Order</Label>
-                    <Select value={sortOrder} onValueChange={setSortOrder}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="desc">Descending</SelectItem>
-                        <SelectItem value="asc">Ascending</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="date-from">Created From</Label>
-                    <Input
-                      id="date-from"
-                      type="date"
-                      value={dateFromFilter}
-                      onChange={(e) => setDateFromFilter(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="date-to">Created Until</Label>
-                    <Input
-                      id="date-to"
-                      type="date"
-                      value={dateToFilter}
-                      onChange={(e) => setDateToFilter(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2 mt-4">
-                  <Button onClick={clearFilters} variant="outline">
-                    Clear All Filters
-                  </Button>
-                  <Button onClick={loadCampaigns} variant="outline">
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Refresh
-                  </Button>
-                </div>
-              </div>
-            )}
+                )}
 
-            {/* Campaigns Table */}
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-muted-foreground">Loading campaigns...</p>
-                </div>
-              </div>
-            ) : campaigns.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No campaigns found.</p>
-              </div>
-            ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Campaign</TableHead>
-                      <TableHead>Charity</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Progress</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {campaigns.map((campaign) => (
-                      <TableRow key={campaign.id}>
-                        <TableCell>
-                          <div className="flex items-center space-x-3">
-                            {campaign.imageUrl && (
-                              <Avatar className="h-10 w-10">
-                                <AvatarImage src={campaign.imageUrl} alt={campaign.title} />
-                                <AvatarFallback>{campaign.title.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                            )}
-                            <div>
-                              <div
-                                className="font-medium hover:text-clearcause-primary cursor-pointer transition-colors"
-                                onClick={() => navigate(`/admin/campaigns/${campaign.id}`)}
-                              >
-                                {campaign.title}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                Goal: {formatCurrency(campaign.goalAmount)}
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {campaign.charity?.organizationName || 'Unknown'}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(campaign.status, approvalFeedback[campaign.id])}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {formatCurrency(campaign.currentAmount)} / {formatCurrency(campaign.goalAmount)}
-                            <div className="text-xs text-muted-foreground">
-                              {campaign.progress?.toFixed(1)}% funded
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {getRelativeTime(campaign.createdAt)}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {/* Inline buttons for pending campaigns ONLY */}
-                          {campaign.status === 'pending' ? (
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => navigate(`/admin/campaigns/${campaign.id}`)}
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                View
-                              </Button>
-                              <Button
-                                variant="default"
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                                onClick={() => handleCampaignAction(campaign, 'approve')}
-                              >
-                                <Check className="h-4 w-4 mr-1" />
-                                Approve
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleCampaignAction(campaign, 'reject')}
-                              >
-                                <X className="h-4 w-4 mr-1" />
-                                Reject
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleCampaignAction(campaign, 'revision')}
-                              >
-                                <AlertTriangle className="h-4 w-4 mr-1" />
-                                Revision
-                              </Button>
-                            </div>
-                          ) : (
-                            /* Dropdown for other statuses */
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => navigate(`/admin/campaigns/${campaign.id}`)}>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  View Details
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                {getActionButtons(campaign)}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-6">
-                <div className="text-sm text-muted-foreground">
-                  Showing {campaigns.length} of {totalCampaigns} campaigns
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <div className="text-sm">
-                    Page {currentPage} of {totalPages}
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-6">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {campaigns.length} of {totalCampaigns} campaigns
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <div className="text-sm">
+                        Page {currentPage} of {totalPages}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="extensions">
+            <Card>
+              <CardHeader>
+                <CardTitle>Deadline Extension Requests</CardTitle>
+                <CardDescription>Review requests from charities to extend their campaign deadlines.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ExtensionRequestsTable />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Action Confirmation Dialog */}
