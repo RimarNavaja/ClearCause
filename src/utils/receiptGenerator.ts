@@ -206,7 +206,7 @@ export const generateDonationReceipt = async (data: ReceiptData): Promise<jsPDF>
   autoTable(doc, {
     startY: yPosition,
     head: [['Payment Details', '']],
-    body: donationDetails,
+    body: detailsBody,
     theme: 'plain', // Cleaner look
     headStyles: {
       fillColor: COLORS.background,

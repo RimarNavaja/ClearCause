@@ -130,7 +130,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
   return (
     <SidebarProvider>
-      <Sidebar variant="inset" collapsible="icon">
+      <Sidebar
+        variant="inset"
+        collapsible="icon"
+        className="font-poppinsregular"
+      >
         <SidebarHeader className="pt-4">
           <Link to="/" className="flex items-center gap-2 px-2">
             <img
@@ -166,8 +170,16 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               Verification
             </SidebarGroupLabel>
             <SidebarMenu>
-              <NavItem to="/admin/charity-verifications" icon={<ShieldCheck className="h-4 w-4" />} label="Charity Verifications" />
-              <NavItem to="/admin/verifications" icon={<Target className="h-4 w-4" />} label="Milestone Proofs" />
+              <NavItem
+                to="/admin/charity-verifications"
+                icon={<ShieldCheck className="h-4 w-4" />}
+                label="Charity Verifications"
+              />
+              <NavItem
+                to="/admin/verifications"
+                icon={<Target className="h-4 w-4" />}
+                label="Milestone Proofs"
+              />
             </SidebarMenu>
           </SidebarGroup>
 
@@ -232,8 +244,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               </h1>
             </div>
             <div className="ml-auto flex items-center gap-3">
-             
-    
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -257,31 +267,31 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
+                    <div className="flex flex-col space-y-1 font-poppinsregular">
+                      <p className="text-sm font-robotobold leading-none capitalize">
                         {user?.fullName || "Admin User"}
                       </p>
-                      <p className="text-xs leading-none text-muted-foreground">
+                      <p className="text-xs leading-none text-muted-foreground font-poppinsregular font-normal">
                         {user?.email}
                       </p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
+                  {/* <DropdownMenuItem asChild>
                     <Link
                       to="/admin/settings"
-                      className="w-full cursor-pointer"
+                      className="w-full cursor-pointer font-poppinsregular"
                     >
                       <User className="mr-2 h-4 w-4" />
                       <span>Profile Settings</span>
                     </Link>
-                  </DropdownMenuItem>
+                  </DropdownMenuItem> */}
                   <DropdownMenuItem asChild>
                     <Link
                       to="/admin/settings"
-                      className="w-full cursor-pointer"
+                      className="w-full cursor-pointer font-poppinsregular"
                     >
-                      <Settings className="mr-2 h-4 w-4" />
+                      <Settings className="mr-2 h-4 w-4 " />
                       <span>Admin Settings</span>
                     </Link>
                   </DropdownMenuItem>
@@ -289,7 +299,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                   <DropdownMenuItem
                     onClick={handleLogoutClick}
                     disabled={isLoggingOut}
-                    className="w-full text-red-600 focus:text-red-600 cursor-pointer"
+                    className="w-full text-red-600 focus:text-red-600 cursor-pointer font-poppinsregular"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>{isLoggingOut ? "Signing out..." : "Sign out"}</span>
@@ -300,7 +310,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           </div>
         </div>
         {/* Page content */}
-        <div className="p-6 bg-clearcause-background min-h-[calc(100vh-3.5rem)]">
+        <div className="p-6 bg-clearcause-background min-h-[calc(100vh-3.5rem)] font-poppinsregular">
           <div className="max-w-7xl mx-auto">{children}</div>
         </div>
       </SidebarInset>
@@ -309,23 +319,23 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <LogOut className="h-5 w-5 text-red-600" />
-              Confirm Sign Out
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to sign out of your admin account? You will
-              need to log in again to access the admin dashboard.
+            <AlertDialogTitle>Confirm Sign Out</AlertDialogTitle>
+            <AlertDialogDescription className="text-base">
+              Are you sure you want to sign out of your Donor account? You will
+              need to log in again to access your dashboard.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoggingOut}>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel
+              disabled={isLoggingOut}
+              className="hover:bg-blue-600 px-6 border-2 border-gray-200 text-blue-700 shadow-sm hover:text-white"
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleLogoutConfirm}
               disabled={isLoggingOut}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              className="bg-red-600 hover:bg-red-700 shadow-sm focus:ring-red-600 px-6"
             >
               {isLoggingOut ? (
                 <>
@@ -333,10 +343,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                   Signing out...
                 </>
               ) : (
-                <>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
-                </>
+                <>Sign out</>
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

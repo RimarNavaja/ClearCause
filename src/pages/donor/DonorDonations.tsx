@@ -192,26 +192,26 @@ const DonorDonations: React.FC = () => {
     switch (status) {
       case "completed":
         return (
-          <Badge variant="secondary" className="bg-green-100 text-green-800">
+          <Badge variant="secondary" className="bg-blue-700 text-white shadow-md">
             Completed
           </Badge>
         );
       case "processing":
         return (
-          <Badge variant="outline" className="text-blue-600">
+          <Badge variant="outline" className="text-blue-600 capitalize shadow-md">
             Processing
           </Badge>
         );
       case "failed":
-        return <Badge variant="destructive">Failed</Badge>;
+        return <Badge variant="destructive" className="capitalize shadow-md">Failed</Badge>;
       case "refunded":
         return (
-          <Badge variant="outline" className="text-orange-600">
+          <Badge variant="outline" className="text-orange-600 capitalize shadow-md">
             Refunded
           </Badge>
         );
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline" className="capitalize shadow-md">{status}</Badge>;
     }
   };
 
@@ -235,7 +235,7 @@ const DonorDonations: React.FC = () => {
       return <Badge variant="outline">In Progress</Badge>;
     }
     return (
-      <Badge variant="outline" className="text-gray-600">
+      <Badge variant="outline" className="text-gray-600 capitalize">
         Pending
       </Badge>
     );
@@ -435,15 +435,16 @@ const DonorDonations: React.FC = () => {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-medium text-gray-900">
+                          <h3 className="font-robotobold  text-blue-700">
                             {donation.campaign?.title}
                           </h3>
                           <Link
                             to={`/campaigns/${donation.campaign?.id}`}
-                            className="text-blue-600 hover:text-blue-800"
+                            className="text-black hover:text-blue-800"
                           >
                             <ExternalLink className="h-4 w-4" />
                           </Link>
+                           {getImpactStatus(donation)}
                         </div>
 
                         {donation.campaign?.charity?.organizationName && (
@@ -452,9 +453,14 @@ const DonorDonations: React.FC = () => {
                           </p>
                         )}
 
-                        <div className="mb-2">
-                          <div className="flex items-center gap-4 text-sm text-gray-600 mb-1">
-                            <span>{getRelativeTime(donation.createdAt)}</span>
+                       
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {getStatusBadge(donation.status)}
+                          {/* impact status badge */}
+                          {/* {getImpactStatus(donation)} */}
+                          <div className="flex items-center gap-4 text-sm text-gray-600 my-2">
+                            <span className="text-xs">{getRelativeTime(donation.createdAt)}</span>
                             {donation.isAnonymous && (
                               <>
                                 <span>•</span>
@@ -464,6 +470,17 @@ const DonorDonations: React.FC = () => {
                               </>
                             )}
                           </div>
+                          
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <ReceiptButton donation={donation} />
+                      </div>
+
+                    </div>
+                     <div className="mb-2">
+                        
 
                           {/* Fee breakdown display - only show if there are actual fees */}
                           {donation.platformFee !== undefined &&
@@ -524,7 +541,7 @@ const DonorDonations: React.FC = () => {
                             </div>
                           ) : (
                             // Fallback for legacy donations without fee metadata
-                            <div className="text-sm">
+                            <div className="text-sm mt-2">
                               <span className="text-gray-600">Amount: </span>
                               <span className="font-semibold text-base">
                                 {formatCurrency(donation.totalCharge || donation.amount)}
@@ -532,26 +549,6 @@ const DonorDonations: React.FC = () => {
                             </div>
                           )}
                         </div>
-
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {getStatusBadge(donation.status)}
-                          {getImpactStatus(donation)}
-                          {donation.campaign?.charity?.verificationStatus && (
-                            <VerificationBadge
-                              status={
-                                donation.campaign.charity
-                                  .verificationStatus as any
-                              }
-                              size="sm"
-                            />
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <ReceiptButton donation={donation} />
-                      </div>
-                    </div>
                   </div>
                 ))}
               </div>
