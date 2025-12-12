@@ -349,7 +349,7 @@ const CampaignForm: React.FC = () => {
         id: Date.now().toString(),
         title: "",
         amount: 0,
-        evidenceDescription: "",
+        evidenceDescriptions: [],
         customProofs: {},
       },
     ]);
