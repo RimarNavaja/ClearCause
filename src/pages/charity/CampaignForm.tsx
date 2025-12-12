@@ -1057,10 +1057,10 @@ const CampaignForm: React.FC = () => {
                     min={new Date().toISOString().split("T")[0]}
                     required
                   />
-                  <p className="mt-1 text-sm text-gray-500">
+                  {/* <p className="mt-1 text-sm text-gray-500">
                     If not set, your campaign will run until you manually close
                     it.
-                  </p>
+                  </p> */}
                 </div>
               </div>
             </div>

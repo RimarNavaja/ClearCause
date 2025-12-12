@@ -126,6 +126,17 @@ const Donate: React.FC = () => {
         return;
       }
 
+      // Check if amount exceeds remaining goal
+      if (campaign) {
+        const remainingAmount = Math.max(0, campaign.goalAmount - campaign.currentAmount);
+        if (numValue > remainingAmount) {
+          setCustomAmountError(
+            `Amount cannot exceed the remaining goal of ₱${remainingAmount.toLocaleString()}.`
+          );
+          return;
+        }
+      }
+
       // Check with fee calculations
       const validation = validateDonationAmount(
         numValue,
@@ -161,7 +172,7 @@ const Donate: React.FC = () => {
       // Valid!
       setCustomAmountError(null);
     },
-    [minimumDonationAmount, tipAmount, coverFees, platformFeePercentage]
+    [minimumDonationAmount, tipAmount, coverFees, platformFeePercentage, campaign]
   );
 
   // Update fee calculator when settings change
@@ -279,6 +290,13 @@ const Donate: React.FC = () => {
       }
 
       setError(errorMsg);
+      return;
+    }
+
+    // Check if amount exceeds remaining goal
+    const remainingAmount = Math.max(0, campaign.goalAmount - campaign.currentAmount);
+    if (amount > remainingAmount) {
+      setError(`Your donation cannot exceed the remaining goal of ₱${remainingAmount.toLocaleString()}.`);
       return;
     }
 

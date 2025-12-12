@@ -41,6 +41,13 @@ export const nonNegativeNumberSchema = z
   .number()
   .min(0, 'Amount cannot be negative');
 
+export const orgPhoneSchema = z
+  .string()
+  .regex(/^[\d\+\-\s\(\)]+$/, 'Phone number can only contain numbers and valid symbols (+, -, (, ), space)')
+  .min(7, 'Phone number is too short')
+  .max(20, 'Phone number is too long')
+  .optional();
+
 // ===== ENUM VALIDATIONS =====
 
 export const userRoleSchema = z.enum(['admin', 'charity', 'donor'] as const);
@@ -92,14 +99,14 @@ export const donorProfileSchema = z.object({
 });
 
 export const charityProfileSchema = z.object({
-  organizationName: z.string().min(2, 'Organization name must be at least 2 characters').max(200, 'Organization name is too long'),
+  organizationName: z.string().min(2, 'Organization name must be at least 2 characters').max(200, 'Organization name is too long').regex(/^[a-zA-Z0-9\s\-\.\'\&\,]+$/, "Organization name contains invalid characters"),
   description: z.string().min(10, 'Description must be at least 10 characters').max(2000, 'Description is too long'),
   websiteUrl: urlSchema,
   contactEmail: emailSchema,
-  contactPhone: phoneSchema,
+  contactPhone: orgPhoneSchema,
   address: z.string().min(10, 'Address must be at least 10 characters').max(500, 'Address is too long'),
   registrationNumber: z.string().max(50, 'Registration number is too long').optional(),
-  contactPersonName: z.string().min(2, 'Contact person name must be at least 2 characters').max(100, 'Contact person name is too long'),
+  contactPersonName: z.string().min(2, 'Contact person name must be at least 2 characters').max(100, 'Contact person name is too long').regex(/^[a-zA-Z\s\-\.\']+$/, "Contact person name contains invalid characters"),
   contactPersonEmail: emailSchema,
   contactPersonPhone: phoneSchema,
 });
