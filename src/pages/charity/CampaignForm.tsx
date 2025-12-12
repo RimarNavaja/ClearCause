@@ -215,7 +215,7 @@ const CampaignForm: React.FC = () => {
               category: campaign.category || "",
               location: campaign.location || "",
               goal: campaign.goalAmount.toString(),
-              endDate: campaign.endDate || "",
+              endDate: campaign.endDate ? campaign.endDate.split("T")[0] : "",
             });
 
             if (campaign.milestones) {
@@ -1228,7 +1228,7 @@ const CampaignForm: React.FC = () => {
 
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-poppinsregular text-gray-700 mb-2">
                           Required Evidence Type*
                         </label>
 

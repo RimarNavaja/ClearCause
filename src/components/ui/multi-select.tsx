@@ -135,7 +135,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
               <>
                 <CommandSeparator />
                 <CommandGroup>
-                  <CommandItem onSelect={() => onSelectedChange([])}>
+                  <CommandItem onSelect={() => onSelectedChange([])} >
                     Clear all
                   </CommandItem>
                 </CommandGroup>
