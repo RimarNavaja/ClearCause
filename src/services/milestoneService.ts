@@ -92,7 +92,8 @@ export const getMilestones = withErrorHandling(async (
         id,
         verification_status,
         submitted_at,
-        verified_by
+        verified_by,
+        verification_notes
       )
     `)
     .eq('campaign_id', campaignId)
@@ -121,6 +122,7 @@ export const getMilestones = withErrorHandling(async (
       updatedAt: m.updated_at,
       // Add proof submission information
       verificationStatus: latestProof?.verification_status || null,
+      verificationNotes: latestProof?.verification_notes || null,
       proofSubmittedAt: latestProof?.submitted_at || null,
     };
   });
