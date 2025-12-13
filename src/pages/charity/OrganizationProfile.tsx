@@ -372,6 +372,7 @@ const OrganizationProfile: React.FC = () => {
                           <FormControl>
                             <Input
                               {...field}
+                              type="tel"
                               placeholder="e.g., +63 2 8123 4567"
                               disabled={loading}
                             />
@@ -478,6 +479,7 @@ const OrganizationProfile: React.FC = () => {
                           <FormControl>
                             <Input
                               {...field}
+                              type="tel"
                               placeholder="Contact Person's Phone"
                               disabled={loading}
                             />

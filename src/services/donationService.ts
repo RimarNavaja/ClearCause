@@ -105,6 +105,16 @@ export const createDonation = withErrorHandling(async (
     throw new ClearCauseError('CAMPAIGN_INACTIVE', 'Campaign goal has already been reached', 400);
   }
 
+  // Check if donation exceeds remaining goal
+  const remainingAmount = campaign.goalAmount - campaign.currentAmount;
+  if (validatedData.amount > remainingAmount) {
+    throw new ClearCauseError(
+      'INVALID_AMOUNT', 
+      `Donation amount ₱${validatedData.amount.toLocaleString()} exceeds the remaining goal of ₱${remainingAmount.toLocaleString()}`, 
+      400
+    );
+  }
+
   // Generate transaction ID (in real app, this would come from payment processor)
   const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 

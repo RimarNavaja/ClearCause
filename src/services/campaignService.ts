@@ -564,10 +564,10 @@ export const getCampaignsByCharity = withErrorHandling(async (
 
     // Only filter to active campaigns if user is neither charity owner nor admin
     if (!isCharityOwner && !isAdmin) {
-      query = query.eq('status', 'active');
+      query = query.in('status', ['active', 'completed']);
     }
   } else {
-    query = query.eq('status', 'active');
+    query = query.in('status', ['active', 'completed']);
   }
 
   // Apply additional filters if provided

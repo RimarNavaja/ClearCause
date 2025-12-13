@@ -19,8 +19,10 @@ import Footer from "@/components/layout/Footer";
 import CampaignGrid from "@/components/ui/campaign/CampaignGrid";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import CharityScorecard from "@/components/charity/CharityScorecard";
 import * as charityService from "@/services/charityService";
 import * as campaignService from "@/services/campaignService";
+import { getCharityScorecard } from "@/services/scoreService";
 import { CharityOrganization, Campaign } from "@/lib/types";
 
 const CHARITY_INFO = {
@@ -116,6 +118,7 @@ const CharityProfile: React.FC = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [scorecardData, setScorecardData] = useState<any>(null);
 
   // Get the campaign ID from navigation state if coming from campaign detail page
   const fromCampaignId = window.history.state?.usr?.fromCampaignId;
@@ -150,6 +153,16 @@ const CharityProfile: React.FC = () => {
         if (campaignsResult.success && campaignsResult.data) {
           setCampaigns(campaignsResult.data);
         }
+
+        // Fetch scorecard data
+        try {
+          const scorecard = await getCharityScorecard(charityId);
+          setScorecardData(scorecard);
+        } catch (scoreError) {
+          console.error("Failed to load scorecard:", scoreError);
+          // Fallback to mock data handled in render
+        }
+
       } catch (err) {
         setError("Failed to load charity profile");
         console.error("Charity profile loading error:", err);
@@ -210,7 +223,7 @@ const CharityProfile: React.FC = () => {
 
       <main className="flex-grow">
         {/* Breadcrumb */}
-        <div className="bg-clearcause-muted py-2">
+        <div className=" py-2">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center text-sm">
               <button
@@ -449,6 +462,9 @@ const CharityProfile: React.FC = () => {
 
               {/* Sidebar */}
               <div className="space-y-6">
+                {/* Charity Scorecard */}
+                <CharityScorecard scorecard={scorecardData || CHARITY_INFO.scorecard} />
+
                 {/* Quick Stats */}
                 <div className="bg-blue-200/80 shadow-lg rounded-xl p-6">
                   <h2 className="text-lg font-robotobold mb-3">Quick Stats</h2>
@@ -482,6 +498,7 @@ const CharityProfile: React.FC = () => {
                         Active Campaigns
                       </div>
                     </div>
+                    {/* Completed Campaigns */}
                     <div className="bg-white rounded-lg p-4 text-center">
                       <div className="text-2xl font-robotobold text-clearcause-primary">
                         {completedCampaigns.length}

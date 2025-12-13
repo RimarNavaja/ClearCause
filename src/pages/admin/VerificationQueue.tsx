@@ -27,11 +27,13 @@ const VerificationQueue = () => {
   const [verifications, setVerifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
-    pendingReview: 0,
+    pending: 0,
     underReview: 0,
-    approvedToday: 0,
-    totalAmountApproved: 0,
-    avgReviewTime: 0
+    approved: 0,
+    rejected: 0,
+    resubmissionRequired: 0,
+    total: 0,
+    totalAmountApproved: 0
   });
 
   useEffect(() => {
@@ -63,6 +65,11 @@ const VerificationQueue = () => {
 
     loadData();
   }, [user?.id]);
+
+  const totalDecided = (stats.approved || 0) + (stats.rejected || 0);
+  const approvalRate = totalDecided > 0 
+    ? Math.round(((stats.approved || 0) / totalDecided) * 100) 
+    : 0;
 
   const getStatusBadge = (status: string) => {
     const variants = {
@@ -108,85 +115,56 @@ const VerificationQueue = () => {
           </p>
         </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="animate-pulse">
-                <div className="h-8 bg-gray-200 rounded w-12 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-20"></div>
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">
+                    Total Pending
+                  </p>
+                  <p className="text-2xl font-bold">{stats.pending}</p>
+                </div>
+                <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Clock className="h-4 w-4 text-blue-600" />
+                </div>
               </div>
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{stats.pending || 0}</div>
-                <p className="text-xs text-muted-foreground">Awaiting review</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Under Review</CardTitle>
-            <Eye className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="animate-pulse">
-                <div className="h-8 bg-gray-200 rounded w-12 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-20"></div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">
+                    Under Review
+                  </p>
+                  <p className="text-2xl font-bold">{stats.underReview}</p>
+                </div>
+                <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
+                  <Eye className="h-4 w-4 text-purple-600" />
+                </div>
               </div>
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{stats.underReview || 0}</div>
-                <p className="text-xs text-muted-foreground">In progress</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Approved Today</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="animate-pulse">
-                <div className="h-8 bg-gray-200 rounded w-12 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-20"></div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">
+                    Approval Rate
+                  </p>
+                  <p className="text-2xl font-bold">{approvalRate}%</p>
+                </div>
+                <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                </div>
               </div>
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{stats.approved || 0}</div>
-                <p className="text-xs text-muted-foreground">{formatCurrency(stats.totalAmountApproved || 0)} released</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Review Time</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="animate-pulse">
-                <div className="h-8 bg-gray-200 rounded w-12 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-20"></div>
-              </div>
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{stats.avgReviewTime}h</div>
-                <p className="text-xs text-muted-foreground">Average time</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
 
       {/* Search and Filters */}
       <Card>

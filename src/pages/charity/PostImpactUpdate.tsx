@@ -1,25 +1,35 @@
-
-import React, { useState, useEffect } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Image, X, Send, Type, FileText, Target } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import React, { useState, useEffect } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import {
+  ChevronLeft,
+  Image,
+  X,
+  Send,
+  Type,
+  FileText,
+  Target,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from 'sonner';
-import CharityLayout from '@/components/layout/CharityLayout';
-import { createCampaignUpdate, getCampaignById } from '@/services/campaignService';
-import { getMilestones } from '@/services/milestoneService';
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import CharityLayout from "@/components/layout/CharityLayout";
+import {
+  createCampaignUpdate,
+  getCampaignById,
+} from "@/services/campaignService";
+import { getMilestones } from "@/services/milestoneService";
 
 interface Campaign {
   id: string;
@@ -47,10 +57,12 @@ const PostImpactUpdate: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   // Form state
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [updateType, setUpdateType] = useState<'milestone' | 'impact' | 'general'>('general');
-  const [selectedMilestoneId, setSelectedMilestoneId] = useState<string>('');
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [updateType, setUpdateType] = useState<
+    "milestone" | "impact" | "general"
+  >("general");
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState<string>("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,10 +80,12 @@ const PostImpactUpdate: React.FC = () => {
 
         // Load campaign data
         const campaignResult = await getCampaignById(campaignId);
-        console.log('[PostImpactUpdate] Campaign result:', campaignResult);
+        console.log("[PostImpactUpdate] Campaign result:", campaignResult);
 
         if (campaignResult.success && campaignResult.data) {
-          const charityName = campaignResult.data.charity?.organizationName || 'Unknown Organization';
+          const charityName =
+            campaignResult.data.charity?.organizationName ||
+            "Unknown Organization";
 
           setCampaign({
             id: campaignResult.data.id,
@@ -80,24 +94,29 @@ const PostImpactUpdate: React.FC = () => {
             organizationName: charityName,
           });
         } else {
-          console.error('[PostImpactUpdate] Failed to load campaign:', campaignResult.error);
-          toast.error(campaignResult.error || 'Failed to load campaign');
+          console.error(
+            "[PostImpactUpdate] Failed to load campaign:",
+            campaignResult.error
+          );
+          toast.error(campaignResult.error || "Failed to load campaign");
         }
 
         // Load milestones
         const milestonesResult = await getMilestones(campaignId);
         if (milestonesResult.success && milestonesResult.data) {
-          setMilestones(milestonesResult.data.map((m: any) => ({
-            id: m.id,
-            title: m.title,
-            description: m.description,
-            targetAmount: m.targetAmount,
-            isCompleted: m.isCompleted,
-          })));
+          setMilestones(
+            milestonesResult.data.map((m: any) => ({
+              id: m.id,
+              title: m.title,
+              description: m.description,
+              targetAmount: m.targetAmount,
+              isCompleted: m.isCompleted,
+            }))
+          );
         }
       } catch (error) {
-        console.error('[PostImpactUpdate] Error loading data:', error);
-        toast.error('Failed to load campaign data');
+        console.error("[PostImpactUpdate] Error loading data:", error);
+        toast.error("Failed to load campaign data");
       } finally {
         setLoading(false);
       }
@@ -105,7 +124,7 @@ const PostImpactUpdate: React.FC = () => {
 
     loadData();
   }, [campaignId, user?.id]);
-  
+
   // Handle image selection
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -113,13 +132,13 @@ const PostImpactUpdate: React.FC = () => {
 
       // Validate file size (5MB max)
       if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image size must be less than 5MB');
+        toast.error("Image size must be less than 5MB");
         return;
       }
 
       // Validate file type
-      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-        toast.error('Please select a JPEG, PNG, or WebP image');
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+        toast.error("Please select a JPEG, PNG, or WebP image");
         return;
       }
 
@@ -141,10 +160,10 @@ const PostImpactUpdate: React.FC = () => {
   };
 
   // Handle update type change
-  const handleUpdateTypeChange = (type: 'milestone' | 'impact' | 'general') => {
+  const handleUpdateTypeChange = (type: "milestone" | "impact" | "general") => {
     setUpdateType(type);
-    if (type !== 'milestone') {
-      setSelectedMilestoneId('');
+    if (type !== "milestone") {
+      setSelectedMilestoneId("");
     }
   };
 
@@ -153,22 +172,22 @@ const PostImpactUpdate: React.FC = () => {
     e.preventDefault();
 
     if (!title.trim()) {
-      toast.error('Please enter a title for your update');
+      toast.error("Please enter a title for your update");
       return;
     }
 
     if (!content.trim()) {
-      toast.error('Please enter content for your update');
+      toast.error("Please enter content for your update");
       return;
     }
 
-    if (updateType === 'milestone' && !selectedMilestoneId) {
-      toast.error('Please select a milestone for this update');
+    if (updateType === "milestone" && !selectedMilestoneId) {
+      toast.error("Please select a milestone for this update");
       return;
     }
 
     if (!campaignId || !user?.id) {
-      toast.error('Unable to submit update. Please try again.');
+      toast.error("Unable to submit update. Please try again.");
       return;
     }
 
@@ -179,21 +198,26 @@ const PostImpactUpdate: React.FC = () => {
         title: title.trim(),
         content: content.trim(),
         updateType,
-        milestoneId: updateType === 'milestone' ? selectedMilestoneId : undefined,
+        milestoneId:
+          updateType === "milestone" ? selectedMilestoneId : undefined,
         imageFile: imageFile || undefined,
       };
 
-      const result = await createCampaignUpdate(campaignId, updateData, user.id);
+      const result = await createCampaignUpdate(
+        campaignId,
+        updateData,
+        user.id
+      );
 
       if (result.success) {
-        toast.success('Update posted successfully!');
+        toast.success("Update posted successfully!");
         navigate(`/campaigns/${campaignId}?tab=updates`);
       } else {
-        toast.error(result.error || 'Failed to post update');
+        toast.error(result.error || "Failed to post update");
       }
     } catch (error) {
-      console.error('Error posting update:', error);
-      toast.error('Failed to post update. Please try again.');
+      console.error("Error posting update:", error);
+      toast.error("Failed to post update. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -219,7 +243,7 @@ const PostImpactUpdate: React.FC = () => {
         <div className="text-center py-8">
           <p className="text-gray-500">Campaign not found</p>
           <Button
-            onClick={() => navigate('/charity/campaigns')}
+            onClick={() => navigate("/charity/campaigns")}
             className="mt-4"
           >
             Back to Campaigns
@@ -233,11 +257,11 @@ const PostImpactUpdate: React.FC = () => {
     <CharityLayout title="Post Impact Update">
       {/* Back Button */}
       <Link
-        to={`/charity/campaigns/${campaignId}`}
+        to="/charity/campaigns"
         className="inline-flex items-center mb-6 text-sm font-medium text-gray-600 hover:text-clearcause-primary"
       >
         <ChevronLeft className="w-4 h-4 mr-1" />
-        Back to Campaign
+        Back to Campaigns
       </Link>
 
       {/* Campaign Info */}
@@ -248,7 +272,8 @@ const PostImpactUpdate: React.FC = () => {
             by {campaign.organizationName}
           </p>
           <p className="text-sm text-gray-600 mt-2">
-            Share progress and impact with donors. Updates appear on the campaign's public page.
+            Share progress and impact with donors. Updates appear on the
+            campaign's public page.
           </p>
         </CardContent>
       </Card>
@@ -258,7 +283,6 @@ const PostImpactUpdate: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Type className="h-5 w-5" />
               Update Type
             </CardTitle>
           </CardHeader>
@@ -266,52 +290,61 @@ const PostImpactUpdate: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button
                 type="button"
-                onClick={() => handleUpdateTypeChange('general')}
+                onClick={() => handleUpdateTypeChange("general")}
                 className={`p-4 border-2 rounded-lg text-left transition-colors ${
-                  updateType === 'general'
-                    ? 'border-clearcause-primary bg-clearcause-primary/5'
-                    : 'border-gray-200 hover:border-gray-300'
+                  updateType === "general"
+                    ? "border-clearcause-primary bg-clearcause-primary/5"
+                    : "border-gray-200 hover:border-gray-300"
                 }`}
               >
                 <FileText className="h-6 w-6 mb-2 text-clearcause-primary" />
                 <h3 className="font-medium">General Update</h3>
-                <p className="text-sm text-gray-500">Share general progress or news</p>
+                <p className="text-sm text-gray-500">
+                  Share general progress or news
+                </p>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleUpdateTypeChange('milestone')}
+                onClick={() => handleUpdateTypeChange("milestone")}
                 className={`p-4 border-2 rounded-lg text-left transition-colors ${
-                  updateType === 'milestone'
-                    ? 'border-clearcause-primary bg-clearcause-primary/5'
-                    : 'border-gray-200 hover:border-gray-300'
+                  updateType === "milestone"
+                    ? "border-clearcause-primary bg-clearcause-primary/5"
+                    : "border-gray-200 hover:border-gray-300"
                 }`}
               >
                 <Target className="h-6 w-6 mb-2 text-clearcause-primary" />
                 <h3 className="font-medium">Milestone Update</h3>
-                <p className="text-sm text-gray-500">Report on specific milestone progress</p>
+                <p className="text-sm text-gray-500">
+                  Report on specific milestone progress
+                </p>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleUpdateTypeChange('impact')}
+                onClick={() => handleUpdateTypeChange("impact")}
                 className={`p-4 border-2 rounded-lg text-left transition-colors ${
-                  updateType === 'impact'
-                    ? 'border-clearcause-primary bg-clearcause-primary/5'
-                    : 'border-gray-200 hover:border-gray-300'
+                  updateType === "impact"
+                    ? "border-clearcause-primary bg-clearcause-primary/5"
+                    : "border-gray-200 hover:border-gray-300"
                 }`}
               >
                 <Send className="h-6 w-6 mb-2 text-clearcause-primary" />
                 <h3 className="font-medium">Impact Story</h3>
-                <p className="text-sm text-gray-500">Share stories of impact and change</p>
+                <p className="text-sm text-gray-500">
+                  Share stories of impact and change
+                </p>
               </button>
             </div>
 
             {/* Milestone Selection */}
-            {updateType === 'milestone' && (
+            {updateType === "milestone" && (
               <div className="mt-4">
                 <Label htmlFor="milestone-select">Select Milestone</Label>
-                <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
+                <Select
+                  value={selectedMilestoneId}
+                  onValueChange={setSelectedMilestoneId}
+                >
                   <SelectTrigger className="mt-2">
                     <SelectValue placeholder="Choose which milestone this update is about" />
                   </SelectTrigger>
