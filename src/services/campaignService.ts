@@ -1112,6 +1112,70 @@ export const getCampaignStatistics = withErrorHandling(async (
 });
 
 /**
+ * Process seed fund release for a specific donation (25%)
+ */
+export const processDonationSeedRelease = withErrorHandling(async (
+  campaignId: string,
+  charityId: string,
+  amount: number,
+  donationId: string
+): Promise<ApiResponse<void>> => {
+  // Create disbursement record
+  const { error: disbursementError } = await supabase
+    .from('fund_disbursements')
+    .insert({
+      campaign_id: campaignId,
+      charity_id: charityId,
+      amount: amount,
+      disbursement_type: 'seed',
+      status: 'completed',
+      approved_by: null, // System automatic release
+      approved_at: new Date().toISOString(),
+      notes: `Seed funding (25%) from donation ${donationId}`,
+    });
+
+  if (disbursementError) {
+    throw handleSupabaseError(disbursementError);
+  }
+
+  // Update campaign seed stats
+  const { data: campaign, error: fetchError } = await supabase
+    .from('campaigns')
+    .select('seed_amount_released')
+    .eq('id', campaignId)
+    .single();
+    
+  if (!fetchError && campaign) {
+    await supabase
+      .from('campaigns')
+      .update({
+        seed_amount_released: (campaign.seed_amount_released || 0) + amount,
+        seed_released_at: new Date().toISOString()
+      })
+      .eq('id', campaignId);
+  }
+
+  // Update charity balance
+  const { data: charity, error: charityFetchError } = await supabase
+    .from('charities')
+    .select('available_balance, total_received')
+    .eq('id', charityId)
+    .single();
+
+  if (!charityFetchError && charity) {
+    await supabase
+      .from('charities')
+      .update({
+        available_balance: (charity.available_balance || 0) + amount,
+        total_received: (charity.total_received || 0) + amount,
+      })
+      .eq('id', charityId);
+  }
+
+  return createSuccessResponse(undefined, 'Seed funds released');
+});
+
+/**
  * Release seed funding (25% of goal) when campaign becomes active
  */
 export const releaseSeedFunds = withErrorHandling(async (

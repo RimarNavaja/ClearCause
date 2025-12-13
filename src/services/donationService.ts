@@ -288,15 +288,40 @@ const processDonationPayment = async (
         // Don't fail the donation if achievement check fails
       }
 
-      // NEW: Allocate donation to milestones proportionally
+      // NEW: Handle Fund Distribution (25% Seed / 75% Milestones)
       try {
+        const { processDonationSeedRelease } = await import('./campaignService');
         const { allocateDonationToMilestones } = await import('./refundService');
-        await allocateDonationToMilestones(
-          donationId,
-          updatedDonation.campaign_id,
-          updatedDonation.amount,
-          updatedDonation.user_id
-        );
+
+        // Get campaign details for charity ID
+        const { data: campaignData } = await supabase
+          .from('campaigns')
+          .select('charity_id')
+          .eq('id', updatedDonation.campaign_id)
+          .single();
+
+        if (campaignData) {
+          const seedAmount = updatedDonation.amount * 0.25;
+          const milestoneAmount = updatedDonation.amount - seedAmount;
+
+          // 1. Release 25% Seed Fund immediately
+          await processDonationSeedRelease(
+            updatedDonation.campaign_id,
+            campaignData.charity_id,
+            seedAmount,
+            donationId
+          );
+          console.log(`[Donation] Released seed fund: ${seedAmount}`);
+
+          // 2. Allocate remaining 75% to milestones
+          await allocateDonationToMilestones(
+            donationId,
+            updatedDonation.campaign_id,
+            milestoneAmount,
+            updatedDonation.user_id
+          );
+          console.log(`[Donation] Allocated to milestones: ${milestoneAmount}`);
+        }
       } catch (error) {
         console.error('Error allocating donation to milestones:', error);
         // Don't fail the donation if allocation fails
