@@ -34,7 +34,11 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ campaignId }) => {
         if (error) {
           console.error('Error fetching audit logs:', error);
         } else {
-          setAuditEvents(data || []);
+          // Filter out unwanted campaign lifecycle events as requested
+          const filteredEvents = (data || []).filter(event => 
+            !['CAMPAIGN_CREATED', 'CAMPAIGN_STATUS_UPDATED', 'CAMPAIGN_APPROVED', 'CAMPAIGN_STATUS_UPDATE'].includes(event.action)
+          );
+          setAuditEvents(filteredEvents);
         }
       } catch (err) {
         console.error('Failed to fetch audit logs:', err);

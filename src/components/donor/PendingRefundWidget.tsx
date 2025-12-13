@@ -92,12 +92,12 @@ export function PendingRefundWidget() {
   }
 
   return (
-    <Card className="border-l-4 border-l-yellow-500">
+    <Card>
       <CardHeader>
         <div className="flex items-start justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-yellow-600" />
+              <AlertCircle className="h-5 w-5 text-red-600" />
               Action Required: Refund Decisions
             </CardTitle>
             <CardDescription className="mt-1">
@@ -113,7 +113,7 @@ export function PendingRefundWidget() {
       <CardContent>
         {loading ? (
           <div className="flex items-center justify-center py-6">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : error ? (
           <Alert variant="destructive">
@@ -166,7 +166,7 @@ export function PendingRefundWidget() {
             {/* CTA Button */}
             <Button
               onClick={() => navigate('/donor/refund-decisions')}
-              className="w-full"
+              className="w-full bg-blue-700 hover:bg-blue-600 text-white"
               size="lg"
             >
               Make Your Decisions
