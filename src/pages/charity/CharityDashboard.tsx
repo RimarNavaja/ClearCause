@@ -141,7 +141,7 @@ const CharityDashboard: React.FC = () => {
       const defaultStats = {
         totalCampaigns: 0,
         activeCampaigns: 0,
-        totalRaised: 0,
+        totalFundsRaised: 0,
         totalDonations: 0,
         averageDonation: 0,
         totalFundsReleased: 0,

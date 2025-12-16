@@ -619,9 +619,13 @@ export const getCharityStatistics = withErrorHandling(async (
 ): Promise<ApiResponse<{
   totalCampaigns: number;
   activeCampaigns: number;
-  totalRaised: number;
+  totalFundsRaised: number;
   totalDonations: number;
   averageDonation: number;
+  totalFundsReleased: number;
+  totalDonors: number;
+  pendingVerifications: number;
+  pendingMilestones: number;
 }>> => {
   // Get charity to check ownership
   const charityResult = await getCharityById(charityId);
@@ -652,28 +656,56 @@ export const getCharityStatistics = withErrorHandling(async (
   // Get donation statistics
   const { data: donations, error: donationError } = await supabase
     .from('donations')
-    .select('amount, status')
+    .select('amount, status, user_id')
     .in('campaign_id', campaigns.map(c => c.id));
 
   if (donationError) {
     throw handleSupabaseError(donationError);
   }
 
+  // Get fund disbursements (Funds Released)
+  const { data: disbursements, error: disbursementError } = await supabase
+    .from('fund_disbursements')
+    .select('amount')
+    .eq('charity_id', charityId);
+
+  // Get pending milestones
+  const { data: milestones, error: milestoneError } = await supabase
+    .from('milestones')
+    .select('id')
+    .in('campaign_id', campaigns.map(c => c.id))
+    .eq('status', 'pending');
+
   const totalCampaigns = campaigns.length;
   const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
-  const totalRaised = campaigns.reduce((sum, c) => sum + c.current_amount, 0);
+  const totalFundsRaised = campaigns.reduce((sum, c) => sum + c.current_amount, 0);
+  
   const completedDonations = donations.filter(d => d.status === 'completed');
   const totalDonations = completedDonations.length;
+  
+  const uniqueDonors = new Set(completedDonations.map(d => d.user_id).filter(Boolean));
+  const totalDonors = uniqueDonors.size;
+
   const averageDonation = totalDonations > 0 
     ? completedDonations.reduce((sum, d) => sum + d.amount, 0) / totalDonations 
     : 0;
 
+  const totalFundsReleased = (disbursements || []).reduce((sum, d) => sum + d.amount, 0);
+  const pendingMilestones = (milestones || []).length;
+  
+  // Pending verifications based on status
+  const pendingVerifications = (charity.verificationStatus === 'pending' || charity.verificationStatus === 'resubmission_required') ? 1 : 0;
+
   return createSuccessResponse({
     totalCampaigns,
     activeCampaigns,
-    totalRaised,
+    totalFundsRaised,
     totalDonations,
     averageDonation: Math.round(averageDonation * 100) / 100,
+    totalFundsReleased,
+    totalDonors,
+    pendingVerifications,
+    pendingMilestones
   });
 });
 
