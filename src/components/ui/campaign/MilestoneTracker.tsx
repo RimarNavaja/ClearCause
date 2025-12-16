@@ -51,6 +51,19 @@ const MilestoneTracker: React.FC<MilestoneTrackerProps> = ({ milestones }) => {
         );
     }
   };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch (e) {
+      return dateString;
+    }
+  };
   
   return (
     <div className="space-y-6 font-poppinsregular">
@@ -84,7 +97,7 @@ const MilestoneTracker: React.FC<MilestoneTrackerProps> = ({ milestones }) => {
                   <div>
                     <h3 className="text-lg font-robotobold">{milestone.title}</h3>
                     {milestone.date && (
-                      <p className="text-sm text-gray-500">Target date: {milestone.date}</p>
+                      <p className="text-sm text-gray-500">Target date: {formatDate(milestone.date)}</p>
                     )}
                   </div>
                   <div className="text-right">

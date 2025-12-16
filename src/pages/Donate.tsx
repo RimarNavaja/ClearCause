@@ -457,7 +457,7 @@ const Donate: React.FC = () => {
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <Link
               to={`/campaigns/${campaignId}`}
-              className="text-blue-600 hover:text-white hover:bg-blue-600 flex items-center text-sm font-redhatregular font-bold"
+              className="text-blue-600 hover:text-blue-700 flex items-center text-sm font-redhatregular font-bold"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
               Return to Campaign
