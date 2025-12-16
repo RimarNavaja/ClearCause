@@ -34,9 +34,11 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ campaignId }) => {
         if (error) {
           console.error('Error fetching audit logs:', error);
         } else {
-          // Filter out unwanted campaign lifecycle events as requested
+          // Filter to only show donations, verifications, and fund releases
           const filteredEvents = (data || []).filter(event => 
-            !['CAMPAIGN_CREATED', 'CAMPAIGN_STATUS_UPDATED', 'CAMPAIGN_APPROVED', 'CAMPAIGN_STATUS_UPDATE'].includes(event.action)
+            event.action === 'DONATION_COMPLETED' ||
+            event.action === 'MILESTONE_VERIFIED' ||
+            event.action.includes('RELEASE')
           );
           setAuditEvents(filteredEvents);
         }
@@ -165,6 +167,13 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ campaignId }) => {
                 </div>
                 
                 <p className="text-sm text-gray-700 mb-1">{getDescription(event)}</p>
+
+                {event.entity_type === 'donation' && event.details?.message && (
+                  <div className="mt-2 p-1 py-2 bg-white/80 rounded border border-blue-100 text-xs italic text-gray-600 relative font-poppinsregular">
+                     <span className="absolute -top-2 left-3 bg-white px-1 text-xs text-blue-400">Message</span>
+                     "{event.details.message}"
+                  </div>
+                )}
                 
                 {event.user_email && event.entity_type !== 'donation' && (
                   <p className="text-xs text-gray-500">By: {event.user_email}</p>

@@ -308,30 +308,49 @@ serve(async (req) => {
           p_amount: netAmount,
         });
 
-        if (rpcError) {
-          console.error('❌ Failed to increment campaign amount:', rpcError);
-        } else {
-          console.log('✅ Campaign amount incremented successfully');
-
-          // Verify the campaign was updated
-          const { data: updatedCampaign, error: campaignError } = await supabase
-            .from('campaigns')
-            .select('id, title, current_amount, donors_count')
-            .eq('id', donation.campaign_id)
-            .single();
-
-          if (campaignError) {
-            console.error('❌ Failed to verify campaign update:', campaignError);
-          } else {
-            console.log('✅ Campaign after increment:', {
-              id: updatedCampaign.id,
-              title: updatedCampaign.title,
-              currentAmount: updatedCampaign.current_amount,
-              donorCount: updatedCampaign.donors_count,
-            });
-          }
-        }
-
+              if (rpcError) {
+                console.error('❌ Failed to increment campaign amount:', rpcError);
+              } else {
+                console.log('✅ Campaign amount incremented successfully');
+        
+                // Verify the campaign was updated
+                const { data: updatedCampaign, error: campaignError } = await supabase
+                  .from('campaigns')
+                  .select('id, title, current_amount, donors_count')
+                  .eq('id', donation.campaign_id)
+                  .single();
+        
+                if (campaignError) {
+                  console.error('❌ Failed to verify campaign update:', campaignError);
+                } else {
+                  console.log('✅ Campaign after increment:', {
+                    id: updatedCampaign.id,
+                    title: updatedCampaign.title,
+                    currentAmount: updatedCampaign.current_amount,
+                    donorCount: updatedCampaign.donors_count,
+                  });
+                }
+        
+                        // Log successful donation to audit_logs
+                        console.log('Logging donation to audit_logs...');
+                        const { error: auditError } = await supabase.from('audit_logs').insert({
+                          user_id: donation.user_id,
+                          action: 'DONATION_COMPLETED',
+                          entity_type: 'donation',
+                          entity_id: donation.id,
+                          details: { 
+                            amount: donation.amount,
+                            campaign_id: donation.campaign_id,
+                            is_anonymous: donation.is_anonymous,
+                            message: donation.message
+                          }
+                        });        
+                if (auditError) {
+                  console.error('❌ Failed to log audit event:', auditError);
+                } else {
+                  console.log('✅ Audit event logged successfully');
+                }
+              }
         // --- SEND NOTIFICATIONS ---
         try {
           const campaignTitle = donation.campaigns?.title || 'Campaign';

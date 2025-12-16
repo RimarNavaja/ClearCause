@@ -188,6 +188,19 @@ serve(async (req)=>{
             paymentSessionId: paymentSession.id
           });
 
+          // Check if donation is already completed to avoid race conditions
+          if (donation.status === 'completed') {
+            console.log('✅ Donation already completed, skipping webhook processing');
+            await supabase.from('webhook_events').update({
+              processed: true,
+              processed_at: new Date().toISOString(),
+              donation_id: donation.id,
+              payment_session_id: paymentSession.id,
+              metadata: { message: 'Donation already completed' }
+            }).eq('id', loggedEvent?.id);
+            break;
+          }
+
           // Create a Payment to actually charge the source
           console.log('Creating PayMongo payment to charge source...');
           const paymentResponse = await fetch(`${PAYMONGO_API_URL}/payments`, {
@@ -291,6 +304,27 @@ serve(async (req)=>{
                   donorCount: updatedCampaign.donors_count,
                   updatedAt: updatedCampaign.updated_at
                 });
+              }
+
+              // Log successful donation to audit_logs
+              console.log('Logging donation to audit_logs...');
+              const { error: auditError } = await supabase.from('audit_logs').insert({
+                user_id: donation.user_id,
+                action: 'DONATION_COMPLETED',
+                entity_type: 'donation',
+                entity_id: donation.id,
+                details: { 
+                  amount: donation.amount,
+                  campaign_id: donation.campaign_id,
+                  is_anonymous: donation.is_anonymous,
+                  message: donation.message
+                }
+              });
+
+              if (auditError) {
+                console.error('❌ Failed to log audit event:', auditError);
+              } else {
+                console.log('✅ Audit event logged successfully');
               }
             }
             // Mark webhook as processed
