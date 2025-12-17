@@ -268,7 +268,7 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
 
           <SidebarInset className="flex-1 overflow-y-auto min-h-[calc(100vh-4rem)] bg-clearcause-background">
             <main className="flex-grow p-8">
-              <div className={cn("max-w-7xl px-4 sm:px-6 lg:px-8 font-poppinsregular", {
+              <div className={cn("max-w-7xl px-4 sm:px-6 lg:px-14 font-poppinsregular", {
                 "mx-auto": !open
               })}>
                 <h1 className="text-3xl font-bold text-gray-900 mb-6 font-robotobold">
