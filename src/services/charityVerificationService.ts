@@ -24,7 +24,7 @@ const charityVerificationSchema = z.object({
   description: z.string().min(50, 'Description must be at least 50 characters'),
   websiteUrl: z.string().url('Invalid website URL').optional().or(z.literal('')),
   contactEmail: z.string().email('Invalid email address'),
-  contactPhone: z.string().min(8, 'Phone number must be at least 8 digits').optional(),
+  contactPhone: z.string().optional().or(z.literal('')),
   
   // Address
   addressLine1: z.string().min(5, 'Address is required'),
@@ -34,9 +34,13 @@ const charityVerificationSchema = z.object({
   postalCode: z.string().min(3, 'Postal code is required'),
   country: z.string().min(2, 'Country is required'),
   
-  // Registration details
-  registrationNumber: z.string().min(3, 'Registration number is required'),
-  taxId: z.string().optional(),
+  // NEW: Specific Regulatory Details
+  secRegistrationNumber: z.string().min(1, 'SEC Registration Number is required'),
+  birRegistrationNumber: z.string().min(1, 'BIR Certificate Number is required'),
+  dswdLicenseNumber: z.string().optional(),
+  dswdLicenseExpiry: z.string().optional(),
+  pcncAccreditationNumber: z.string().optional(),
+  
   dateEstablished: z.string().refine((date) => {
     const parsed = new Date(date);
     return !isNaN(parsed.getTime()) && parsed < new Date();
@@ -45,15 +49,17 @@ const charityVerificationSchema = z.object({
 
 const documentUploadSchema = z.object({
   verificationId: z.string().uuid('Invalid verification ID'),
+  // UPDATED: Specific Philippine Document Types
   documentType: z.enum([
-    'business_registration',
-    'tax_exemption', 
-    'board_resolution',
-    'financial_statement',
-    'organizational_chart',
-    'program_documentation',
-    'bank_certification',
-    'other'
+    'sec_certificate',       // SEC Certificate of Incorporation
+    'articles_of_inc',       // Articles of Incorporation
+    'dswd_license',          // DSWD License to Operate
+    'pcnc_accreditation',    // PCNC Certificate
+    'bir_registration',      // BIR Form 2303
+    'mayor_permit',          // Mayor's Permit
+    'financial_statement',   // Audited Financial Statement
+    'representative_id',     // Valid Gov ID
+    'board_resolution'       // Secretary's Certificate
   ]),
   documentName: z.string().min(1, 'Document name is required'),
   fileUrl: z.string().url('Invalid file URL'),
@@ -78,8 +84,16 @@ export interface CharityVerificationData {
   stateProvince: string;
   postalCode: string;
   country: string;
-  registrationNumber: string;
-  taxId?: string;
+  
+  // New Fields
+  secRegistrationNumber: string;
+  birRegistrationNumber: string;
+  dswdLicenseNumber?: string;
+  dswdLicenseExpiry?: string;
+  pcncAccreditationNumber?: string;
+  
+  registrationNumber?: string; // Kept for backward compatibility if needed
+  taxId?: string; // Kept for backward compatibility
   dateEstablished: string;
 }
 
@@ -134,7 +148,7 @@ export interface CharityVerification {
 export const submitCharityVerification = withErrorHandling(async (
   verificationData: CharityVerificationData,
   currentUserId: string
-): Promise<ApiResponse<CharityVerification>> => {
+): Promise<ApiResponse<any>> => { // Simplified return type for brevity
   // Validate input data
   const validatedData = validateData(charityVerificationSchema, verificationData);
 
@@ -145,34 +159,23 @@ export const submitCharityVerification = withErrorHandling(async (
     .eq('id', currentUserId)
     .single();
 
-  if (userError) {
-    throw handleSupabaseError(userError);
-  }
-
+  if (userError) throw handleSupabaseError(userError);
   if (currentUser?.role !== 'charity') {
     throw new ClearCauseError('FORBIDDEN', 'Only charity users can submit verification applications', 403);
   }
 
-  // Check if user already has a verification application
-  const { data: existingVerification, error: existingError } = await supabase
+  // Check for existing application
+  const { data: existingVerification } = await supabase
     .from('charity_verifications')
     .select('id, status')
     .eq('charity_id', currentUserId)
     .maybeSingle();
 
-  if (existingError) {
-    throw handleSupabaseError(existingError);
+  if (existingVerification && ['pending', 'approved'].includes(existingVerification.status)) {
+    throw new ClearCauseError('CONFLICT', 'You already have a pending or approved application', 409);
   }
 
-  if (existingVerification && existingVerification.status === 'pending') {
-    throw new ClearCauseError('CONFLICT', 'You already have a pending verification application', 409);
-  }
-
-  if (existingVerification && existingVerification.status === 'approved') {
-    throw new ClearCauseError('CONFLICT', 'Your charity is already verified', 409);
-  }
-
-  // Create new verification record
+  // Create new verification record with ENHANCED fields
   const { data: verification, error: insertError } = await supabase
     .from('charity_verifications')
     .insert({
@@ -190,28 +193,29 @@ export const submitCharityVerification = withErrorHandling(async (
       state_province: validatedData.stateProvince,
       postal_code: validatedData.postalCode,
       country: validatedData.country,
-      registration_number: validatedData.registrationNumber,
-      tax_id: validatedData.taxId,
+      
+      // Mapping new enhanced fields
+      sec_registration_number: validatedData.secRegistrationNumber,
+      bir_registration_number: validatedData.birRegistrationNumber,
+      dswd_license_number: validatedData.dswdLicenseNumber || null,
+      dswd_license_expiry: validatedData.dswdLicenseExpiry || null,
+      pcnc_accreditation_number: validatedData.pcncAccreditationNumber || null,
+      
+      // Legacy mapping
+      registration_number: validatedData.secRegistrationNumber, // Map SEC to main reg
+      tax_id: validatedData.birRegistrationNumber, // Map BIR to tax
+      
       date_established: validatedData.dateEstablished,
     })
     .select()
     .single();
 
-  if (insertError) {
-    throw handleSupabaseError(insertError);
-  }
+  if (insertError) throw handleSupabaseError(insertError);
 
-  // Log audit event
-  await logAuditEvent(
-    currentUserId, 
-    'CHARITY_VERIFICATION_SUBMITTED', 
-    'charity_verification', 
-    verification.id,
-    {
-      organization_name: validatedData.organizationName,
-      contact_email: validatedData.contactEmail
-    }
-  );
+  await logAuditEvent(currentUserId, 'CHARITY_VERIFICATION_SUBMITTED', 'charity_verification', verification.id, {
+    organization: validatedData.organizationName,
+    has_dswd: !!validatedData.dswdLicenseNumber
+  });
 
   return createSuccessResponse(verification, 'Verification application submitted successfully');
 });
