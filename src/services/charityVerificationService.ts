@@ -430,6 +430,8 @@ export const getCharityVerificationStatus = withErrorHandling(async (
       )
     `)
     .eq('charity_id', currentUserId)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (verificationError) {
