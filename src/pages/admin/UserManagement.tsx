@@ -41,6 +41,7 @@ import * as userService from '@/services/userService';
 import * as adminService from '@/services/adminService';
 import { User, UserRole } from '@/lib/types';
 import { formatCurrency, getRelativeTime, debounce } from '@/utils/helpers';
+import { DonorCategoryBadge } from '@/components/ui/DonorCategoryBadge';
 
 interface UserWithStats extends User {
   totalDonated?: number;
@@ -335,9 +336,14 @@ const UserManagement = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center space-x-1">
-                            {getUserTypeIcon(u.role)}
-                            <span className="capitalize">{u.role}</span>
+                          <div className="space-y-1">
+                            <div className="flex items-center space-x-1">
+                              {getUserTypeIcon(u.role)}
+                              <span className="capitalize">{u.role}</span>
+                            </div>
+                            {u.role === 'donor' && (
+                              <DonorCategoryBadge user={u} isAnonymous={false} size="sm" />
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>

@@ -13,6 +13,7 @@ import * as donationService from '@/services/donationService';
 import { formatCurrency } from '@/utils/helpers';
 import { downloadReceipt, previewReceipt } from '@/utils/receiptGenerator';
 import { toast } from 'sonner';
+import { DonorCategoryBadge, formatDonorName } from '@/components/ui/DonorCategoryBadge';
 
 const DonationManagement: React.FC = () => {
   const { user } = useAuth();
@@ -119,6 +120,7 @@ const DonationManagement: React.FC = () => {
         d.campaign?.title?.toLowerCase().includes(search) ||
         d.donor?.fullName?.toLowerCase().includes(search) ||
         d.donor?.email?.toLowerCase().includes(search) ||
+        d.donor?.donorOrganizationName?.toLowerCase().includes(search) ||
         d.transactionId?.toLowerCase().includes(search)
       );
     }
@@ -136,7 +138,7 @@ const DonationManagement: React.FC = () => {
         donatedAt: donation.createdAt,
         paymentMethod: donation.paymentMethod,
         status: donation.status,
-        donorName: donation.isAnonymous ? 'Anonymous Donor' : (donation.donor?.fullName || 'N/A'),
+        donorName: donation.donor ? formatDonorName(donation.donor, donation.isAnonymous) : 'Anonymous Donor',
         donorEmail: donation.isAnonymous ? '' : (donation.donor?.email || ''),
         isAnonymous: donation.isAnonymous,
         campaignTitle: donation.campaign?.title || 'N/A',
@@ -160,7 +162,7 @@ const DonationManagement: React.FC = () => {
         donatedAt: donation.createdAt,
         paymentMethod: donation.paymentMethod,
         status: donation.status,
-        donorName: donation.isAnonymous ? 'Anonymous Donor' : (donation.donor?.fullName || 'N/A'),
+        donorName: donation.donor ? formatDonorName(donation.donor, donation.isAnonymous) : 'Anonymous Donor',
         donorEmail: donation.isAnonymous ? '' : (donation.donor?.email || ''),
         isAnonymous: donation.isAnonymous,
         campaignTitle: donation.campaign?.title || 'N/A',
@@ -353,6 +355,11 @@ const DonationManagement: React.FC = () => {
                             <div>
                               <div className="font-medium">{donation.donor?.fullName || 'N/A'}</div>
                               <div className="text-xs text-muted-foreground">{donation.donor?.email}</div>
+                              {donation.donor && (
+                                <div className="mt-1">
+                                  <DonorCategoryBadge user={donation.donor} isAnonymous={false} size="sm" />
+                                </div>
+                              )}
                             </div>
                           )}
                         </TableCell>

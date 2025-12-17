@@ -21,9 +21,11 @@ import {
   SidebarHeader,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarSeparator,
   SidebarInset,
   SidebarTrigger,
   SidebarRail,
@@ -116,46 +118,56 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
     setShowLogoutDialog(true);
   };
 
-  const navItems = [
+  const navGroups = [
     {
-      path: "/donor/dashboard",
-      label: "Dashboard",
-      icon: <LayoutDashboard className="h-5 w-5" />,
+      label: "Overview",
+      items: [
+        {
+          path: "/donor/dashboard",
+          label: "Dashboard",
+          icon: <LayoutDashboard className="h-5 w-5" />,
+        },
+      ],
     },
     {
-      path: "/donor/profile",
-      label: "My Profile",
-      icon: <UserRound className="h-5 w-5" />,
+      label: "Campaigns",
+      items: [
+        {
+          path: "/donor/campaigns",
+          label: "Browse Campaigns",
+          icon: <Search className="h-5 w-5" />,
+        },
+        {
+          path: "/donor/track-campaigns",
+          label: "Track Campaigns",
+          icon: <TrendingUp className="h-5 w-5" />,
+        },
+      ],
     },
     {
-      path: "/donor/campaigns",
-      label: "Browse Campaigns",
-      icon: <Search className="h-5 w-5" />,
-    },
-    {
-      path: "/donor/donations",
-      label: "My Donations",
-      icon: <CreditCard className="h-5 w-5" />,
-    },
-    {
-      path: "/donor/track-campaigns",
-      label: "Track Campaigns",
-      icon: <TrendingUp className="h-5 w-5" />,
-    },
-    {
-      path: "/donor/feedback",
-      label: "Campaign Reviews",
-      icon: <MessageSquare className="h-5 w-5" />,
-    },
-    {
-      path: "/donor/charity-feedback",
-      label: "Charity Feedback",
-      icon: <Star className="h-5 w-5" />,
-    },
-    {
-      path: "/donor/achievements",
-      label: "Achievements",
-      icon: <Award className="h-5 w-5" />,
+      label: "My Activity",
+      items: [
+        {
+          path: "/donor/donations",
+          label: "My Donations",
+          icon: <CreditCard className="h-5 w-5" />,
+        },
+        {
+          path: "/donor/feedback",
+          label: "Campaign Reviews",
+          icon: <MessageSquare className="h-5 w-5" />,
+        },
+        {
+          path: "/donor/charity-feedback",
+          label: "Charity Feedback",
+          icon: <Star className="h-5 w-5" />,
+        },
+        {
+          path: "/donor/achievements",
+          label: "Achievements",
+          icon: <Award className="h-5 w-5" />,
+        },
+      ],
     },
   ];
 
@@ -178,76 +190,108 @@ const DonorLayout: React.FC<DonorLayoutProps> = ({ children, title }) => {
               <SidebarTrigger className="ml-auto hover:bg-blue-600" />
             </SidebarHeader>
             <SidebarContent>
-              <SidebarGroup>
-                <SidebarMenu>
-                  {navItems.map((item) => {
-                    const isActive =
-                      location.pathname === item.path ||
-                      location.pathname.startsWith(`${item.path}/`);
-                    return (
-                      <SidebarMenuItem key={item.path}>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={isActive}
-                          tooltip={item.label}
-                          className={
-                            isActive
-                              ? "!bg-blue-100 !text-blue-600 hover:bg-blue-200"
-                              : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                          }
-                        >
-                          <Link to={item.path}>
-                            {item.icon}
-                            <span>{item.label}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroup>
+              {navGroups.map((group, groupIndex) => (
+                <div key={group.label}>
+                  <SidebarGroup>
+                    <SidebarGroupLabel className="text-xs text-muted-foreground">
+                      {group.label}
+                    </SidebarGroupLabel>
+                    <SidebarMenu>
+                      {group.items.map((item) => {
+                        const isActive =
+                          location.pathname === item.path ||
+                          location.pathname.startsWith(`${item.path}/`);
+                        return (
+                          <SidebarMenuItem key={item.path}>
+                            <SidebarMenuButton
+                              asChild
+                              isActive={isActive}
+                              tooltip={item.label}
+                              className={
+                                isActive
+                                  ? "!bg-blue-100 !text-blue-600 hover:bg-blue-200"
+                                  : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                              }
+                            >
+                              <Link to={item.path}>
+                                {item.icon}
+                                <span>{item.label}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      })}
+                    </SidebarMenu>
+                  </SidebarGroup>
+                  {groupIndex < navGroups.length - 1 && <SidebarSeparator />}
+                </div>
+              ))}
+
+              <SidebarSeparator />
 
               <div className="mt-auto px-2 pb-4">
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location.pathname === "/donor/settings"}
-                      tooltip="Settings"
-                      className={
-                        location.pathname === "/donor/settings"
-                          ? "!bg-blue-100 !text-blue-600 hover:bg-blue-200"
-                          : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                      }
-                    >
-                      <Link to="/donor/settings">
-                        <Settings className="h-5 w-5" />
-                        <span>Settings</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={handleLogoutClick}
-                      disabled={isLoggingOut || authLoading}
-                      tooltip="Logout"
-                      className={`
-                            ${
-                              isLoggingOut || authLoading
-                                ? "text-gray-400 cursor-not-allowed hover:bg-transparent"
-                                : "text-gray-600 hover:text-red-500 hover:bg-red-50"
-                            }
-                          `}
-                    >
-                      {isLoggingOut || authLoading ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <LogOut className="h-5 w-5" />
-                      )}
-                      <span>{isLoggingOut ? "Signing out..." : "Logout"}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
+                <SidebarGroup>
+                  <SidebarGroupLabel className="text-xs text-muted-foreground">
+                    Account
+                  </SidebarGroupLabel>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location.pathname === "/donor/profile"}
+                        tooltip="My Profile"
+                        className={
+                          location.pathname === "/donor/profile"
+                            ? "!bg-blue-100 !text-blue-600 hover:bg-blue-200"
+                            : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                        }
+                      >
+                        <Link to="/donor/profile">
+                          <UserRound className="h-5 w-5" />
+                          <span>My Profile</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location.pathname === "/donor/settings"}
+                        tooltip="Settings"
+                        className={
+                          location.pathname === "/donor/settings"
+                            ? "!bg-blue-100 !text-blue-600 hover:bg-blue-200"
+                            : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                        }
+                      >
+                        <Link to="/donor/settings">
+                          <Settings className="h-5 w-5" />
+                          <span>Settings</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={handleLogoutClick}
+                        disabled={isLoggingOut || authLoading}
+                        tooltip="Logout"
+                        className={`
+                              ${
+                                isLoggingOut || authLoading
+                                  ? "text-gray-400 cursor-not-allowed hover:bg-transparent"
+                                  : "text-gray-600 hover:text-red-500 hover:bg-red-50"
+                              }
+                            `}
+                      >
+                        {isLoggingOut || authLoading ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <LogOut className="h-5 w-5" />
+                        )}
+                        <span>{isLoggingOut ? "Signing out..." : "Logout"}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroup>
               </div>
             </SidebarContent>
             <SidebarRail />

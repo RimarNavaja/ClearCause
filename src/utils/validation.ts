@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { UserRole, CampaignStatus, DonationStatus, VerificationStatus, MilestoneStatus } from '../lib/types';
+import { UserRole, CampaignStatus, DonationStatus, VerificationStatus, MilestoneStatus, DonorCategory, OrganizationType } from '../lib/types';
 import { createValidationError } from './errors';
 
 // ===== COMMON VALIDATIONS =====
@@ -25,6 +25,7 @@ export const passwordSchema = z
 export const phoneSchema = z
   .string()
   .regex(/^(\+63|0)?\s?9\d{2}\s?\d{3}\s?\d{4}$/, 'Please enter a valid Philippine phone number (e.g., 09171234567 or +63 917 123 4567)')
+  .or(z.literal(''))
   .optional();
 
 export const urlSchema = z
@@ -56,6 +57,8 @@ export const donationStatusSchema = z.enum(['pending', 'completed', 'failed', 'r
 export const verificationStatusSchema = z.enum(['pending', 'under_review', 'approved', 'rejected', 'resubmission_required'] as const);
 export const milestoneStatusSchema = z.enum(['pending', 'in_progress', 'completed', 'verified'] as const);
 export const achievementCategorySchema = z.enum(['donation_milestones', 'donation_frequency', 'campaign_diversity', 'platform_engagement'] as const);
+export const donorCategorySchema = z.enum(['individual', 'organization'] as const);
+export const organizationTypeSchema = z.enum(['corporation', 'foundation', 'ngo', 'trust', 'government_agency', 'educational_institution', 'religious_organization', 'other'] as const);
 
 // ===== AUTHENTICATION SCHEMAS =====
 
@@ -64,7 +67,25 @@ export const signUpSchema = z.object({
   password: passwordSchema,
   fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100, 'Full name is too long'),
   role: userRoleSchema,
-});
+  donorCategory: donorCategorySchema.optional(),
+  donorOrganizationName: z.string()
+    .min(2, 'Organization name must be at least 2 characters')
+    .max(200, 'Organization name is too long')
+    .optional(),
+  donorOrganizationType: organizationTypeSchema.optional(),
+}).refine(
+  (data) => {
+    // If donor category is 'organization', require organization fields
+    if (data.role === 'donor' && data.donorCategory === 'organization') {
+      return !!data.donorOrganizationName && !!data.donorOrganizationType;
+    }
+    return true;
+  },
+  {
+    message: 'Organization name and type are required for organization donors',
+    path: ['donorOrganizationName'],
+  }
+);
 
 export const signInSchema = z.object({
   email: emailSchema,
@@ -89,6 +110,9 @@ export const updateProfileSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100, 'Full name is too long').optional(),
   avatarUrl: urlSchema,
   phone: phoneSchema,
+  donorCategory: donorCategorySchema.optional(),
+  donorOrganizationName: z.string().min(2).max(200).optional(),
+  donorOrganizationType: organizationTypeSchema.optional(),
 });
 
 export const donorProfileSchema = z.object({
@@ -96,6 +120,9 @@ export const donorProfileSchema = z.object({
   email: emailSchema,
   phone: phoneSchema,
   isAnonymous: z.boolean().optional(),
+  donorCategory: donorCategorySchema.optional(),
+  donorOrganizationName: z.string().min(2).max(200).optional(),
+  donorOrganizationType: organizationTypeSchema.optional(),
 });
 
 export const charityProfileSchema = z.object({

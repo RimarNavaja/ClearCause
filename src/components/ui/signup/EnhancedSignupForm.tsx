@@ -46,6 +46,13 @@ interface EnhancedSignupFormProps {
   success: boolean;
   isSubmitting: boolean;
   onSubmit: (e: React.FormEvent) => void;
+  // Donor-specific fields
+  donorCategory: "individual" | "organization";
+  setDonorCategory: (category: "individual" | "organization") => void;
+  donorOrganizationName?: string;
+  setDonorOrganizationName?: (value: string) => void;
+  donorOrganizationType?: string;
+  setDonorOrganizationType?: (value: string) => void;
   // Charity-specific fields
   organizationName?: string;
   setOrganizationName?: (value: string) => void;
@@ -93,6 +100,13 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
   success,
   isSubmitting,
   onSubmit,
+  // Donor-specific props with defaults
+  donorCategory,
+  setDonorCategory,
+  donorOrganizationName = "",
+  setDonorOrganizationName = () => {},
+  donorOrganizationType = "",
+  setDonorOrganizationType = () => {},
   // Charity-specific props with defaults
   organizationName = "",
   setOrganizationName = () => {},
@@ -175,6 +189,20 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
           delete errors.lastName;
         }
         break;
+      case "donorOrganizationName":
+        if (donorCategory === "organization" && !value.trim()) {
+          errors.donorOrganizationName = "Organization name is required";
+        } else {
+          delete errors.donorOrganizationName;
+        }
+        break;
+      case "donorOrganizationType":
+        if (donorCategory === "organization" && !value) {
+          errors.donorOrganizationType = "Organization type is required";
+        } else {
+          delete errors.donorOrganizationType;
+        }
+        break;
     }
 
     setFieldErrors(errors);
@@ -183,12 +211,19 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
 
   // Get progress percentage
   const getProgress = () => {
-    const fields = [firstName, lastName, email, password, confirmPassword];
+    let fields = [firstName, lastName, email, password, confirmPassword];
+    let totalFields = 6; // firstName, lastName, email, password, confirmPassword, agreeTerms
+
+    if (accountType === "donor" && donorCategory === "organization") {
+      fields = fields.concat([donorOrganizationName, donorOrganizationType]);
+      totalFields += 2;
+    }
+
     const completedFields = fields.filter(
-      (field) => field.trim() !== ""
+      (field) => typeof field === "string" && field.trim() !== ""
     ).length;
     const termsChecked = agreeTerms ? 1 : 0;
-    return ((completedFields + termsChecked) / 6) * 100;
+    return ((completedFields + termsChecked) / totalFields) * 100;
   };
 
   // Handle file upload
@@ -461,6 +496,120 @@ const EnhancedSignupForm: React.FC<EnhancedSignupFormProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Donor Categorization Section (if accountType is donor) */}
+            {accountType === "donor" && (
+              <div className="border-b pb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center font-robotobold tracking-wide">
+                  Donor Type
+                </h3>
+                <div className="flex space-x-4 mb-4">
+                  <Card
+                    className={`cursor-pointer w-1/2 ${
+                      donorCategory === "individual"
+                        ? "border-clearcause-primary ring-2 ring-clearcause-primary"
+                        : "border-gray-300"
+                    }`}
+                    onClick={() => setDonorCategory("individual")}
+                  >
+                    <CardContent className="p-4 flex flex-col items-center justify-center">
+                      <Heart className="h-6 w-6 text-clearcause-primary mb-2" />
+                      <span className="text-sm font-medium">Individual</span>
+                    </CardContent>
+                  </Card>
+                  <Card
+                    className={`cursor-pointer w-1/2 ${
+                      donorCategory === "organization"
+                        ? "border-clearcause-primary ring-2 ring-clearcause-primary"
+                        : "border-gray-300"
+                    }`}
+                    onClick={() => setDonorCategory("organization")}
+                  >
+                    <CardContent className="p-4 flex flex-col items-center justify-center">
+                      <Building2 className="h-6 w-6 text-clearcause-primary mb-2" />
+                      <span className="text-sm font-medium">Organization</span>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {donorCategory === "organization" && (
+                  <div className="space-y-4 mt-4">
+                    <div>
+                      <label
+                        htmlFor="donor-organization-name"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
+                        Organization Name *
+                      </label>
+                      <input
+                        id="donor-organization-name"
+                        name="donor-organization-name"
+                        type="text"
+                        required
+                        value={donorOrganizationName}
+                        onChange={(e) =>
+                          setDonorOrganizationName(e.target.value)
+                        }
+                        className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-clearcause-primary focus:border-clearcause-primary ${
+                          fieldErrors.donorOrganizationName
+                            ? "border-red-300"
+                            : "border-gray-300"
+                        }`}
+                        placeholder="Enter your organization's name"
+                      />
+                      {fieldErrors.donorOrganizationName && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {fieldErrors.donorOrganizationName}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="donor-organization-type"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
+                        Organization Type *
+                      </label>
+                      <select
+                        id="donor-organization-type"
+                        name="donor-organization-type"
+                        required
+                        value={donorOrganizationType}
+                        onChange={(e) =>
+                          setDonorOrganizationType(e.target.value)
+                        }
+                        className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-clearcause-primary focus:border-clearcause-primary ${
+                          fieldErrors.donorOrganizationType
+                            ? "border-red-300"
+                            : "border-gray-300"
+                        }`}
+                      >
+                        <option value="">Select an organization type</option>
+                        <option value="corporation">Corporation</option>
+                        <option value="foundation">Foundation</option>
+                        <option value="ngo">NGO</option>
+                        <option value="trust">Trust</option>
+                        <option value="government_agency">
+                          Government Agency
+                        </option>
+                        <option value="educational_institution">
+                          Educational Institution
+                        </option>
+                        <option value="religious_organization">
+                          Religious Organization
+                        </option>
+                        <option value="other">Other</option>
+                      </select>
+                      {fieldErrors.donorOrganizationType && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {fieldErrors.donorOrganizationType}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Password Fields */}
             <div className="border-b pb-6">

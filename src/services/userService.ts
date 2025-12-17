@@ -50,6 +50,9 @@ export const getUserProfile = withErrorHandling(async (userId: string): Promise<
     phone: data.phone,
     isVerified: data.is_verified,
     isActive: data.is_active,
+    donorCategory: data.donor_category,
+    donorOrganizationName: data.donor_organization_name,
+    donorOrganizationType: data.donor_organization_type,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   });
@@ -68,6 +71,9 @@ export const updateUserProfile = withErrorHandling(async (
     fullName?: string;
     avatarUrl?: string;
     phone?: string;
+    donorCategory?: 'individual' | 'organization';
+    donorOrganizationName?: string;
+    donorOrganizationType?: string;
   },
   currentUserId: string
 ): Promise<ApiResponse<User>> => {
@@ -93,6 +99,9 @@ export const updateUserProfile = withErrorHandling(async (
         full_name: validatedUpdates.fullName,
         avatar_url: validatedUpdates.avatarUrl,
         phone: validatedUpdates.phone,
+        donor_category: validatedUpdates.donorCategory,
+        donor_organization_name: validatedUpdates.donorOrganizationName,
+        donor_organization_type: validatedUpdates.donorOrganizationType,
         updated_at: new Date().toISOString(),
       })
       .eq('id', userId)
@@ -117,6 +126,9 @@ export const updateUserProfile = withErrorHandling(async (
       if (validatedUpdates.fullName) authUpdates.full_name = validatedUpdates.fullName;
       if (validatedUpdates.avatarUrl) authUpdates.avatar_url = validatedUpdates.avatarUrl;
       if (validatedUpdates.phone) authUpdates.phone = validatedUpdates.phone;
+      if (validatedUpdates.donorCategory) authUpdates.donor_category = validatedUpdates.donorCategory;
+      if (validatedUpdates.donorOrganizationName) authUpdates.donor_organization_name = validatedUpdates.donorOrganizationName;
+      if (validatedUpdates.donorOrganizationType) authUpdates.donor_organization_type = validatedUpdates.donorOrganizationType;
 
       if (Object.keys(authUpdates).length > 0) {
         const { error: authUpdateError } = await supabase.auth.updateUser({
@@ -141,6 +153,9 @@ export const updateUserProfile = withErrorHandling(async (
       role: data.role,
       isVerified: data.is_verified,
       isActive: data.is_active,
+      donorCategory: data.donor_category,
+      donorOrganizationName: data.donor_organization_name,
+      donorOrganizationType: data.donor_organization_type,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     }, 'Profile updated successfully');
@@ -591,9 +606,14 @@ export const searchUsers = withErrorHandling(async (
     email: user.email,
     fullName: user.full_name,
     avatarUrl: user.avatar_url,
+    phone: user.phone,
     role: user.role,
     isVerified: user.is_verified,
     isActive: user.is_active,
+    onboardingCompleted: user.onboarding_completed,
+    donorCategory: user.donor_category,
+    donorOrganizationName: user.donor_organization_name,
+    donorOrganizationType: user.donor_organization_type,
     createdAt: user.created_at,
     updatedAt: user.updated_at,
   }));

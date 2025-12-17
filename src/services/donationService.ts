@@ -137,7 +137,10 @@ export const createDonation = withErrorHandling(async (
         id,
         full_name,
         email,
-        avatar_url
+        avatar_url,
+        donor_category,
+        donor_organization_name,
+        donor_organization_type
       ),
       campaigns:campaign_id (
         id,
@@ -183,6 +186,11 @@ export const createDonation = withErrorHandling(async (
       avatarUrl: donation.profiles.avatar_url,
       role: 'donor',
       isVerified: false,
+      isActive: true,
+      onboardingCompleted: true,
+      donorCategory: donation.profiles.donor_category,
+      donorOrganizationName: donation.profiles.donor_organization_name,
+      donorOrganizationType: donation.profiles.donor_organization_type,
       createdAt: '',
       updatedAt: '',
     } : undefined,
@@ -358,7 +366,10 @@ export const getDonationById = withErrorHandling(async (
         id,
         full_name,
         email,
-        avatar_url
+        avatar_url,
+        donor_category,
+        donor_organization_name,
+        donor_organization_type
       ),
       campaigns:campaign_id (
         id,
@@ -410,6 +421,11 @@ export const getDonationById = withErrorHandling(async (
       avatarUrl: donation.profiles.avatar_url,
       role: 'donor',
       isVerified: false,
+      isActive: true,
+      onboardingCompleted: true,
+      donorCategory: donation.profiles.donor_category,
+      donorOrganizationName: donation.profiles.donor_organization_name,
+      donorOrganizationType: donation.profiles.donor_organization_type,
       createdAt: '',
       updatedAt: '',
     } : undefined,
@@ -494,7 +510,10 @@ export const listDonations = withErrorHandling(async (
         id,
         full_name,
         email,
-        avatar_url
+        avatar_url,
+        donor_category,
+        donor_organization_name,
+        donor_organization_type
       ),
       campaigns:campaign_id (
         id,
@@ -580,6 +599,11 @@ export const listDonations = withErrorHandling(async (
       avatarUrl: donation.profiles.avatar_url,
       role: 'donor' as const,
       isVerified: false,
+      isActive: true,
+      onboardingCompleted: true,
+      donorCategory: donation.profiles.donor_category,
+      donorOrganizationName: donation.profiles.donor_organization_name,
+      donorOrganizationType: donation.profiles.donor_organization_type,
       createdAt: '',
       updatedAt: '',
     } : undefined,

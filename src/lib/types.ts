@@ -12,6 +12,8 @@ export type MilestoneStatus = 'pending' | 'in_progress' | 'completed' | 'verifie
 export type PaymentProvider = 'paymongo' | 'xendit' | 'maya';
 export type PaymentSessionStatus = 'created' | 'pending' | 'succeeded' | 'failed' | 'expired' | 'cancelled';
 export type AchievementCategory = 'donation_milestones' | 'donation_frequency' | 'campaign_diversity' | 'platform_engagement';
+export type DonorCategory = 'individual' | 'organization';
+export type OrganizationType = 'corporation' | 'foundation' | 'ngo' | 'trust' | 'government_agency' | 'educational_institution' | 'religious_organization' | 'other';
 
 // ===== DATABASE TYPES =====
 export interface Database {
@@ -23,11 +25,14 @@ export interface Database {
           email: string;
           full_name: string | null;
           avatar_url: string | null;
-          phone: string | null;
           role: UserRole;
+          phone: string | null;
           is_verified: boolean;
           is_active: boolean;
           onboarding_completed: boolean;
+          donor_category: DonorCategory | null;
+          donor_organization_name: string | null;
+          donor_organization_type: OrganizationType | null;
           created_at: string;
           updated_at: string;
         };
@@ -36,11 +41,14 @@ export interface Database {
           email: string;
           full_name?: string | null;
           avatar_url?: string | null;
-          phone?: string | null;
           role?: UserRole;
+          phone?: string | null;
           is_verified?: boolean;
           is_active?: boolean;
           onboarding_completed?: boolean;
+          donor_category?: DonorCategory | null;
+          donor_organization_name?: string | null;
+          donor_organization_type?: OrganizationType | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -49,11 +57,14 @@ export interface Database {
           email?: string;
           full_name?: string | null;
           avatar_url?: string | null;
-          phone?: string | null;
           role?: UserRole;
+          phone?: string | null;
           is_verified?: boolean;
           is_active?: boolean;
           onboarding_completed?: boolean;
+          donor_category?: DonorCategory | null;
+          donor_organization_name?: string | null;
+          donor_organization_type?: OrganizationType | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -570,6 +581,9 @@ export interface User {
   isVerified: boolean;
   isActive: boolean;
   onboardingCompleted: boolean;
+  donorCategory?: DonorCategory;
+  donorOrganizationName?: string | null;
+  donorOrganizationType?: OrganizationType | null;
   provider?: string;
   createdAt: string;
   updatedAt: string;
@@ -817,6 +831,9 @@ export interface SignUpData {
   password: string;
   fullName: string;
   role: UserRole;
+  donorCategory?: DonorCategory;
+  donorOrganizationName?: string;
+  donorOrganizationType?: OrganizationType;
 }
 
 export interface SignInData {

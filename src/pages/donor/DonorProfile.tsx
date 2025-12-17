@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Award, Edit2, Save, User } from "lucide-react";
+import { Award, Edit2, Save, User, Building2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -31,13 +31,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import * as userService from "@/services/userService";
-import { donorProfileSchema } from "@/utils/validation";
+import { donorProfileSchema, donorCategorySchema, organizationTypeSchema, emailSchema, phoneSchema } from "@/utils/validation";
 import { getDonorAchievements } from "@/services/achievementService";
 import { DonorAchievement } from "@/lib/types";
 import { AchievementBadge } from "@/components/ui/achievements/AchievementBadge";
+import { DonorCategoryBadge, formatDonorName } from "@/components/ui/DonorCategoryBadge";
 
 // Form schema for the profile page
-const formSchema = donorProfileSchema;
+const formSchema = z.object({
+  fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100, 'Full name is too long').regex(/^[a-zA-Z\s\-\.\']+$/, "Full name contains invalid characters"),
+  email: emailSchema,
+  phone: phoneSchema,
+  isAnonymous: z.boolean().optional(),
+});
 type FormData = z.infer<typeof formSchema>;
 
 const DonorProfile: React.FC = () => {
@@ -71,7 +77,11 @@ const DonorProfile: React.FC = () => {
 
   // Mutation for updating user profile
   const updateProfileMutation = useMutation({
-    mutationFn: (data: { fullName?: string; phone?: string }) => {
+    mutationFn: (data: {
+      fullName?: string;
+      phone?: string;
+      isAnonymous?: boolean;
+    }) => {
       if (!user?.id) throw new Error("User not authenticated");
       return userService.updateUserProfile(user.id, data, user.id);
     },
@@ -146,7 +156,7 @@ const DonorProfile: React.FC = () => {
         fullName: profile.fullName || "",
         email: profile.email || "",
         phone: profile.phone || "",
-        isAnonymous: false, // This should come from user preferences in a real app
+        isAnonymous: profile.isAnonymous || false,
       });
     }
   }, [profile, form]);
@@ -195,6 +205,7 @@ const DonorProfile: React.FC = () => {
     updateProfileMutation.mutate({
       fullName: data.fullName,
       phone: data.phone,
+      isAnonymous: data.isAnonymous,
     });
   };
 
@@ -202,7 +213,7 @@ const DonorProfile: React.FC = () => {
     return await uploadAvatarMutation.mutateAsync(file);
   };
 
-  const isMutating =
+  const isMutating = 
     updateProfileMutation.isPending || uploadAvatarMutation.isPending;
 
   // Loading skeleton
@@ -273,8 +284,13 @@ const DonorProfile: React.FC = () => {
               />
             </CardHeader>
             <CardContent className="text-center">
-              <h3 className="text-xl font-bold">{profile?.fullName}</h3>
+              <h3 className="text-xl font-bold">{formatDonorName(profile)}</h3>
               <p className="text-sm text-gray-500">{profile?.email}</p>
+              {profile?.donorCategory && (
+                <div className="mt-2">
+                  <DonorCategoryBadge user={profile} />
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -343,7 +359,7 @@ const DonorProfile: React.FC = () => {
                         <FormDescription>
                           {isGoogle
                             ? "Email cannot be changed since you signed up with Google."
-                            : "Changing your email will require verification."}
+                            : "Changing your email will require verification."} 
                         </FormDescription>
                       </FormItem>
                     )}}
@@ -367,6 +383,40 @@ const DonorProfile: React.FC = () => {
                       </FormItem>
                     )}
                   />
+
+                  {profile?.role === 'donor' && profile?.donorCategory && (
+                    <div className="space-y-4 pt-2 pb-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Donor Type</label>
+                        <Input
+                          value={profile.donorCategory === 'individual' ? 'Individual' : 'Organization'}
+                          disabled={true}
+                          className="bg-gray-50"
+                        />
+                      </div>
+                      {profile.donorCategory === 'organization' && (
+                        <>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Organization Name</label>
+                            <Input
+                              value={profile.donorOrganizationName || ''}
+                              disabled={true}
+                              className="bg-gray-50"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Organization Type</label>
+                            <Input
+                              value={profile.donorOrganizationType ? 
+                                       profile.donorOrganizationType.charAt(0).toUpperCase() + profile.donorOrganizationType.slice(1).replace(/_/g, ' ') : ''}
+                              disabled={true}
+                              className="bg-gray-50"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
 
                   <FormField
                     control={form.control}

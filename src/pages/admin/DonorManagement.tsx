@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import type { User } from '@/lib/types';
+import { DonorCategoryBadge } from '@/components/ui/DonorCategoryBadge';
 
 const DonorManagement = () => {
   const { user } = useAuth();
@@ -141,6 +142,7 @@ const DonorManagement = () => {
                       Verified
                     </Badge>
                   )}
+                  <DonorCategoryBadge user={donor} isAnonymous={false} size="sm" />
                   <Button size="sm" variant="outline">
                     <Eye className="h-4 w-4 mr-2" />
                     View

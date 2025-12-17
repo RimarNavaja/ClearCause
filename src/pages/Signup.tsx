@@ -21,6 +21,9 @@ const Signup: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [newsletterOpt, setNewsletterOpt] = useState(false);
+  const [donorCategory, setDonorCategory] = useState<'individual' | 'organization'>('individual');
+  const [donorOrganizationName, setDonorOrganizationName] = useState('');
+  const [donorOrganizationType, setDonorOrganizationType] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,13 +77,23 @@ const Signup: React.FC = () => {
     try {
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
       
-      // Validate form data
-      const validatedData = validateData(signUpSchema, {
+      const signUpData: any = {
         email,
         password,
         fullName,
         role: accountType as UserRole,
-      });
+      };
+
+      if (accountType === 'donor') {
+        signUpData.donorCategory = donorCategory;
+        if (donorCategory === 'organization') {
+          signUpData.donorOrganizationName = donorOrganizationName;
+          signUpData.donorOrganizationType = donorOrganizationType;
+        }
+      }
+
+      // Validate form data
+      const validatedData = validateData(signUpSchema, signUpData);
 
       // Attempt signup
       const result = await signUp(validatedData);
@@ -137,10 +150,16 @@ const Signup: React.FC = () => {
             setConfirmPassword={setConfirmPassword}
             showPassword={showPassword}
             setShowPassword={setShowPassword}
-            agreeTerms={agreeTerms}
+            setAgreeTerms={agreeTerms}
             setAgreeTerms={setAgreeTerms}
             newsletterOpt={newsletterOpt}
             setNewsletterOpt={setNewsletterOpt}
+            donorCategory={donorCategory}
+            setDonorCategory={setDonorCategory}
+            donorOrganizationName={donorOrganizationName}
+            setDonorOrganizationName={setDonorOrganizationName}
+            donorOrganizationType={donorOrganizationType}
+            setDonorOrganizationType={setDonorOrganizationType}
             error={error}
             success={success}
             isSubmitting={isSubmitting}

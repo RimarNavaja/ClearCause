@@ -10,6 +10,7 @@ import {
 import { downloadReceipt, previewReceipt, ReceiptData } from '@/utils/receiptGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { Donation } from '@/lib/types';
+import { formatDonorName } from '@/components/ui/DonorCategoryBadge';
 
 interface ReceiptButtonProps {
   donation: Donation;
@@ -43,7 +44,7 @@ export const ReceiptButton: React.FC<ReceiptButtonProps> = ({
       donatedAt: donation.createdAt,
       paymentMethod: donation.paymentMethod,
       status: donation.status,
-      donorName: donation.isAnonymous ? 'Anonymous Donor' : (donation.donor?.fullName || 'Anonymous Donor'),
+      donorName: donation.donor ? formatDonorName(donation.donor, donation.isAnonymous) : 'Anonymous Donor',
       donorEmail: donation.isAnonymous ? '' : (donation.donor?.email || ''),
       isAnonymous: donation.isAnonymous,
       campaignTitle: campaign?.title || 'Unknown Campaign',

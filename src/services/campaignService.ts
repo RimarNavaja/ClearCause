@@ -1080,12 +1080,15 @@ export const getCampaignStatistics = withErrorHandling(async (
       is_anonymous,
       created_at,
       profiles:user_id (
-        full_name
+        full_name,
+        donor_category,
+        donor_organization_name,
+        donor_organization_type
       )
     `)
     .eq('campaign_id', campaignId)
     .eq('status', 'completed')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false});
 
   if (donationError) {
     throw handleSupabaseError(donationError);
