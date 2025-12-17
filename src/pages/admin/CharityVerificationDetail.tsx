@@ -421,6 +421,58 @@ const CharityVerificationDetail = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Verification Tools */}
+                <Separator />
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground mb-2 block">
+                    Verification Tools
+                  </Label>
+                  <div className="grid gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start text-blue-600 hover:text-white"
+                      onClick={() =>
+                        window.open(
+                          "https://secexpress.ph/application-form",
+                          "_blank"
+                        )
+                      }
+                    >
+                      <Globe className="h-4 w-4 mr-2" />
+                      Verify SEC Registration
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start text-blue-600 hover:text-white"
+                      onClick={() =>
+                        window.open(
+                          "https://orus.bir.gov.ph/search/tinverification",
+                          "_blank"
+                        )
+                      }
+                    >
+                      <Globe className="h-4 w-4 mr-2" />
+                      Verify BIR TIN ID
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start text-blue-600 hover:text-white"
+                      onClick={() =>
+                        window.open(
+                          "https://www.pcnc.com.ph/accredited-ngos/",
+                          "_blank"
+                        )
+                      }
+                    >
+                      <Globe className="h-4 w-4 mr-2" />
+                      Verify PCNC Accreditation
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -446,8 +498,8 @@ const CharityVerificationDetail = () => {
                         key={doc.id}
                         className="flex items-center justify-between p-3 border rounded"
                       >
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
                             {doc.document_name}
                           </p>
                           <p className="text-xs text-muted-foreground">

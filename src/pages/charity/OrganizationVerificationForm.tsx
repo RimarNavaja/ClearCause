@@ -1,31 +1,24 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, FileText, Building2, Mail, Phone, MapPin, Calendar, Hash } from 'lucide-react';
+import { Upload, FileText, Building2, Mail, MapPin, Hash, ShieldCheck, Link as LinkIcon, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
 import CharityLayout from '@/components/layout/CharityLayout';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { submitCharityVerification, uploadVerificationDocument } from '@/services/charityVerificationService';
 
 interface DocumentUpload {
   type: string;
+  label: string;
+  description: string;
+  required: boolean;
   file: File | null;
   preview: string | null;
 }
@@ -40,26 +33,65 @@ const OrganizationVerificationForm: React.FC = () => {
     organizationName: '',
     organizationType: '',
     description: '',
-    websiteUrl: '',
     contactEmail: '',
-    contactPhone: '',
     addressLine1: '',
     addressLine2: '',
     city: '',
     stateProvince: '',
     postalCode: '',
-    country: '',
-    registrationNumber: '',
-    taxId: '',
+    country: 'Philippines',
     dateEstablished: '',
+    
+    // Enhanced Validation Fields
+    secRegistrationNumber: '',
+    birRegistrationNumber: '',
+    dswdLicenseNumber: '',
+    dswdLicenseExpiry: '',
+    pcncAccreditationNumber: '',
   });
 
-  // Document uploads state
+  // Regulatory Documents State
   const [documents, setDocuments] = useState<DocumentUpload[]>([
-    { type: 'registration_certificate', file: null, preview: null },
-    { type: 'tax_exemption', file: null, preview: null },
-    { type: 'representative_id', file: null, preview: null },
-    { type: 'proof_of_address', file: null, preview: null },
+    { 
+      type: 'sec_certificate', 
+      label: 'SEC Certificate of Incorporation', 
+      description: 'Proof of legal existence (SEC Reg. No).',
+      required: true, 
+      file: null, 
+      preview: null 
+    },
+    { 
+      type: 'bir_registration', 
+      label: 'BIR Certificate (Form 2303)', 
+      description: 'Proof of tax registration.',
+      required: true, 
+      file: null, 
+      preview: null 
+    },
+    { 
+      type: 'dswd_license', 
+      label: 'DSWD License to Operate', 
+      description: 'Required for Social Welfare Agencies (RA 10847).',
+      required: false, 
+      file: null, 
+      preview: null 
+    },
+    { 
+      type: 'pcnc_accreditation', 
+      label: 'PCNC Accreditation', 
+      description: 'Council for NGO Certification (Seal of Good Housekeeping).',
+      required: false, 
+      file: null, 
+      preview: null 
+    },
+    { 
+      type: 'representative_id', 
+      label: 'Authorized Representative ID', 
+      description: 'Government-issued ID of the person applying.',
+      required: true, 
+      file: null, 
+      preview: null 
+    },
   ]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -73,138 +105,82 @@ const OrganizationVerificationForm: React.FC = () => {
 
   const handleFileChange = (index: number, file: File | null) => {
     if (!file) return;
-
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: 'File too large',
-        description: 'Please upload a file smaller than 5MB',
-        variant: 'destructive',
-      });
+      toast({ title: 'File too large', description: 'Max 5MB per file', variant: 'destructive' });
       return;
     }
-
-    // Validate file type
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-    if (!allowedTypes.includes(file.type)) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Please upload a PDF, JPEG, or PNG file',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     const newDocuments = [...documents];
     newDocuments[index].file = file;
     newDocuments[index].preview = URL.createObjectURL(file);
     setDocuments(newDocuments);
   };
 
-  const uploadDocument = async (file: File, documentType: string, verificationId: string) => {
+  const uploadFileToStorage = async (file: File, docType: string, verificationId: string) => {
     const fileExt = file.name.split('.').pop();
-    const fileName = `${verificationId}/${documentType}_${Date.now()}.${fileExt}`;
-
-    const { data, error } = await supabase.storage
-      .from('verification-documents')
-      .upload(fileName, file);
-
+    const fileName = `${verificationId}/${docType}_${Date.now()}.${fileExt}`;
+    const { data, error } = await supabase.storage.from('verification-documents').upload(fileName, file);
     if (error) throw error;
-
-    // Store the file path instead of public URL (bucket is private)
-    return { fileName: data.path, fileUrl: data.path };
+    
+    const { data: { publicUrl } } = supabase.storage.from('verification-documents').getPublicUrl(data.path);
+    return { path: data.path, fullPath: data.fullPath, publicUrl };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
 
-    if (!user) {
+    // Validate Required Documents
+    const missingDocs = documents.filter(d => d.required && !d.file);
+    if (missingDocs.length > 0) {
       toast({
-        title: 'Error',
-        description: 'You must be logged in to submit verification',
+        title: 'Missing Documents',
+        description: `Please upload: ${missingDocs.map(d => d.label).join(', ')}`,
         variant: 'destructive',
       });
       return;
     }
 
-    // Validate required documents
-    const requiredDocs = ['registration_certificate', 'representative_id'];
-    const missingDocs = requiredDocs.filter(type => {
-      const doc = documents.find(d => d.type === type);
-      return !doc?.file;
-    });
-
-    if (missingDocs.length > 0) {
-      toast({
-        title: 'Missing required documents',
-        description: 'Please upload Registration Certificate and Representative ID',
-        variant: 'destructive',
-      });
+    // Validate DSWD Logic: If License Number is provided, File is required (and vice versa)
+    const dswdDoc = documents.find(d => d.type === 'dswd_license');
+    if (formData.dswdLicenseNumber && !dswdDoc?.file) {
+      toast({ title: 'Missing DSWD Document', description: 'You provided a DSWD License Number but no document.', variant: 'destructive' });
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Create verification record
-      const { data: verification, error: verificationError } = await supabase
-        .from('charity_verifications')
-        .insert({
-          charity_id: user.id,
-          status: 'pending',
-          organization_name: formData.organizationName,
-          organization_type: formData.organizationType,
-          description: formData.description,
-          website_url: formData.websiteUrl,
-          contact_email: formData.contactEmail,
-          contact_phone: formData.contactPhone,
-          address_line1: formData.addressLine1,
-          address_line2: formData.addressLine2,
-          city: formData.city,
-          state_province: formData.stateProvince,
-          postal_code: formData.postalCode,
-          country: formData.country,
-          registration_number: formData.registrationNumber,
-          tax_id: formData.taxId,
-          date_established: formData.dateEstablished || null,
-        })
-        .select()
-        .single();
+      // 1. Submit Data
+      const { data: verification, error } = await submitCharityVerification(formData, user.id);
+      if (error || !verification) throw error;
 
-      if (verificationError) throw verificationError;
-
-      // Upload documents
+      // 2. Upload Documents
       for (const doc of documents) {
         if (doc.file) {
-          const { fileName, fileUrl } = await uploadDocument(
-            doc.file,
-            doc.type,
-            verification.id
-          );
-
-          // Save document record
-          await supabase.from('verification_documents').insert({
-            verification_id: verification.id,
-            document_type: doc.type,
-            document_name: doc.file.name,
-            file_url: fileUrl,
-            file_size: doc.file.size,
-            mime_type: doc.file.type,
-          });
+          const { publicUrl } = await uploadFileToStorage(doc.file, doc.type, verification.id);
+          
+          await uploadVerificationDocument({
+            verificationId: verification.id,
+            documentType: doc.type,
+            documentName: doc.file.name,
+            fileUrl: publicUrl,
+            fileSize: doc.file.size,
+            mimeType: doc.file.type
+          }, user.id);
         }
       }
 
       toast({
-        title: 'Verification submitted successfully',
-        description: 'Your application is now pending review. We will notify you once it has been reviewed.',
+        title: 'Application Submitted',
+        description: 'Your application is under strict compliance review.',
       });
-
       navigate('/charity/verification/status');
+
     } catch (error: any) {
-      console.error('Error submitting verification:', error);
+      console.error('Submission Error:', error);
       toast({
-        title: 'Submission failed',
-        description: error.message || 'Failed to submit verification application',
+        title: 'Submission Failed',
+        description: error.message || 'An error occurred.',
         variant: 'destructive',
       });
     } finally {
@@ -212,310 +188,152 @@ const OrganizationVerificationForm: React.FC = () => {
     }
   };
 
-  const documentLabels: Record<string, string> = {
-    registration_certificate: 'Registration Certificate *',
-    tax_exemption: 'Tax Exemption Document',
-    representative_id: 'Representative ID *',
-    proof_of_address: 'Proof of Address',
-  };
-
   return (
-    <CharityLayout title="Organization Verification">
-      <form onSubmit={handleSubmit}>
-        <div className="space-y-6">
-          {/* Organization Information */}
+    <CharityLayout title="Verification">
+      <div className="max-w-7xl mx-auto space-y-6 pb-10">
+        
+        <Alert className="bg-blue-50 border-blue-200">
+          <AlertTitle className="text-blue-800 font-poppinsregular">Compliance & Transparency</AlertTitle>
+          <AlertDescription className="text-blue-700">
+            ClearCause enforces strict validation. We cross-reference your submissions with 
+            <strong> SEC, DSWD, and PCNC</strong>. Please ensure all licenses are valid and not expired.
+          </AlertDescription>
+        </Alert>
+
+        <form onSubmit={handleSubmit} className="space-y-8">
+          
+          {/* 1. Basic Info */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Organization Information
-              </CardTitle>
-              <CardDescription>
-                Provide detailed information about your organization
-              </CardDescription>
+              <CardTitle className="flex items-center gap-2 text-blue-700 font-robotobold"> Organization Identity</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="organizationName">Organization Name *</Label>
-                  <Input
-                    id="organizationName"
-                    name="organizationName"
-                    value={formData.organizationName}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="organizationType">Organization Type *</Label>
-                  <Select
-                    value={formData.organizationType}
-                    onValueChange={(value) => handleSelectChange('organizationType', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="nonprofit">Non-Profit Organization</SelectItem>
-                      <SelectItem value="ngo">NGO</SelectItem>
-                      <SelectItem value="foundation">Foundation</SelectItem>
-                      <SelectItem value="charity">Charity</SelectItem>
-                      <SelectItem value="social_enterprise">Social Enterprise</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="description">Mission Statement *</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows={4}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="websiteUrl">Website URL</Label>
-                  <Input
-                    id="websiteUrl"
-                    name="websiteUrl"
-                    type="url"
-                    value={formData.websiteUrl}
-                    onChange={handleInputChange}
-                    placeholder="https://example.org"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="dateEstablished">Date Established</Label>
-                  <Input
-                    id="dateEstablished"
-                    name="dateEstablished"
-                    type="date"
-                    value={formData.dateEstablished}
-                    onChange={handleInputChange}
-                  />
-                </div>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Organization Name *</Label>
+                <Input name="organizationName" value={formData.organizationName} onChange={handleInputChange} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Organization Type</Label>
+                <Select onValueChange={(val) => handleSelectChange('organizationType', val)} value={formData.organizationType}>
+                  <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="non_profit_corp">Non-Stock Non-Profit Corp (SEC)</SelectItem>
+                    <SelectItem value="foundation">Foundation</SelectItem>
+                    <SelectItem value="cooperative">Cooperative</SelectItem>
+                    <SelectItem value="association">Association</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label>Mission Statement</Label>
+                <Textarea name="description" value={formData.description} onChange={handleInputChange} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Contact Email *</Label>
+                <Input type="email" name="contactEmail" value={formData.contactEmail} onChange={handleInputChange} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Date Established</Label>
+                <Input type="date" name="dateEstablished" value={formData.dateEstablished} onChange={handleInputChange} required />
               </div>
             </CardContent>
           </Card>
 
-          {/* Contact Information */}
+          {/* 2. Regulatory Compliance (THE ENHANCED PART) */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                Contact Information
-              </CardTitle>
+              <CardTitle className="flex items-center gap-2 text-blue-700 font-robotobold">Regulatory Compliance</CardTitle>
+              <CardDescription>Enter your registration details for automatic validity checks.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="space-y-6">
+              
+              {/* SEC & BIR */}
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="contactEmail">Contact Email *</Label>
-                  <Input
-                    id="contactEmail"
-                    name="contactEmail"
-                    type="email"
-                    value={formData.contactEmail}
-                    onChange={handleInputChange}
-                    required
-                  />
+                  <Label>SEC Registration No. *</Label>
+                  <Input name="secRegistrationNumber" placeholder="e.g., CN202312345" value={formData.secRegistrationNumber} onChange={handleInputChange} required />
+                  <p className="text-xs text-muted-foreground">Found on your Certificate of Incorporation</p>
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="contactPhone">Contact Phone</Label>
-                  <Input
-                    id="contactPhone"
-                    name="contactPhone"
-                    type="tel"
-                    value={formData.contactPhone}
-                    onChange={handleInputChange}
-                  />
+                  <Label>BIR Certificate No. (Tax ID) *</Label>
+                  <Input name="birRegistrationNumber" placeholder="e.g., 000-123-456-000" value={formData.birRegistrationNumber} onChange={handleInputChange} required />
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Address Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
-                Address Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
+              <div className="h-px bg-border" />
+
+              {/* DSWD & PCNC */}
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="addressLine1">Address Line 1 *</Label>
-                  <Input
-                    id="addressLine1"
-                    name="addressLine1"
-                    value={formData.addressLine1}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="addressLine2">Address Line 2</Label>
-                  <Input
-                    id="addressLine2"
-                    name="addressLine2"
-                    value={formData.addressLine2}
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City *</Label>
-                    <Input
-                      id="city"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="stateProvince">State/Province *</Label>
-                    <Input
-                      id="stateProvince"
-                      name="stateProvince"
-                      value={formData.stateProvince}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="postalCode">Postal Code *</Label>
-                    <Input
-                      id="postalCode"
-                      name="postalCode"
-                      value={formData.postalCode}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="country">Country *</Label>
-                  <Input
-                    id="country"
-                    name="country"
-                    value={formData.country}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Legal Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Hash className="h-5 w-5" />
-                Legal Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="registrationNumber">Registration Number *</Label>
-                  <Input
-                    id="registrationNumber"
-                    name="registrationNumber"
-                    value={formData.registrationNumber}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="taxId">Tax ID / EIN</Label>
-                  <Input
-                    id="taxId"
-                    name="taxId"
-                    value={formData.taxId}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Document Uploads */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Required Documents
-              </CardTitle>
-              <CardDescription>
-                Upload required verification documents (PDF, JPEG, or PNG, max 5MB each)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {documents.map((doc, index) => (
-                <div key={doc.type} className="space-y-2">
-                  <Label htmlFor={`doc-${doc.type}`}>
-                    {documentLabels[doc.type]}
+                  <Label className="flex items-center justify-between">
+                    DSWD License No.
+                    <span className="text-xs font-normal text-muted-foreground">(If applicable)</span>
                   </Label>
-                  <div className="flex items-center gap-4">
-                    <Input
-                      id={`doc-${doc.type}`}
-                      type="file"
+                  <Input name="dswdLicenseNumber" placeholder="e.g., DSWD-SB-L-000123" value={formData.dswdLicenseNumber} onChange={handleInputChange} />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>DSWD License Expiry</Label>
+                  <Input type="date" name="dswdLicenseExpiry" value={formData.dswdLicenseExpiry} onChange={handleInputChange} />
+                  <p className="text-xs text-orange-600">We track this to ensure you stay compliant.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>PCNC Accreditation No.</Label>
+                  <Input name="pcncAccreditationNumber" placeholder="Optional" value={formData.pcncAccreditationNumber} onChange={handleInputChange} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 3. Address */}
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-blue-700 font-robotobold"> Address</CardTitle></CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <Input name="addressLine1" placeholder="Street Address *" value={formData.addressLine1} onChange={handleInputChange} required className="col-span-2"/>
+              <Input name="city" placeholder="City *" value={formData.city} onChange={handleInputChange} required />
+              <Input name="stateProvince" placeholder="Province *" value={formData.stateProvince} onChange={handleInputChange} required />
+              <Input name="postalCode" placeholder="Zip Code *" value={formData.postalCode} onChange={handleInputChange} required />
+              <Input name="country" disabled value="Philippines" />
+            </CardContent>
+          </Card>
+
+          {/* 4. Documents */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-700 font-robotobold"> Evidence Upload</CardTitle>
+              <CardDescription>Upload clear scans (PDF/JPG). Max 5MB each.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {documents.map((doc, idx) => (
+                <div key={doc.type} className="flex flex-col sm:flex-row gap-4 items-start border-b pb-4 last:border-0">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-base font-medium">
+                      {doc.label} {doc.required && <span className="text-red-500">*</span>}
+                    </Label>
+                    <p className="text-sm text-muted-foreground">{doc.description}</p>
+                  </div>
+                  <div className="w-full sm:w-1/2">
+                    <Input 
+                      type="file" 
                       accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileChange(index, e.target.files?.[0] || null)}
-                      className="flex-1"
+                      onChange={(e) => handleFileChange(idx, e.target.files?.[0] || null)}
                     />
-                    {doc.file && (
-                      <span className="text-sm text-gray-600">
-                        {doc.file.name} ({(doc.file.size / 1024).toFixed(0)} KB)
-                      </span>
-                    )}
+                    {doc.file && <p className="text-xs text-green-600 mt-1 truncate">✓ Selected: {doc.file.name}</p>}
                   </div>
                 </div>
               ))}
             </CardContent>
           </Card>
 
-          {/* Submit Button */}
           <div className="flex justify-end gap-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/charity/dashboard')}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
+            <Button variant="outline" type="button" onClick={() => navigate('/charity/dashboard')}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Submit for Verification
-                </>
-              )}
+              {isSubmitting ? 'Submitting Compliance Check...' : 'Submit for Verification'}
             </Button>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </CharityLayout>
   );
 };

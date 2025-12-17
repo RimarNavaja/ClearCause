@@ -32,7 +32,8 @@ interface Milestone {
   targetAmount: number;
   currentAmount?: number;
   status: 'pending' | 'in_progress' | 'completed' | 'verified';
-  verificationStatus?: 'pending' | 'under_review' | 'approved' | 'rejected' | null;
+  verificationStatus?: 'pending' | 'under_review' | 'approved' | 'rejected' | 'resubmission_required' | null;
+  verificationNotes?: string | null;
   dueDate?: string;
   proofSubmittedAt?: string;
   completedAt?: string;
@@ -128,6 +129,7 @@ const CharityMilestones: React.FC = () => {
               currentAmount: campaign.currentAmount || 0, // This is campaign amount, ideally should be milestone specific if supported
               status: m.status,
               verificationStatus: m.verificationStatus,
+              verificationNotes: m.verificationNotes,
               dueDate: m.dueDate,
               proofSubmittedAt: m.proofSubmittedAt,
               completedAt: m.completedAt, // Make sure this is available in your API/Type
@@ -566,7 +568,17 @@ const CharityMilestones: React.FC = () => {
                       </TableCell>
                       <TableCell>{formatCurrency(milestone.targetAmount)}</TableCell>
                       <TableCell>{getStatusBadge(milestone.status)}</TableCell>
-                      <TableCell>{getVerificationBadge(milestone.verificationStatus)}</TableCell>
+                      <TableCell>
+                        <div className="space-y-2">
+                          {getVerificationBadge(milestone.verificationStatus)}
+                          {(milestone.verificationStatus === 'rejected' || milestone.verificationStatus === 'resubmission_required') && milestone.verificationNotes && (
+                            <div className="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-100 max-w-[200px]">
+                              <span className="font-semibold block mb-1">Feedback:</span>
+                              {milestone.verificationNotes}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           {/* Logic to show submit button: 

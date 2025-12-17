@@ -259,14 +259,14 @@ const VerificationDetail = () => {
     return (
       <AdminLayout title="Verification Detail">
         <div className="space-y-6">
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Submission not found</p>
-            <Button className="mt-4" asChild>
+          <Button className="mt-4" asChild>
               <Link to="/admin/verifications">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Queue
               </Link>
             </Button>
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Submission not found</p>
           </div>
         </div>
       </AdminLayout>
