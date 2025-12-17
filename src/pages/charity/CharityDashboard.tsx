@@ -24,6 +24,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRealtime } from "@/hooks/useRealtime";
 import * as charityService from "@/services/charityService";
 import * as campaignService from "@/services/campaignService";
+import { getCharityVerificationStatus } from "@/services/charityVerificationService";
 import { formatCurrency, getRelativeTime } from "@/utils/helpers";
 import { waitForAuthReady } from "@/utils/authHelper";
 
@@ -91,50 +92,73 @@ const CharityDashboard: React.FC = () => {
 
       // First get the charity organization for this user
       let charityId: string | null = null;
+      
       try {
         console.debug(
-          "[CharityDashboard] Fetching charity organization for user..."
+          "[CharityDashboard] Fetching charity organization and verification status..."
         );
-        const charityResult = await charityService.getCharityByUserId(user.id);
-        console.debug(
-          "Charity result:",
-          JSON.stringify(charityResult, null, 2)
-        );
+        
+        // Fetch both in parallel for efficiency and reliability
+        const [charityResult, verificationResult] = await Promise.all([
+          charityService.getCharityByUserId(user.id).catch(e => ({ success: false, error: e, data: null })),
+          getCharityVerificationStatus(user.id).catch(e => ({ success: false, error: e, data: null }))
+        ]);
+        
+        console.debug("Charity result:", JSON.stringify(charityResult, null, 2));
+        console.debug("Verification result:", JSON.stringify(verificationResult, null, 2));
+
+        // Handle Verification Status first (it might be useful even if charity is missing)
+        if (verificationResult.success && verificationResult.data) {
+          setVerificationStatus(verificationResult.data.status);
+        }
+
         if (charityResult.success && charityResult.data) {
           charityId = charityResult.data.id;
           setCharityData(charityResult.data);
-          setVerificationStatus(charityResult.data.verificationStatus || null);
-          console.debug(
-            "Found charity ID:",
-            charityId,
-            "Verification status:",
-            charityResult.data.verificationStatus
-          );
-          console.debug(
-            "Full charity data:",
-            JSON.stringify(charityResult.data, null, 2)
-          );
+          // Prefer verification status from charity profile if available, otherwise use the direct lookup
+          if (charityResult.data.verificationStatus) {
+            setVerificationStatus(charityResult.data.verificationStatus);
+          }
         } else {
           console.warn("No charity organization found for user:", user.id);
-          // User has charity role but no organization record - show verification prompt
+          
+          // If we have verification data, we can still show the dashboard (in restricted mode)
+          // or at least avoid the "not registered" error if it's pending
+          if (verificationResult.success && verificationResult.data) {
+             console.debug("Found pending verification, enabling limited dashboard");
+             // Set default stats so dashboard can render
+             setStats({
+                totalCampaigns: 0,
+                activeCampaigns: 0,
+                totalFundsRaised: 0,
+                totalDonations: 0,
+                averageDonation: 0,
+                totalFundsReleased: 0,
+                totalDonors: 0,
+                pendingVerifications: verificationResult.data.status === 'pending' || verificationResult.data.status === 'resubmission_required' ? 1 : 0,
+                pendingMilestones: 0,
+              });
+             setLoading(false);
+             return;
+          }
+          
+          // User has charity role but no organization record AND no pending verification
           setError("charity_not_registered");
           setLoading(false);
           return;
         }
-      } catch (charityError) {
-        console.error("Failed to get charity organization:", charityError);
-        // If it's a "not found" error, treat it as charity_not_registered
+      } catch (err) {
+        console.error("Failed to load charity/verification data:", err);
         setError("charity_not_registered");
         setLoading(false);
         return;
       }
 
       if (!charityId) {
-        console.warn("User does not have a charity organization");
-        // Instead of showing an error, show a helpful message
-        setError("charity_not_registered");
-        setLoading(false);
-        return;
+         // Should not happen due to return above, but safe guard
+         setError("charity_not_registered");
+         setLoading(false);
+         return;
       }
 
       // Set default stats to prevent crashes
@@ -315,13 +339,13 @@ const CharityDashboard: React.FC = () => {
   if (error) {
     // Special case: user hasn't registered as a charity yet
     if (error === "charity_not_registered") {
+      const hasPendingVerification = verificationStatus === 'pending' || verificationStatus === 'under_review';
+      const hasRejectedVerification = verificationStatus === 'rejected' || verificationStatus === 'resubmission_required';
+
       return (
         <CharityLayout title="Charity Dashboard">
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center max-w-2xl px-4">
-              {/* <div className="bg-gradient-to-br from-blue-100 to-blue-50 p-6 rounded-full w-fit mx-auto mb-6 shadow-lg">
-                <BadgeCheck className="h-16 w-16 text-blue-600" />
-              </div> */}
               <div className=" p-6 w-fit mx-auto mb-6">
                 <img
                   src="/CLEARCAUSE-logo.svg"
@@ -330,49 +354,67 @@ const CharityDashboard: React.FC = () => {
                 />
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-3">
-                Welcome to ClearCause!
+                {hasPendingVerification ? "Verification In Progress" : "Welcome to ClearCause!"}
               </h3>
               <p className="text-base text-gray-600 mb-8 leading-relaxed">
-                To start creating campaigns and receiving donations, please
-                complete your organization verification. This helps donors trust
-                your campaigns and ensures transparency on our platform.
+                {hasPendingVerification 
+                  ? "Your organization verification is currently being reviewed. You will be notified once the process is complete."
+                  : "To start creating campaigns and receiving donations, please complete your organization verification. This helps donors trust your campaigns and ensures transparency on our platform."}
               </p>
-              <div className="bg-gray-50 rounded-lg p-6 mb-8 text-left">
-                <h4 className="font-semibold text-gray-900 mb-3">
-                  What you'll need:
-                </h4>
-                <ul className="space-y-2 text-sm text-gray-700">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>
-                      Official registration documents (SEC, DTI, etc.)
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>Tax identification number (TIN)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>Bank account details for receiving donations</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>Organization details and contact information</span>
-                  </li>
-                </ul>
-              </div>
+              
+              {!hasPendingVerification && (
+                <div className="bg-gray-50 rounded-lg p-6 mb-8 text-left">
+                  <h4 className="font-semibold text-gray-900 mb-3">
+                    What you'll need:
+                  </h4>
+                  <ul className="space-y-2 text-sm text-gray-700">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span>
+                        Official registration documents (SEC, DTI, etc.)
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span>Tax identification number (TIN)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span>Bank account details for receiving donations</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span>Organization details and contact information</span>
+                    </li>
+                  </ul>
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button
-                  size="lg"
-                  asChild
-                  className="text-base bg-blue-700 hover:bg-blue-600"
-                >
-                  <Link to="/charity/verification/apply">
-                    <BadgeCheck className="mr-2 h-5 w-5" />
-                    Start Verification Now
-                  </Link>
-                </Button>
+                {hasPendingVerification || hasRejectedVerification ? (
+                  <Button
+                    size="lg"
+                    asChild
+                    className="text-base bg-blue-700 hover:bg-blue-600"
+                  >
+                    <Link to="/charity/verification/status">
+                      <BadgeCheck className="mr-2 h-5 w-5" />
+                      View Verification Status
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    size="lg"
+                    asChild
+                    className="text-base bg-blue-700 hover:bg-blue-600"
+                  >
+                    <Link to="/charity/verification/apply">
+                      <BadgeCheck className="mr-2 h-5 w-5" />
+                      Start Verification Now
+                    </Link>
+                  </Button>
+                )}
+                
                 <Button
                   variant="outline"
                   size="lg"
@@ -442,21 +484,21 @@ const CharityDashboard: React.FC = () => {
                 ) : verificationStatus === "rejected" ||
                   verificationStatus === "resubmission_required" ? (
                   <>
-                    <h3 className="text-lg font-semibold text-red-900 mb-2">
+                    <h3 className="text-lg font-semibold text-black mb-2">
                       Verification Required
                     </h3>
-                    <p className="text-sm text-red-800 mb-4">
+                    <p className="text-sm text-black mb-4">
                       Your verification application needs attention. Please
                       review the feedback and resubmit your documents.
                     </p>
                     <div className="flex gap-3">
-                      <Button asChild>
+                      <Button asChild className="bg-blue-700 hover:bg-blue-600 shadow-md">
                         <Link to="/charity/verification/apply">
-                          <BadgeCheck className="mr-2 h-4 w-4" />
+                          
                           Resubmit Application
                         </Link>
                       </Button>
-                      <Button variant="outline" asChild>
+                      <Button variant="outline" asChild className="shadow-md">
                         <Link to="/charity/verification/status">
                           View Feedback
                         </Link>
@@ -657,7 +699,7 @@ const CharityDashboard: React.FC = () => {
             {campaigns.length === 0 ? (
               <div className="text-center py-8">
                 <BarChart2 className="mx-auto h-12 w-12 text-gray-300" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                <h3 className="mt-2 text-sm font-poppinsregular text-gray-900">
                   No campaigns yet
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
@@ -726,7 +768,7 @@ const CharityDashboard: React.FC = () => {
             {recentActivity.length === 0 ? (
               <div className="text-center py-8">
                 <Clock className="mx-auto h-12 w-12 text-gray-300" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                <h3 className="mt-2 text-sm font-poppinsregular text-gray-900">
                   No recent activity
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
