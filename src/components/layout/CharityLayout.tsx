@@ -25,9 +25,11 @@ import {
   SidebarHeader,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarSeparator,
   SidebarInset,
   SidebarTrigger,
   SidebarRail,
@@ -120,46 +122,66 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
     setShowLogoutDialog(true);
   };
 
-  const navItems = [
+  const navGroups = [
     {
-      path: "/charity/dashboard",
-      label: "Dashboard",
-      icon: <LayoutDashboard className="h-5 w-5" />,
+      label: "Overview",
+      items: [
+        {
+          path: "/charity/dashboard",
+          label: "Dashboard",
+          icon: <LayoutDashboard className="h-5 w-5" />,
+        },
+      ],
     },
     {
-      path: "/charity/campaigns/new",
-      label: "Create New Campaign",
-      icon: <PlusCircle className="h-5 w-5" />,
+      label: "Campaign Management",
+      items: [
+        {
+          path: "/charity/campaigns/new",
+          label: "Create New Campaign",
+          icon: <PlusCircle className="h-5 w-5" />,
+        },
+        {
+          path: "/charity/campaigns",
+          label: "Manage Campaigns",
+          icon: <ListChecks className="h-5 w-5" />,
+        },
+        {
+          path: "/charity/milestones",
+          label: "Milestones",
+          icon: <Target className="h-5 w-5" />,
+        },
+      ],
     },
     {
-      path: "/charity/campaigns",
-      label: "Manage Campaigns",
-      icon: <ListChecks className="h-5 w-5" />,
+      label: "Finance & Analytics",
+      items: [
+        {
+          path: "/charity/funds",
+          label: "Funds Management",
+          icon: <DollarSign className="h-5 w-5" />,
+        },
+        {
+          path: "/charity/analytics",
+          label: "Analytics",
+          icon: <BarChart3 className="h-5 w-5" />,
+        },
+      ],
     },
     {
-      path: "/charity/milestones",
-      label: "Milestones",
-      icon: <Target className="h-5 w-5" />,
-    },
-    {
-      path: "/charity/analytics",
-      label: "Analytics",
-      icon: <BarChart3 className="h-5 w-5" />,
-    },
-    {
-      path: "/charity/funds",
-      label: "Funds Management",
-      icon: <DollarSign className="h-5 w-5" />,
-    },
-    {
-      path: "/charity/profile",
-      label: "Organization Profile",
-      icon: <Landmark className="h-5 w-5" />,
-    },
-    {
-      path: "/charity/received-feedback",
-      label: "Received Feedback",
-      icon: <Star className="h-5 w-5" />,
+      label: "Organization",
+      items: [
+        {
+          path: "/charity/profile",
+          label: "Organization Profile",
+          icon: <Landmark className="h-5 w-5" />,
+        },
+        {
+          path: "/charity/received-feedback",
+          label: "Received Feedback",
+          icon: <Star className="h-5 w-5" />,
+        },
+      ],
     },
   ];
 
@@ -182,93 +204,105 @@ const CharityLayout: React.FC<CharityLayoutProps> = ({ children, title }) => {
               <SidebarTrigger className="ml-auto hover:bg-blue-600" />
             </SidebarHeader>
             <SidebarContent>
-              <SidebarGroup>
-                <SidebarMenu>
-                  {navItems.map((item) => {
-                    let isActive =
-                      location.pathname === item.path ||
-                      location.pathname.startsWith(`${item.path}/`);
+              {navGroups.map((group, groupIndex) => (
+                <div key={group.label}>
+                  <SidebarGroup>
+                    <SidebarGroupLabel className="text-xs text-muted-foreground">
+                      {group.label}
+                    </SidebarGroupLabel>
+                    <SidebarMenu>
+                      {group.items.map((item) => {
+                        let isActive =
+                          location.pathname === item.path ||
+                          location.pathname.startsWith(`${item.path}/`);
 
-                    // Special case: "Manage Campaigns" should not be active if we are on "Create New Campaign"
-                    if (
-                      item.path === "/charity/campaigns" &&
-                      location.pathname === "/charity/campaigns/new"
-                    ) {
-                      isActive = false;
-                    }
-                    
-                    return (
-                      <SidebarMenuItem key={item.path}>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={isActive}
-                          tooltip={item.label}
-                          className={
-                            isActive
-                              ? "!bg-blue-100 !text-blue-600 hover:bg-blue-200"
-                              : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                          }
-                        >
-                          <Link to={item.path}>
-                            {item.icon}
-                            <span>{item.label}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroup>
+                        // Special case: "Manage Campaigns" should not be active if we are on "Create New Campaign"
+                        if (
+                          item.path === "/charity/campaigns" &&
+                          location.pathname === "/charity/campaigns/new"
+                        ) {
+                          isActive = false;
+                        }
+                        
+                        return (
+                          <SidebarMenuItem key={item.path}>
+                            <SidebarMenuButton
+                              asChild
+                              isActive={isActive}
+                              tooltip={item.label}
+                              className={
+                                isActive
+                                  ? "!bg-blue-100 !text-blue-600 hover:bg-blue-200"
+                                  : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                              }
+                            >
+                              <Link to={item.path}>
+                                {item.icon}
+                                <span>{item.label}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      })}
+                    </SidebarMenu>
+                  </SidebarGroup>
+                </div>
+              ))}
 
               <div className="mt-auto px-2 pb-4">
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location.pathname === "/charity/settings"}
-                      tooltip="Settings"
-                      className={
-                        location.pathname === "/charity/settings"
-                          ? "!bg-blue-100 !text-blue-600 hover:bg-blue-200"
-                          : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                      }
-                    >
-                      <Link to="/charity/settings">
-                        <Settings className="h-5 w-5" />
-                        <span>Settings</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={handleLogoutClick}
-                      disabled={isLoggingOut || authLoading}
-                      tooltip="Logout"
-                      className={`
-                        ${
-                          isLoggingOut || authLoading
-                            ? "text-gray-400 cursor-not-allowed hover:bg-transparent"
-                            : "text-gray-600 hover:text-red-500 hover:bg-red-50"
+                <SidebarGroup>
+                  <SidebarGroupLabel className="text-xs text-muted-foreground">
+                    Account
+                  </SidebarGroupLabel>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location.pathname === "/charity/settings"}
+                        tooltip="Settings"
+                        className={
+                          location.pathname === "/charity/settings"
+                            ? "!bg-blue-100 !text-blue-600 hover:bg-blue-200"
+                            : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
                         }
-                      `}
-                    >
-                      {isLoggingOut || authLoading ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <LogOut className="h-5 w-5" />
-                      )}
-                      <span>{isLoggingOut ? "Signing out..." : "Logout"}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
+                      >
+                        <Link to="/charity/settings">
+                          <Settings className="h-5 w-5" />
+                          <span>Settings</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        onClick={handleLogoutClick}
+                        disabled={isLoggingOut || authLoading}
+                        tooltip="Logout"
+                        className={`
+                          ${
+                            isLoggingOut || authLoading
+                              ? "text-gray-400 cursor-not-allowed hover:bg-transparent"
+                              : "text-gray-600 hover:text-red-500 hover:bg-red-50"
+                          }
+                        `}
+                      >
+                        {isLoggingOut || authLoading ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <LogOut className="h-5 w-5" />
+                        )}
+                        <span>{isLoggingOut ? "Signing out..." : "Logout"}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroup>
               </div>
             </SidebarContent>
             <SidebarRail />
           </Sidebar>
 
           <SidebarInset className="flex-1 overflow-y-auto min-h-[calc(100vh-4rem)] bg-clearcause-background">
-            <main className="flex-grow p-8">
-              <div className={cn("max-w-7xl px-4 sm:px-6 lg:px-14 font-poppinsregular", {
+            <main className="flex-grow p-8 lg:pl-20">
+              <div className={cn("max-w-7xl px-4 sm:px-6 lg:px-4 lg:pr-10 font-poppinsregular", {
                 "mx-auto": !open
               })}>
                 <h1 className="text-3xl font-bold text-gray-900 mb-6 font-robotobold">
