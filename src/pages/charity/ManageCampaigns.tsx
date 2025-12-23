@@ -550,7 +550,7 @@ const ManageCampaigns: React.FC = () => {
                   )}
               </div>
               {/* Amount Raised and Progress Bar */}
-              <div className="md:col-span-4 ">
+              <div className="md:col-span-3 ">
                 <p className="text-sm font-medium">
                   {formatCurrency(amountRaised)}
                 </p>
@@ -565,7 +565,7 @@ const ManageCampaigns: React.FC = () => {
                 </div>
               </div>
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2 md:col-span-4">
+              <div className="flex items-center justify-end gap-2 md:col-span-5">
                 {campaign.status === "active" && (
                   <Button
                     variant="default"
