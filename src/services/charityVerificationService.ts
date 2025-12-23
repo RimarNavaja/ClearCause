@@ -18,7 +18,7 @@ import { z } from 'zod';
 // VALIDATION SCHEMAS
 // =========================================
 
-const charityVerificationSchema = z.object({
+export const charityVerificationSchema = z.object({
   organizationName: z.string().min(2, 'Organization name must be at least 2 characters'),
   organizationType: z.string().optional(),
   description: z.string().min(50, 'Description must be at least 50 characters'),
